@@ -11,13 +11,14 @@
 body { font-family: Arial, sans-serif; background: #f0f0f0; }
 #header {
   background: #4CAF50; color: white;
-  padding: 10px 16px; display: flex;
+  padding: 8px 16px; display: flex;
   align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 4px; height: 50px; box-sizing: border-box;
+  flex-wrap: wrap; gap: 4px; min-height: 56px; box-sizing: border-box;
 }
-#header h1 { font-size: 17px; font-weight: bold; }
+#header h1 { font-size: 17px; font-weight: bold; margin: 0; line-height: 1.2; }
+#header .subtitle { font-size: 10px; opacity: 0.75; margin-top: 1px; }
 #header .stats { font-size: 12px; opacity: 0.9; }
-#map { height: calc(100vh - 90px); width: 100%; display: block; }
+#map { height: calc(100vh - 96px); width: 100%; display: block; }
 .leaflet-popup-content-wrapper {
   border-radius: 12px;
   box-shadow: 0 6px 24px rgba(0,0,0,0.3);
@@ -62,8 +63,12 @@ body { font-family: Arial, sans-serif; background: #f0f0f0; }
 #legend-close:hover { color: #333; }
 .legend-row { display: flex; align-items: center; margin-bottom: 10px; }
 .legend-swatch {
-  width: 21px; height: 21px; border-radius: 4px;
-  margin-right: 12px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.2);
+  width: 20px; height: 20px; border-radius: 4px;
+  margin-right: 12px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.25);
+  display: inline-block !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 #notes-bar {
   display: none; position: absolute; top: 58px; left: 10px;
@@ -149,16 +154,37 @@ body { font-family: Arial, sans-serif; background: #f0f0f0; }
 .badge-vac2  { background: #808080; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
 .badge-dnc2  { background: #cc0000; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
 .badge-res2  { background: #E65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
-#share-btn {
-  position: absolute; top: 10px; right: 10px; z-index: 1000;
+#btn-bar {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; gap: 8px; align-items: center;
+}
+#share-btn, #print-btn {
   background: rgba(255,255,255,0.95); border: 1px solid #ccc;
-  border-radius: 8px; padding: 7px 14px;
+  border-radius: 8px; padding: 6px 14px;
   font-size: 13px; font-weight: bold; color: #333;
   cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
-#share-btn:hover { background: #f0f0f0; }
+#share-btn:hover, #print-btn:hover { background: #f0f0f0; }
+@media print {
+  @page { margin: 0; size: auto; }
+  #header, #tab-bar, #btn-bar, #share-btn, #print-btn, #mapid-search,
+  #notes-bar, #table-view,
+  .leaflet-control-container { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important;
+                overflow: hidden !important; }
+  #map { position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          z-index: 1 !important; }
+  #legend { z-index: 2 !important;
+             max-width: 200px !important;
+             right: 10px !important;
+             bottom: 10px !important;
+             left: auto !important;
+             top: auto !important;
+             font-size: 13px !important; }
+}
 #mapid-search {
-  position: absolute; top: 10px; left: 10px; z-index: 1000;
   background: rgba(255,255,255,0.97); border: 1px solid #ccc;
   border-radius: 8px; padding: 6px 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
@@ -176,11 +202,31 @@ body { font-family: Arial, sans-serif; background: #f0f0f0; }
   display: none;
 }
 #mapid-search-clear:hover { color: #333; }
+.ml-hdr{padding:10px 16px;font-weight:bold;font-size:13px;color:white;letter-spacing:0.5px;}
+.ml-col-header{display:grid;grid-template-columns:60px 200px 200px 240px 30px 200px 240px;
+  background:#4472C4;color:white;font-size:12px;font-weight:bold;}
+.ml-col-header span{padding:6px 8px;white-space:nowrap;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.2);cursor:pointer;user-select:none;}
+.ml-col-header span:hover{background:rgba(255,255,255,0.15);}
+.ml-row{display:grid;grid-template-columns:60px 200px 200px 240px 30px 200px 240px;
+  font-size:12px;border-bottom:1px solid #eee;}
+.ml-row span{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ml-row:hover span{white-space:normal;overflow:visible;background:#fffde7;
+  position:relative;z-index:5;}
+.ml-even-g{background:#E2EFDA;}
+.ml-odd{background:#FFFFFF;}
+.ml-even-y{background:#FFF2CC;}
+.ml-dnc{background:#FFB3B3;}
+.ml-gap{height:12px;background:#e8e8e8;}
+.ml-none{padding:8px 16px;color:#888;font-size:12px;font-style:italic;}
 </style>
 </head>
 <body>
 <div id="header">
-  <h1> Apartment_500 Territory</h1>
+  <div>
+    <h1>Apartment_500 Territory</h1>
+    <div class="subtitle">Apartment_500_20260420_1012.xlsx</div>
+  </div>
   <div class="stats">
     2 parcels &nbsp;&nbsp;
     0 owner occupied &nbsp;&nbsp;
@@ -196,38 +242,15 @@ body { font-family: Arial, sans-serif; background: #f0f0f0; }
 </div>
 <div id="map"></div>
 <div id="table-view">
-  <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()">
-  <button id="hide-unknown-btn" onclick="toggleUnknown()" style="margin-left:10px;padding:8px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:13px;background:white;">Hide Unknown</button>
-  <table id="data-table" style="width:100%;border-collapse:collapse;font-size:13px;background:white;table-layout:auto;">
-    <thead>
-      <tr>
-        <th onclick="sortTable(0)"  style="width:50px">MapID</th>
-        <th onclick="sortTable(1)"  style="width:200px">Owner 1</th>
-        <th onclick="sortTable(2)"  style="width:200px">Owner 2</th>
-        <th onclick="sortTable(3)"  style="width:180px">Site Address</th>
-        <th onclick="sortTable(19)" style="width:130px">Site City</th>
-        <th onclick="sortTable(20)" style="width:40px">St</th>
-        <th onclick="sortTable(21)" style="width:70px">Site ZIP</th>
-        <th onclick="sortTable(4)"  style="width:220px">Mailing Address</th>
-        <th onclick="sortTable(5)"  style="width:130px">Mail City</th>
-        <th onclick="sortTable(6)"  style="width:40px">St</th>
-        <th onclick="sortTable(7)"  style="width:70px">Mail ZIP</th>
-        <th onclick="sortTable(8)"  style="width:120px">Bldg Type</th>
-        <th onclick="sortTable(9)"  style="width:110px">Owner Type</th>
-        <th onclick="sortTable(10)" style="width:90px">Occupied</th>
-        <th onclick="sortTable(11)" style="width:90px">Confidence</th>
-        <th onclick="sortTable(12)" style="width:160px">Address As</th>
-        <th onclick="sortTable(13)" style="width:180px">Salutation</th>
-        <th onclick="sortTable(14)" style="width:50px">DNC</th>
-        <th onclick="sortTable(15)" style="width:80px">Research</th>
-        <th onclick="sortTable(16)" style="width:200px">Notes</th>
-        <th onclick="sortTable(17)" style="width:90px">Sheet</th>
-      </tr>
-    </thead>
-    <tbody id="table-body"></tbody>
-  </table>
+  <div style="padding:10px 16px 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()"
+      style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:300px;">
+  </div>
+  <div id="table-body"></div>
 </div>
+<div id="btn-bar">
 <button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+<button id="print-btn" onclick="printMap()">&#x1F5A8; Print Map</button>
 <div id="mapid-search">
   <label>&#x1F50D; MapID</label>
   <input type="number" id="mapid-input" placeholder="e.g. 42" min="1"
@@ -235,10 +258,14 @@ body { font-family: Arial, sans-serif; background: #f0f0f0; }
     onkeydown="if(event.key==='Escape'){clearMapID();}" />
   <span id="mapid-search-clear" onclick="clearMapID()">&#x2715;</span>
 </div>
+</div>
 <div id="legend">
   <h4>Legend <span id="legend-close" onclick="document.getElementById('legend').style.display='none'">&#x2715;</span></h4>
   <div class="legend-row">
-    <div class="legend-swatch" style="background:#4CAF50"></div>Residential
+    <div class="legend-swatch" style="background:#2E5496"></div>Owner Occupied
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#5B9BD5"></div>Needs Research
   </div>
   <div class="legend-row">
     <div class="legend-swatch" style="background:#548235"></div>Institution
@@ -250,7 +277,7 @@ body { font-family: Arial, sans-serif; background: #f0f0f0; }
     <div class="legend-swatch" style="background:#808080"></div>Vacant
   </div>
   <div class="legend-row">
-    <div class="legend-swatch" style="background:#FF0000"></div>Do Not Contact
+    <div class="legend-swatch" style="background:#CC0000"></div>Do Not Contact
   </div>
 </div>
 <script>
@@ -261,9 +288,9 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 }).addTo(map);
 
 var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.45163047313692, 43.74003033184052], [-88.45159828662874, 43.740293879382804], [-88.45148563385011, 43.74042177703667], [-88.4513568878174, 43.740487663600234], [-88.4511423110962, 43.74049929063332], [-88.45069706439972, 43.74049929063332], [-88.45003724098207, 43.74049153927817], [-88.45002114772797, 43.73936370640835], [-88.4509974718094, 43.739371457909506], [-88.45153391361238, 43.739371457909506], [-88.45180213451385, 43.739483854563616], [-88.45202207565309, 43.73942571838956], [-88.45224738121034, 43.73940633965232], [-88.4543287754059, 43.73942571838956], [-88.45433413982393, 43.74001870471636], [-88.45163047313692, 43.74003033184052]]], "type": "Polygon"}, "properties": {}}]};
-var buildingsData = {"type": "FeatureCollection", "features": []};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.45230735591635, 43.73954353912222], [-88.45225759442647, 43.73954373974961], [-88.45225715686212, 43.7394867115726], [-88.45280935033867, 43.739484484770806], [-88.4528098064612, 43.73954383946947], [-88.45233466224995, 43.73954575642796], [-88.45233453738793, 43.73952946266331], [-88.45230724907563, 43.73952957278116], [-88.45230735591635, 43.73954353912222]]]}, "properties": {"mapid": 2, "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.45373147696239, 43.73954823840309], [-88.45310222646377, 43.739546581542335], [-88.45310253528942, 43.73948489794261], [-88.45374623173727, 43.739486592148616], [-88.45374595874019, 43.73954129261633], [-88.45373151213182, 43.73954125526909], [-88.45373147696239, 43.73954823840309]]]}, "properties": {"mapid": 2, "subid": "2b", "site": "20 RIVER HILLS DR, Fond du Lac WI 54935", "owner": "EDWARD ROSE DEVELOPMENT COMPANY LLC", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.45202370962105, 43.73973678854934], [-88.45202363888495, 43.739750754815645], [-88.45212958434678, 43.739751035037635], [-88.45212967862896, 43.73973241304913], [-88.45217783496545, 43.73973254030814], [-88.45217777139811, 43.73974534286954], [-88.4522259277451, 43.73974547010832], [-88.4522258982912, 43.73975128953599], [-88.45229331892146, 43.73975146799692], [-88.45229340602222, 43.73973400971329], [-88.45233995855601, 43.739734132634574], [-88.45233988200502, 43.739749262606644], [-88.45245545898425, 43.73974956814239], [-88.45245553550615, 43.73973443817023], [-88.45249727166203, 43.739734548223836], [-88.45249718926524, 43.739750841901575], [-88.4526031347298, 43.73975112168464], [-88.4526032053312, 43.73973715541793], [-88.45265938814327, 43.739737303802215], [-88.45265932467854, 43.739750106363935], [-88.45277650670822, 43.73975041493984], [-88.45277656550864, 43.73973877698413], [-88.45279422225492, 43.73973882387798], [-88.45279416469924, 43.73975046183419], [-88.45287603074729, 43.73975067741663], [-88.4528755700957, 43.739842621857804], [-88.45289643821198, 43.739842676359835], [-88.45289620434244, 43.739889229982445], [-88.45286731096033, 43.73988915417122], [-88.45286725805553, 43.739899628421114], [-88.45276612747826, 43.7398993616728], [-88.45276619216105, 43.739886560011854], [-88.45248687997143, 43.739885822342586], [-88.45248679292662, 43.739903280625946], [-88.45246431849883, 43.73990322088103], [-88.45246434204368, 43.73989856515896], [-88.45247878997768, 43.739898603566935], [-88.45247885936682, 43.739884637300136], [-88.45241946631725, 43.73988448119077], [-88.45241961813821, 43.73985422124666], [-88.45239393363093, 43.739854152951565], [-88.45239377002224, 43.73988674030666], [-88.45232795553028, 43.73988656707492], [-88.45232787897602, 43.73990169704658], [-88.45230219568991, 43.73990162873135], [-88.45230227689846, 43.739885335053685], [-88.45202778111104, 43.739884609972414], [-88.45202771751227, 43.73989741163334], [-88.45194745507658, 43.73989719971753], [-88.45194750224566, 43.739887889173616], [-88.45189773949407, 43.73988775754149], [-88.45189806135303, 43.73982374563827], [-88.4519173244129, 43.73982379694356], [-88.45191769932082, 43.73974931078995], [-88.45198993508615, 43.739749502255364], [-88.45198999869353, 43.7397366996941], [-88.45202370962105, 43.73973678854934]]]}, "properties": {"mapid": 2, "subid": "2c", "site": "95 RIVER HILLS DR, Fond du Lac WI 54935", "owner": "EDWARD ROSE DEVELOPMENT COMPANY LLC", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.45397783234642, 43.73974226219799], [-88.4540131444221, 43.73974259051282], [-88.45401293814274, 43.73975422750981], [-88.45408195851141, 43.73975486996251], [-88.45408060013015, 43.7398316777441], [-88.4540982555742, 43.73983184143676], [-88.45409704122412, 43.73990050331959], [-88.4539734467728, 43.739899353809776], [-88.45397365306036, 43.73988771681316], [-88.45388376699725, 43.739886880477115], [-88.45388353993698, 43.739899682073165], [-88.45384501768577, 43.739899323621884], [-88.45384524351289, 43.7398865220254], [-88.45370078355359, 43.739885178392036], [-88.45370053569614, 43.73989914368728], [-88.45367164369863, 43.73989887457862], [-88.45367187080404, 43.739886072983026], [-88.45353222473307, 43.73988477428798], [-88.45353195731705, 43.73989990238285], [-88.4535159056552, 43.73989975365506], [-88.4535161743173, 43.739884624660725], [-88.45336047659688, 43.73988317612584], [-88.45336018837216, 43.73989946881979], [-88.45332487620873, 43.739899139403214], [-88.45332508262187, 43.73988750240782], [-88.45325927219233, 43.73988688961094], [-88.45325908653244, 43.73989736380676], [-88.45314351855502, 43.739896287782], [-88.45314368346538, 43.73988697818587], [-88.45310194990269, 43.73988658936743], [-88.45310300047247, 43.73982723799174], [-88.45312065715373, 43.73982740183591], [-88.45312111035666, 43.73980179954612], [-88.45313074183385, 43.73980188899654], [-88.45313133917502, 43.73976814080978], [-88.45311849762669, 43.739768021242604], [-88.45311874561884, 43.73975405594837], [-88.45319418612979, 43.73975475827064], [-88.45319445363087, 43.739739629276215], [-88.45322655562539, 43.739739927719306], [-88.45322632966702, 43.73975272931481], [-88.45333547721802, 43.73975374503441], [-88.45333570315314, 43.73974094343867], [-88.45339669831071, 43.739741511028015], [-88.45339651267527, 43.739751985224316], [-88.45350726526594, 43.73975301583438], [-88.45350751316766, 43.73973905053923], [-88.45354122020112, 43.739739363946896], [-88.45354097354857, 43.739753329242596], [-88.4536517261443, 43.73975435971271], [-88.45365195201205, 43.7397415581163], [-88.45366960866902, 43.739741722775676], [-88.45366921797651, 43.73976383396927], [-88.45369489983241, 43.739764072977884], [-88.45369508417386, 43.73975359968061], [-88.45381707328166, 43.73975473444271], [-88.45381732111139, 43.739740769146856], [-88.45385584326077, 43.739741127607466], [-88.45385561619581, 43.739753928303784], [-88.45397760530744, 43.73975506289454], [-88.45397783234642, 43.73974226219799]]]}, "properties": {"mapid": 2, "subid": "2a", "site": "125 RIVER HILLS DR, Fond du Lac WI 54935", "owner": "EDWARD ROSE DEVELOPMENT COMPANY LLC", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.45424976530889, 43.740019067569136], [-88.45425165782422, 43.73981388211481], [-88.45433191878061, 43.73981427151327], [-88.45433037254485, 43.73998186194294], [-88.45432234605458, 43.73998182273536], [-88.4543220056379, 43.74001875689945], [-88.45424976530889, 43.740019067569136]]]}, "properties": {"mapid": 2, "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}]};
 var isApartment = true;
-var tableData = [{"mapid": "(No data)", "owner": "", "owner2": "", "site": "", "site_city": "", "site_state": "", "site_zip": "", "mail": "", "city": "", "state": "", "zip": "", "btype": "", "ownertype": "", "occupied": "", "confidence": "", "addressas": "", "salute": "", "dnc": "", "research": "", "notes": "", "sheet": "Duplicates"}, {"mapid": "1", "owner": "STATE OF WIS DEPT OF TRANSPORTATION", "owner2": "", "site": "", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "944 VANDERPERREN WAY", "city": "Green Bay", "state": "WI", "zip": "54304", "btype": "Government", "ownertype": "Government", "occupied": "No", "confidence": "High", "addressas": "State Of Wis Dept Of Transportation", "salute": "Dear Director or Manager", "dnc": "", "research": "Maybe", "notes": "Government-owned \u2014 confirm who to contact", "sheet": "Institutions"}, {"mapid": "2a", "owner": "EDWARD ROSE DEVELOPMENT COMPANY LLC", "owner2": "", "site": "125 RIVER HILLS DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "PO BOX 2012", "city": "Bloomfield Hills", "state": "MI", "zip": "48303", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Edward Rose Development Company Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant"}, {"mapid": "2b", "owner": "EDWARD ROSE DEVELOPMENT COMPANY LLC", "owner2": "", "site": "20 RIVER HILLS DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "PO BOX 2012", "city": "Bloomfield Hills", "state": "MI", "zip": "48303", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Edward Rose Development Company Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant"}, {"mapid": "2c", "owner": "EDWARD ROSE DEVELOPMENT COMPANY LLC", "owner2": "", "site": "95 RIVER HILLS DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "PO BOX 2012", "city": "Bloomfield Hills", "state": "MI", "zip": "48303", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Edward Rose Development Company Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant"}];
+var tableData = [{"mapid": "(No data)", "owner": "", "owner2": "", "site": "", "site_city": "", "site_state": "", "site_zip": "", "mail": "", "city": "", "state": "", "zip": "", "btype": "", "ownertype": "", "occupied": "", "confidence": "", "addressas": "", "salute": "", "dnc": "", "research": "", "notes": "", "sheet": "Duplicates"}, {"mapid": "1", "owner": "STATE OF WIS DEPT OF TRANSPORTATION", "owner2": "", "site": "", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "944 VANDERPERREN WAY", "city": "Green Bay", "state": "WI", "zip": "54304", "btype": "Government", "ownertype": "Government", "occupied": "No", "confidence": "High", "addressas": "State Of Wis Dept Of Transportation", "salute": "Dear Director or Manager", "dnc": "", "research": "Maybe", "notes": "Government-owned \u2014 confirm who to contact", "sheet": "Institutions"}, {"mapid": "2a", "owner": "EDWARD ROSE DEVELOPMENT COMPANY LLC", "owner2": "", "site": "125 RIVER HILLS DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "PO BOX 2012", "city": "Bloomfield Hills", "state": "MI", "zip": "48303", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Edward Rose Development Company Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant"}, {"mapid": "2b", "owner": "EDWARD ROSE DEVELOPMENT COMPANY LLC", "owner2": "", "site": "20 RIVER HILLS DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "PO BOX 2012", "city": "Bloomfield Hills", "state": "MI", "zip": "48303", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Edward Rose Development Company Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant"}, {"mapid": "2c", "owner": "EDWARD ROSE DEVELOPMENT COMPANY LLC", "owner2": "", "site": "95 RIVER HILLS DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "PO BOX 2012", "city": "Bloomfield Hills", "state": "MI", "zip": "48303", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Edward Rose Development Company Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant"}];
 
 if (buildingsData) {
   L.geoJSON(buildingsData, {
@@ -309,9 +336,26 @@ if (boundaryData) {
     }
   }).addTo(map);
   map.fitBounds(boundary.getBounds(), {padding: [30, 30]});
+  // Territory name label — centered on boundary, semi-transparent
+  var bounds = boundary.getBounds();
+  var center = bounds.getCenter();
+  L.marker(center, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:52px;font-weight:900;'
+           +'color:#1A3A6B;opacity:0.55;'
+           +'white-space:nowrap;pointer-events:none;'
+           +'position:relative;z-index:9999;'
+           +'text-shadow:2px 2px 0px white,-2px -2px 0px white,2px -2px 0px white,-2px 2px 0px white;'
+           +'transform:translate(-50%,-50%);">Apartment_500</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    }),
+    interactive: false
+  }).addTo(map);
 }
 
-var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.45003724098207, 43.74049153927817], [-88.45002114772797, 43.73936370640835], [-88.45072029614242, 43.73936925728008], [-88.45039267550325, 43.739482072533406], [-88.45029370659162, 43.74028181474523], [-88.45029294926918, 43.74028793715838], [-88.45026741837988, 43.7404942433149], [-88.45003724098207, 43.74049153927817]]]], "type": "MultiPolygon"}, "properties": {"mapid": 1, "owner": "STATE OF WIS DEPT OF TRANSPORTATION", "site": "Fond du Lac WI 54937", "mail": "944 VANDERPERREN WAY", "sheet": "Institutions", "occupied": "No", "btype": "Government", "research": "Maybe", "salute": "Dear Director or Manager", "dnc": "", "fill": "#548235", "owner2": "", "ownertype": "Government", "confidence": "High", "addressas": "State Of Wis Dept Of Transportation", "notes": "Government-owned \u2014 confirm who to contact", "city": "Green Bay", "state": "WI", "zip": "54304"}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.45159828662874, 43.740293879382804], [-88.45148563385011, 43.74042177703667], [-88.4513568878174, 43.740487663600234], [-88.4511423110962, 43.74049929063332], [-88.45069706439972, 43.74049929063332], [-88.45026761150486, 43.74049424558366], [-88.45027643057894, 43.74042300830943], [-88.45028050585994, 43.74039009865449], [-88.45028457989437, 43.74035718989867], [-88.45029381393148, 43.74028260949741], [-88.450393228669, 43.739479632856195], [-88.4504968037807, 43.73944396910764], [-88.45071392739378, 43.73936920671556], [-88.4509974718094, 43.739371457909506], [-88.45153391361238, 43.739371457909506], [-88.45180213451385, 43.739483854563616], [-88.45202207565309, 43.73942571838956], [-88.45224738121034, 43.73940633965232], [-88.4543287754059, 43.73942571838956], [-88.45433413982393, 43.74001870471636], [-88.45163047313692, 43.74003033184052], [-88.45159828662874, 43.740293879382804]]]], "type": "MultiPolygon"}, "properties": {"mapid": 2, "owner": "EDWARD ROSE DEVELOPMENT COMPANY LLC", "site": "2A: 125 RIVER HILLS DR, Fond du Lac WI 54937 | 2B: 20 RIVER HILLS DR, Fond du Lac WI 54937 | 2C: 95 RIVER HILLS DR, Fond du Lac WI 54937", "mail": "PO BOX 2012", "sheet": "Multi_Occupant", "occupied": "No", "btype": "Apartment Building", "research": "Yes", "salute": "Dear Resident", "dnc": "", "fill": "#4CAF50", "owner2": "", "ownertype": "Business / Rental", "confidence": "High", "addressas": "Edward Rose Development Company Llc", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "city": "Bloomfield Hills", "state": "MI", "zip": "48303"}}]};
+var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.45003724098207, 43.74049153927817], [-88.45002114772797, 43.73936370640835], [-88.45072029614242, 43.73936925728008], [-88.45039267550325, 43.739482072533406], [-88.45029370659162, 43.74028181474523], [-88.45029294926918, 43.74028793715838], [-88.45026741837988, 43.7404942433149], [-88.45003724098207, 43.74049153927817]]]], "type": "MultiPolygon"}, "properties": {"mapid": 1, "owner": "STATE OF WIS DEPT OF TRANSPORTATION", "site": "Fond du Lac WI 54937", "mail": "944 VANDERPERREN WAY", "sheet": "Institutions", "occupied": "No", "btype": "Government", "research": "Maybe", "salute": "Dear Director or Manager", "dnc": "", "fill": "#548235", "owner2": "", "ownertype": "Government", "confidence": "High", "addressas": "State Of Wis Dept Of Transportation", "notes": "Government-owned \u2014 confirm who to contact", "city": "Green Bay", "state": "WI", "zip": "54304"}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.45159828662874, 43.740293879382804], [-88.45148563385011, 43.74042177703667], [-88.4513568878174, 43.740487663600234], [-88.4511423110962, 43.74049929063332], [-88.45069706439972, 43.74049929063332], [-88.45026761150486, 43.74049424558366], [-88.45027643057894, 43.74042300830943], [-88.45028050585994, 43.74039009865449], [-88.45028457989437, 43.74035718989867], [-88.45029381393148, 43.74028260949741], [-88.450393228669, 43.739479632856195], [-88.4504968037807, 43.73944396910764], [-88.45071392739378, 43.73936920671556], [-88.4509974718094, 43.739371457909506], [-88.45153391361238, 43.739371457909506], [-88.45180213451385, 43.739483854563616], [-88.45202207565309, 43.73942571838956], [-88.45224738121034, 43.73940633965232], [-88.4543287754059, 43.73942571838956], [-88.45433413982393, 43.74001870471636], [-88.45163047313692, 43.74003033184052], [-88.45159828662874, 43.740293879382804]]]], "type": "MultiPolygon"}, "properties": {"mapid": 2, "owner": "EDWARD ROSE DEVELOPMENT COMPANY LLC", "site": "2A: 125 RIVER HILLS DR, Fond du Lac WI 54935 | 2B: 20 RIVER HILLS DR, Fond du Lac WI 54935 | 2C: 95 RIVER HILLS DR, Fond du Lac WI 54935", "mail": "PO BOX 2012", "sheet": "Multi_Occupant", "occupied": "No", "btype": "Apartment Building", "research": "Yes", "salute": "Dear Resident", "dnc": "", "fill": "#2E5496", "owner2": "", "ownertype": "Business / Rental", "confidence": "High", "addressas": "Edward Rose Development Company Llc", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "city": "Bloomfield Hills", "state": "MI", "zip": "48303"}}]};
 
 function getPopup(p) {
   var badge = '';
@@ -354,6 +398,12 @@ function getOpacity(feature) {
   if (area < 0.0002)   return 0.18;
   return 0.12;
 }
+// Store per-parcel area for label sizing
+var parcelAreas = {};
+parcelsData.features.forEach(function(f) {
+  parcelAreas[f.properties.mapid] = getParcelArea(f);
+});
+
 L.geoJSON(parcelsData, {
   style: function(feature) {
     var p = feature.properties;
@@ -367,10 +417,15 @@ L.geoJSON(parcelsData, {
   onEachFeature: function(feature, layer) {
     var p = feature.properties;
     layer.bindPopup(getPopup(p), {maxWidth: 300});
-    layer.bindTooltip(String(p.mapid), {
+    var area = getParcelArea(feature);
+    // Store area on tooltip element for zoom-aware sizing
+    var tt = layer.bindTooltip(String(p.mapid), {
       permanent: true, direction: 'center',
       className: 'mapid-label',
       offset: [0, 0]
+    });
+    layer.on('tooltipopen', function(e) {
+      e.tooltip.getElement().setAttribute('data-area', area);
     });
   }
 }).addTo(map);
@@ -379,17 +434,26 @@ if (!boundaryData) {
   map.setView([43.77, -88.43], 14);
 }
 
-// Scale MapID labels with zoom level
+// Scale MapID labels by zoom level AND parcel area
 function updateLabelSizes() {
   var z = map.getZoom();
-  var size;
-  if      (z <= 13) size = '11px';
-  else if (z <= 14) size = '15px';
-  else if (z <= 15) size = '19px';
-  else if (z <= 16) size = '24px';
-  else              size = '30px';
+  // Base size from zoom
+  var baseSize;
+  if      (z <= 13) baseSize = 11;
+  else if (z <= 14) baseSize = 15;
+  else if (z <= 15) baseSize = 19;
+  else if (z <= 16) baseSize = 24;
+  else              baseSize = 30;
   document.querySelectorAll('.mapid-label').forEach(function(el) {
-    el.style.fontSize = size;
+    var area = parseFloat(el.getAttribute('data-area') || 0);
+    var scale = 1.0;
+    // Shrink labels for small parcels
+    if      (area < 0.000003) scale = 0.45;
+    else if (area < 0.000008) scale = 0.60;
+    else if (area < 0.00002)  scale = 0.75;
+    else if (area < 0.00006)  scale = 0.88;
+    var finalSize = Math.max(7, Math.round(baseSize * scale));
+    el.style.fontSize = finalSize + 'px';
   });
 }
 map.on('zoomend', updateLabelSizes);
@@ -404,5 +468,82 @@ setTimeout(updateLabelSizes, 500);
   pointer-events: none; transition: font-size 0.1s;
 }
 </style>
-<script>function getBadge(p){if(p.dnc==='YES')return '<span class=badge-dnc2>DNC</span>';if(p.sheet==='Institutions')return '<span class=badge-inst2>Institution</span>';if(p.sheet==='Vacant')return '<span class=badge-vac2>Vacant</span>';if(p.btype==='Commercial / Rental')return '<span class=badge-biz2>Business</span>';if(p.research==='Yes')return '<span class=badge-res2>Research</span>';return '<span class=badge-res>Residential</span>';}function showTab(tab){document.getElementById('map').style.display=tab==='map'?'block':'none';document.getElementById('table-view').style.display=tab==='table'?'block':'none';if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}document.querySelectorAll('.tab-btn').forEach(function(b,i){b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}}var _sortDir={};function sortTable(col){if(!window._tableRows)return;var rows=window._tableRows.slice();var dir=_sortDir[col]=!_sortDir[col];rows.sort(function(a,b){var x=a[col],y=b[col];if(typeof x==='number')return dir?x-y:y-x;return dir?String(x).localeCompare(String(y)):String(y).localeCompare(String(x));});window._tableRows=rows;document.querySelectorAll('#data-table th').forEach(function(th,i){th.classList.remove('sort-asc','sort-desc');if(i===col)th.classList.add(dir?'sort-asc':'sort-desc');});renderTable(rows);}var _hideUnknown=false;function toggleUnknown(){_hideUnknown=!_hideUnknown;document.getElementById('hide-unknown-btn').style.background=_hideUnknown?'#e0e0e0':'white';filterTable();}function filterTable(){var q=document.getElementById('search-box').value.toLowerCase();if(!window._tableRows)return;var filtered=window._tableRows.filter(function(r){if(_hideUnknown&&r[1]==='Unknown Owner')return false;return r.join(' ').toLowerCase().indexOf(q)>=0;});renderTable(filtered);}function buildTable(){var rows=[];tableData.forEach(function(p){rows.push([p.mapid,p.owner||'',p.owner2||'',p.site||'',p.site_city||'',p.site_state||'',p.site_zip||'',p.mail||'',p.city||'',p.state||'',p.zip||'',p.btype||'',p.ownertype||'',p.occupied||'',p.confidence||'',p.addressas||'',p.salute||'',p.dnc==='YES'?'YES':'',p.research==='Yes'?'Yes':'',p.notes||'',p.sheet||'',]);});rows.sort(function(a,b){return String(a[0]).localeCompare(String(b[0]),undefined,{numeric:true});});window._tableRows=rows;renderTable(rows);}function renderTable(rows){var tbody=document.getElementById('table-body');tbody.innerHTML='';rows.forEach(function(r){var tr=document.createElement('tr');if(r[14]==='YES')tr.style.background='#fff0f0';tr.innerHTML='<td>'+r[0]+'</td>'+'<td>'+r[1]+'</td>'+'<td>'+r[2]+'</td>'+'<td>'+r[3]+'</td>'+'<td>'+r[4]+'</td>'+'<td>'+r[5]+'</td>'+'<td>'+r[6]+'</td>'+'<td>'+r[7]+'</td>'+'<td>'+r[8]+'</td>'+'<td>'+r[9]+'</td>'+'<td>'+r[10]+'</td>'+'<td>'+r[11]+'</td>'+'<td>'+r[12]+'</td>'+'<td>'+r[13]+'</td>'+'<td>'+r[14]+'</td>'+'<td>'+r[15]+'</td>'+'<td>'+r[16]+'</td>'+'<td>'+r[17]+'</td>'+'<td>'+r[18]+'</td>'+'<td>'+r[19]+'</td>'+'<td>'+r[20]+'</td>';tbody.appendChild(tr);});}var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target.id==='legend-close')return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_500 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_500 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_500/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var id=parseInt(val);if(isNaN(id))return;var found=null;parcelsData.features.forEach(function(f){if(f.properties.mapid===id){found=f;}});if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}</script></body>
+<script>
+var _allRows=[];
+var _sortState={conf:{col:-1,asc:true},res:{col:-1,asc:true},dnc:{col:-1,asc:true}};
+var _COLS=['mapid','owner','owner2','site','site_state','notes','mail'];
+function _sortIndicator(sec,idx){
+  var s=_sortState[sec];
+  if(s.col!==idx)return ' ▸';
+  return s.asc?' ▲':' ▼';}
+function _colHdr(sec){
+  var cols=['MapID','Owner 1','Owner 2','Site Address','St','Reason/Notes','Mailing Address'];
+  var h='<div class=ml-col-header>';
+  cols.forEach(function(c,i){
+    h+='<span data-sec="'+sec+'" data-col="'+i+'" onclick="_sortSection(this.dataset.sec,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(sec,i)+'</span>';});
+  h+='</div>';
+  return h;}
+function _sortSection(sec,col){
+  var s=_sortState[sec];
+  if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
+  renderTable(_allRows);}
+function _sortRows(arr,sec){
+  var s=_sortState[sec];
+  if(s.col<0)return arr.slice();
+  var key=_COLS[s.col];
+  return arr.slice().sort(function(a,b){
+    var av=String(a[key]||'').toLowerCase();
+    var bv=String(b[key]||'').toLowerCase();
+    if(key==='mapid'){av=parseInt(a[key]||0);bv=parseInt(b[key]||0);}
+    if(av<bv)return s.asc?-1:1;
+    if(av>bv)return s.asc?1:-1;
+    return 0;});}
+function _row(p,cls){
+var sa=(p.site||'')+(p.site_city?', '+p.site_city:'');
+var ma=(p.mail||'')+(p.city?', '+p.city:'')+(p.state?' '+p.state:'')+(p.zip?' '+p.zip:'');
+return '<div class="ml-row '+cls+'">'
++'<span>'+p.mapid+'</span>'
++'<span>'+(p.owner||'')+'</span>'
++'<span>'+(p.owner2||'')+'</span>'
++'<span>'+sa+'</span>'
++'<span>'+(p.site_state||'')+'</span>'
++'<span>'+(p.notes||'')+'</span>'
++'<span>'+ma+'</span>'
++'</div>';}
+function buildTable(){_allRows=tableData.slice();renderTable(_allRows);}
+function filterTable(){
+var q=document.getElementById('search-box').value.toLowerCase();
+renderTable(_allRows.filter(function(p){
+return [p.mapid,p.owner,p.owner2,p.site,p.site_city,p.mail,p.city,p.notes].join(' ').toLowerCase().indexOf(q)>=0;}));}
+function renderTable(rows){
+var conf=[],res=[],dnc=[];
+rows.forEach(function(p){
+if(p.dnc==='YES'){dnc.push(p);}
+else if(p.occupied==='Yes'&&p.confidence==='High'&&p.research!=='Yes'){conf.push(p);}
+else{res.push(p);}});
+conf=_sortRows(conf,'conf');res=_sortRows(res,'res');dnc=_sortRows(dnc,'dnc');
+var h='';
+h+='<div class=ml-hdr style="background:#375623">✔ CONFIDENT RESIDENTS ('+conf.length+' parcels) — Ready to write letters</div>';
+h+=_colHdr('conf');
+conf.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-g':'ml-odd');});
+if(!conf.length)h+='<div class=ml-none>None</div>';
+h+='<div class=ml-gap></div>';
+h+='<div class=ml-hdr style="background:#7F6000">? NEEDS RESEARCH ('+res.length+' parcels) — Verify before writing</div>';
+h+=_colHdr('res');
+res.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-y':'ml-odd');});
+if(!res.length)h+='<div class=ml-none>None</div>';
+h+='<div class=ml-gap></div>';
+h+='<div class=ml-hdr style="background:#C00000">✘ DO NOT CALL ('+dnc.length+' parcels)</div>';
+h+=_colHdr('dnc');
+dnc.forEach(function(p){h+=_row(p,'ml-dnc');});
+if(!dnc.length)h+='<div class=ml-none>None</div>';
+document.getElementById('table-body').innerHTML=h;}
+function showTab(tab){
+document.getElementById('map').style.display=tab==='map'?'block':'none';
+document.getElementById('table-view').style.display=tab==='table'?'block':'none';
+if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}
+document.querySelectorAll('.tab-btn').forEach(function(b,i){
+b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});
+if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}}
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target.id==='legend-close')return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_500 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_500 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_500/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var id=parseInt(val);if(isNaN(id))return;var found=null;parcelsData.features.forEach(function(f){if(f.properties.mapid===id){found=f;}});if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function printMap(){window.print();}</script></body>
 </html>
