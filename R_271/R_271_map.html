@@ -533,10 +533,12 @@ function _updateTableRow(mid,done){
     el.style.opacity=done?'0.45':'';});}
 
 function _initCheckMarkers(){
+  var seen={};
   parcelsData.features.forEach(function(f){
     var p=f.properties;
     var mid=p.mapid;
-    if(!mid)return;
+    if(!mid||seen[mid])return;
+    seen[mid]=true;
     var center=_getCenter(f.geometry.coordinates);
     var mk=L.marker(center,{
       icon:L.divIcon({className:'check-icon',html:_isDone(mid)?'☑':'☐',iconSize:[18,18],iconAnchor:[9,9]}),
