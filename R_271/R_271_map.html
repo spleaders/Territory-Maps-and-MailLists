@@ -499,6 +499,16 @@ setTimeout(updateLabelSizes, 500);
 var _allRows=[];
 var _sortState={conf:{col:-1,asc:true},ver:{col:-1,asc:true},res:{col:-1,asc:true},dnc:{col:-1,asc:true}};
 var _checkMarkers={};
+var _CHECK_MIN_ZOOM=16;
+
+function _updateCheckVisibility(){
+  var show=map.getZoom()>=_CHECK_MIN_ZOOM;
+  Object.keys(_checkMarkers).forEach(function(mid){
+    var mk=_checkMarkers[mid];
+    if(!mk)return;
+    if(show&&!map.hasLayer(mk))mk.addTo(map);
+    else if(!show&&map.hasLayer(mk))map.removeLayer(mk);});}
+map.on('zoomend',_updateCheckVisibility);
 
 function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
 function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
@@ -543,10 +553,11 @@ function _initCheckMarkers(){
     var mk=L.marker(center,{
       icon:L.divIcon({className:'check-icon',html:_isDone(mid)?'☑':'☐',iconSize:[18,18],iconAnchor:[9,9]}),
       interactive:true,zIndexOffset:1000
-    }).addTo(map);
+    });
     mk.on('click',function(e){L.DomEvent.stopPropagation(e);_toggleDone(mid);});
     _checkMarkers[mid]=mk;
     if(_isDone(mid))_updateParcel(mid,true);});
+  _updateCheckVisibility();
   var m=window.location.hash.match(/done=([0-9,]+)/);
   if(m){m[1].split(',').forEach(function(s){
     var mid=parseInt(s);
