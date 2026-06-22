@@ -499,13 +499,16 @@ setTimeout(updateLabelSizes, 500);
 var _allRows=[];
 var _sortState={conf:{col:-1,asc:true},ver:{col:-1,asc:true},res:{col:-1,asc:true},dnc:{col:-1,asc:true}};
 var _checkMarkers={};
-var _CHECK_MIN_ZOOM=16;
+var _CHECK_MIN_ZOOM=17;
+var _CHECK_MIN_ZOOM_VACANT=18;
 
 function _updateCheckVisibility(){
-  var show=map.getZoom()>=_CHECK_MIN_ZOOM;
+  var z=map.getZoom();
   Object.keys(_checkMarkers).forEach(function(mid){
     var mk=_checkMarkers[mid];
     if(!mk)return;
+    var threshold=mk._isVacant?_CHECK_MIN_ZOOM_VACANT:_CHECK_MIN_ZOOM;
+    var show=z>=threshold;
     if(show&&!map.hasLayer(mk))mk.addTo(map);
     else if(!show&&map.hasLayer(mk))map.removeLayer(mk);});}
 map.on('zoomend',_updateCheckVisibility);
@@ -544,6 +547,21 @@ function _updateTableRow(mid,done){
 
 function _initCheckMarkers(){
   var seen={};
+  // Primary: building footprint centroids — physically separated, won't cluster at cul-de-sacs
+  if(buildingsData&&buildingsData.features){
+    buildingsData.features.forEach(function(f){
+      var mid=f.properties&&f.properties.mapid;
+      if(!mid||seen[mid])return;
+      seen[mid]=true;
+      var center=_getCenter(f.geometry.coordinates);
+      var mk=L.marker(center,{
+        icon:L.divIcon({className:'check-icon',html:_isDone(mid)?'☑':'☐',iconSize:[18,18],iconAnchor:[9,9]}),
+        interactive:true,zIndexOffset:1000});
+      mk._isVacant=false;
+      mk.on('click',function(e){L.DomEvent.stopPropagation(e);_toggleDone(mid);});
+      _checkMarkers[mid]=mk;
+      if(_isDone(mid))_updateParcel(mid,true);});}
+  // Fallback: parcel centroid for parcels with no building (vacant land etc.)
   parcelsData.features.forEach(function(f){
     var p=f.properties;
     var mid=p.mapid;
@@ -552,8 +570,8 @@ function _initCheckMarkers(){
     var center=_getCenter(f.geometry.coordinates);
     var mk=L.marker(center,{
       icon:L.divIcon({className:'check-icon',html:_isDone(mid)?'☑':'☐',iconSize:[18,18],iconAnchor:[9,9]}),
-      interactive:true,zIndexOffset:1000
-    });
+      interactive:true,zIndexOffset:1000});
+    mk._isVacant=true;
     mk.on('click',function(e){L.DomEvent.stopPropagation(e);_toggleDone(mid);});
     _checkMarkers[mid]=mk;
     if(_isDone(mid))_updateParcel(mid,true);});
