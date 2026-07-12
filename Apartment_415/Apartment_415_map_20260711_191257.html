@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Apartment_415 Territory Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f0f0; }
+#header {
+  background: #4CAF50; color: white;
+  padding: 8px 16px; display: flex;
+  align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 4px; min-height: 56px; box-sizing: border-box;
+}
+#header h1 { font-size: 17px; font-weight: bold; margin: 0; line-height: 1.2; }
+#header .subtitle { font-size: 10px; opacity: 0.75; margin-top: 1px; }
+#header .stats { font-size: 12px; opacity: 0.9; }
+#map { height: calc(100vh - 96px); width: 100%; display: block; }
+.leaflet-popup-content-wrapper {
+  border-radius:0.7em;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  border-left: 6px solid #4CAF50;
+  padding: 0;
+}
+.leaflet-popup-content { margin: 0; width: 360px !important; }
+.popup-inner { padding: 18px 22px; }
+.popup-mapid {
+  font-size: 14px; color: #888; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+.popup-site {
+  font-size: 20px; font-weight: bold; color: #4CAF50;
+  margin-bottom: 7px; line-height: 1.3;
+}
+.popup-owner { font-size: 17px; color: #222; margin-bottom: 4px; }
+.popup-mail { font-size: 17px; color: #555; margin-bottom: 10px; }
+.popup-badge {
+  display: inline-block; padding: 5px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: bold; color: white; margin-right: 4px;
+}
+.badge-owner  { background: #4CAF50; }
+.badge-vacant { background: #808080; }
+.badge-inst   { background: #548235; }
+.badge-biz    { background: #7B2D8B; }
+.badge-dnc    { background: #cc0000; }
+.badge-research { background: #FFFF00; color: #333; }
+.legend-resizer{position:absolute;bottom:4px;right:4px;width:14px;height:14px;cursor:se-resize;opacity:0.4;z-index:10;background:linear-gradient(135deg,transparent 50%,#888 50%,#888 60%,transparent 60%,transparent 70%,#888 70%,#888 80%,transparent 80%);}.legend-resizer:hover{opacity:0.8;}#legend {
+  position: absolute; bottom: 24px; right: 10px; z-index: 1000;
+  background: white; border-radius:0.7em; padding:1em 1.3em;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2); font-size: 17px;
+  display:inline-block;width:max-content;min-width:80px;cursor:move;user-select:none;overflow:hidden;
+}
+#legend h4 {
+  font-size: 1.05em; margin-bottom: 0.7em; white-space: nowrap; color: #333;
+  border-bottom: 2px solid #eee; padding-bottom: 6px;
+}
+#legend-close {
+  float: right; cursor: pointer; font-size: 16px; color: #aaa;
+}
+#legend-close:hover { color: #333; }
+.legend-row { display: flex; align-items: center; margin-bottom: 10px; }
+.legend-swatch {
+  width: 20px; height: 20px; border-radius: 4px;
+  margin-right: 12px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.25);
+  display: inline-block !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+#notes-bar {
+  display: none; position: absolute; top: 58px; left: 10px;
+  right: 10px; z-index: 1000;
+  background: #FFF8E1; border-left: 4px solid #F5A623;
+  border-radius: 6px; padding: 8px 12px;
+  font-size: 12px; color: #555; max-width: 500px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#tab-bar {
+  display: flex; background: #4CAF50;
+  padding: 0 12px; height: 40px; box-sizing: border-box;
+}
+.tab-btn {
+  padding: 8px 20px; cursor: pointer; color: rgba(255,255,255,0.7);
+  font-size: 13px; font-weight: bold; border: none;
+  background: transparent; border-bottom: 3px solid transparent;
+}
+.tab-btn.active {
+  color: white; border-bottom: 3px solid white;
+}
+
+#table-view {
+  display: none; height: calc(100vh - 90px);
+  overflow-x: scroll; overflow-y: auto; padding: 16px; background: #f5f5f5;
+}
+#table-view::-webkit-scrollbar {
+  height: 12px; width: 12px;
+}
+#table-view::-webkit-scrollbar-track {
+  background: #ddd; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb {
+  background: #888; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+#search-box {
+  width: 100%; max-width: 400px; padding: 8px 12px;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: 14px; margin-bottom: 12px;
+}
+#data-table {
+  width: 1480px; border-collapse: collapse;
+  table-layout: fixed;
+  background: white; font-size: 13px;
+}
+#table-wrapper {
+  display: block; overflow-x: auto;
+  border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#data-table th {
+  background: #4CAF50; color: white;
+  padding: 10px 12px; text-align: left;
+  cursor: pointer; white-space: nowrap;
+  user-select: none; position: sticky;
+  top: 0; z-index: 10; min-width: 60px;
+}
+#data-table th:hover { opacity: 0.85; }
+#data-table th.sort-asc::after { content: " "; font-size: 10px; }
+#data-table th.sort-desc::after { content: " "; font-size: 10px; }
+#data-table td {
+  padding: 8px 12px; border-bottom: 1px solid #eee;
+  vertical-align: top; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  max-width: 0;
+}
+#data-table td:hover {
+  white-space: normal; overflow: visible;
+  background: #fffde7; position: relative; z-index: 5;
+}
+#data-table th {
+  position: sticky; top: 0; z-index: 10;
+  resize: horizontal; overflow: auto;
+  min-width: 40px;
+}
+#data-table tr:hover td { background: #f0f4ff; }
+.badge-res   { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-biz2  { background: #7B2D8B; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-inst2 { background: #548235; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-vac2  { background: #808080; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-dnc2  { background: #cc0000; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-res2  { background: #E65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+#btn-bar {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; gap: 8px; align-items: center;
+}
+#share-btn, #print-btn {
+  background: rgba(255,255,255,0.95); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 14px;
+  font-size: 13px; font-weight: bold; color: #333;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#share-btn:hover, #print-btn:hover { background: #f0f0f0; }
+@media print {
+  @page { margin: 0; size: auto; }
+  #header, #tab-bar, #btn-bar, #share-btn, #print-btn, #mapid-search,
+  #notes-bar, #table-view,
+  .leaflet-control-container { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important;
+                overflow: hidden !important; }
+  #map { position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          z-index: 1 !important; }
+  #legend { z-index: 2 !important;
+             max-width: 200px !important;
+             right: 10px !important;
+             bottom: 10px !important;
+             left: auto !important;
+             top: auto !important;
+             font-size: 13px !important; }
+}
+#mapid-search {
+  background: rgba(255,255,255,0.97); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex; align-items: center; gap: 8px;
+}
+#mapid-search input {
+  border: none; outline: none; font-size: 13px;
+  width: 80px; background: transparent;
+}
+#mapid-search label {
+  font-size: 12px; color: #666; white-space: nowrap;
+}
+#mapid-search-clear {
+  cursor: pointer; color: #aaa; font-size: 14px;
+  display: none;
+}
+#mapid-search-clear:hover { color: #333; }
+.ml-hdr{padding:10px 16px;font-weight:bold;font-size:13px;color:white;letter-spacing:0.5px;}
+.ml-col-header{display:grid;background:#4472C4;color:white;font-size:12px;font-weight:bold;}
+.ml-col-header span{padding:6px 8px;white-space:nowrap;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.2);cursor:pointer;user-select:none;}
+.ml-col-header span:hover{background:rgba(255,255,255,0.15);}
+.ml-row{display:grid;font-size:12px;border-bottom:1px solid #eee;}
+.ml-row span{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ml-row:hover span{white-space:normal;overflow:visible;background:#fffde7;
+  position:relative;z-index:5;}
+.check-icon{font-size:16px;cursor:pointer;background:rgba(255,255,255,0.85);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  line-height:1;border:none!important;box-shadow:none!important;}
+.check-icon:hover{background:rgba(255,255,255,1);}
+.ml-even-g{background:#E2EFDA;}
+.ml-odd{background:#FFFFFF;}
+.ml-even-y{background:#FFF2CC;}
+.ml-dnc{background:#FFB3B3;}
+.ml-gap{height:12px;background:#e8e8e8;}
+.ml-none{padding:8px 16px;color:#888;font-size:12px;font-style:italic;}
+</style>
+</head>
+<body>
+<div id="header">
+  <div>
+    <h1>Apartment_415 Territory</h1>
+    <div class="subtitle">Apartment_415_20260711_1912.xlsx</div>
+  </div>
+  <div class="stats">
+    11 parcels &nbsp;&nbsp;
+    0 owner occupied &nbsp;&nbsp;
+    11 need research &nbsp;&nbsp;
+    0 vacant
+    
+  </div>
+</div>
+<div id="notes-bar">Before working apartment territories.  Please review the following:  KM 12/08 pg. 3-4 and KM 11/85 Pg. 3-6</div>
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="showTab('map')">&#x1F5FA; Map</button>
+  <button class="tab-btn" onclick="showTab('table')">&#x1F4CB; Mailing List</button>
+</div>
+<div id="map"></div>
+<div id="table-view">
+  <div style="padding:10px 16px 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()"
+      style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:300px;">
+    <button onclick="shareProgress()" style="padding:7px 14px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:white;font-weight:bold;">&#x1F4CB; Share Progress</button>
+  </div>
+  <div id="table-body"></div>
+</div>
+<div id="btn-bar">
+<button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+<button id="print-btn" onclick="printMap()">&#x1F5A8; Print Map</button>
+<div id="mapid-search">
+  <label>&#x1F50D; MapID</label>
+  <input type="number" id="mapid-input" placeholder="e.g. 42" min="1"
+    oninput="searchMapID(this.value)"
+    onkeydown="if(event.key==='Escape'){clearMapID();}" />
+  <span id="mapid-search-clear" onclick="clearMapID()">&#x2715;</span>
+</div>
+<div id="opacity-ctrl" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.97);border:1px solid #ccc;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <label style="font-size:12px;color:#666;white-space:nowrap;">&#x1F3A8; Fill</label>
+  <input type="range" id="opacity-slider" min="0" max="100" value="100"
+    style="width:80px;cursor:pointer;"
+    oninput="setParcelOpacity(this.value/100)" />
+  <span id="opacity-val" style="font-size:12px;color:#666;width:32px;">100%</span>
+</div>
+</div>
+<div id="legend">
+  <h4>Legend <span id="legend-close" onclick="document.getElementById('legend').style.display='none'">&#x2715;</span></h4>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#2E5496"></div>Confident Resident
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#FFFF00"></div>Needs Research
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#228B22"></div>Verified
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#E65100"></div>Suspect — verify before mailing
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#8B4513"></div>Institution
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#7B2D8B"></div>Business
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#808080"></div>Vacant
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#CC0000"></div>Do Not Contact
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#222222;border:2px solid #FFFFFF;box-sizing:border-box"></div>Completed
+  </div>
+  <div class="legend-resizer" id="legend-resizer"></div>
+</div>
+<script>
+var map = L.map('map', {zoomControl: true, preferCanvas: true, scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.25});
+document.getElementById('map').addEventListener('wheel', function(e){ e.preventDefault(); var delta = e.deltaY > 0 ? -0.25 : 0.25; var mousePos = map.mouseEventToLatLng(e); map.setZoomAround(mousePos, map.getZoom() + delta); }, {passive: false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: ' OpenStreetMap contributors | CartoDB', maxZoom: 20, subdomains: 'abcd'
+}).addTo(map);
+
+var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.48683714866638, 43.80639987955149], [-88.48674595355988, 43.805188116298815], [-88.4865152835846, 43.80506810007013], [-88.48566636443138, 43.804808709332775], [-88.48495557904243, 43.804500923340036], [-88.48344549536705, 43.804388648809585], [-88.48343744874, 43.804049888171576], [-88.48342001438141, 43.80315845457144], [-88.48387464880943, 43.80306698750499], [-88.48396718502045, 43.80306456773942], [-88.48405838012695, 43.803076182613225], [-88.4844446182251, 43.803109091410114], [-88.48476648330688, 43.80358917062107], [-88.4859949350357, 43.8036472444576], [-88.48671913146973, 43.80376726354085], [-88.48733603954315, 43.8043325114652], [-88.487668633461, 43.80504874259131], [-88.48742723464966, 43.80527328895999], [-88.48738431930542, 43.80566043588934], [-88.48741114139557, 43.80639600814255], [-88.48683714866638, 43.80639987955149], [-88.48683714866638, 43.80639987955149], [-88.48683714866638, 43.80639987955149]]], "type": "Polygon"}, "properties": {}}]};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48377157605994, 43.803087724522356], [-88.483785, 43.803145], [-88.483662, 43.80316], [-88.4836505546502, 43.803112072597735], [-88.48377157605994, 43.803087724522356]]]}, "properties": {"mapid": 13, "subid": "54", "site": "205 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483798, 43.803183], [-88.483798, 43.803229], [-88.483509, 43.803229], [-88.483509, 43.803183], [-88.483798, 43.803183]]]}, "properties": {"mapid": 13, "subid": "53", "site": "203 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484388, 43.803235], [-88.484091, 43.803235], [-88.484091, 43.80319], [-88.484388, 43.80319], [-88.484388, 43.803235]]]}, "properties": {"mapid": 13, "subid": "51", "site": "200 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48364, 43.803312], [-88.48364, 43.803254], [-88.483779, 43.803254], [-88.483779, 43.803312], [-88.48364, 43.803312]]]}, "properties": {"mapid": 13, "subid": "52", "site": "201 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483519, 43.80339], [-88.483519, 43.803343], [-88.483804, 43.803343], [-88.483804, 43.80339], [-88.483519, 43.80339]]]}, "properties": {"mapid": 13, "subid": "49", "site": "198 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484099, 43.803361], [-88.484402, 43.803361], [-88.484402, 43.803405], [-88.484099, 43.803405], [-88.484099, 43.803361]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48368, 43.803409], [-88.483796, 43.803409], [-88.483796, 43.803477], [-88.48368, 43.803477], [-88.48368, 43.803409]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484111, 43.803432], [-88.484236, 43.80343], [-88.484238, 43.803499], [-88.484113, 43.803501], [-88.484111, 43.803432]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483531, 43.803553], [-88.48353, 43.803508], [-88.483825, 43.803505], [-88.483826, 43.80355], [-88.483531, 43.803553]]]}, "properties": {"mapid": 13, "subid": "50", "site": "199 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484108, 43.803574], [-88.484104, 43.803524], [-88.484406, 43.803511], [-88.48441, 43.803561], [-88.484108, 43.803574]]]}, "properties": {"mapid": 13, "subid": "47", "site": "196 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483699, 43.803574], [-88.483798, 43.803574], [-88.483798, 43.803645], [-88.483699, 43.803645], [-88.483699, 43.803574]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484224, 43.803666], [-88.484132, 43.803672], [-88.484125, 43.803615], [-88.484217, 43.803609], [-88.484224, 43.803666]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483543, 43.803719], [-88.483543, 43.803672], [-88.483836, 43.803672], [-88.483836, 43.803719], [-88.483543, 43.803719]]]}, "properties": {"mapid": 13, "subid": "48", "site": "197 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484144, 43.803739], [-88.484137, 43.803693], [-88.484431, 43.803673], [-88.484437, 43.803719], [-88.484144, 43.803739]]]}, "properties": {"mapid": 13, "subid": "45", "site": "194 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484224, 43.803793], [-88.484248, 43.803831], [-88.48415, 43.803862], [-88.484126, 43.803824], [-88.484224, 43.803793]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48445, 43.803787], [-88.484479, 43.803825], [-88.484225, 43.803929], [-88.484195, 43.803891], [-88.48445, 43.803787]]]}, "properties": {"mapid": 13, "subid": "44", "site": "192 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.486403, 43.803809], [-88.486338, 43.803779], [-88.48637, 43.803743], [-88.486435, 43.803774], [-88.486403, 43.803809]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.485884, 43.804076], [-88.48584, 43.804019], [-88.485934, 43.803981], [-88.485925, 43.803969], [-88.486133, 43.803885], [-88.486187, 43.803954], [-88.485884, 43.804076]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.485748, 43.804131], [-88.485707, 43.804188], [-88.485615, 43.804153], [-88.48571, 43.804023], [-88.485896, 43.804094], [-88.485843, 43.804167], [-88.485748, 43.804131]]]}, "properties": {"mapid": 8, "subid": "33", "site": "186 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.485191, 43.804043], [-88.485362, 43.804104], [-88.485308, 43.804183], [-88.485137, 43.804122], [-88.485191, 43.804043]]]}, "properties": {"mapid": 8, "subid": "30", "site": "183 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483552, 43.803835], [-88.483842, 43.803836], [-88.483842, 43.803882], [-88.483551, 43.803882], [-88.483552, 43.803835]]]}, "properties": {"mapid": 13, "subid": "46", "site": "195 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484561, 43.803848], [-88.484656, 43.803882], [-88.484562, 43.804022], [-88.484466, 43.803989], [-88.484561, 43.803848]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484445, 43.804025], [-88.484353, 43.804013], [-88.484371, 43.803943], [-88.484463, 43.803955], [-88.484445, 43.804025]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483548, 43.804045], [-88.483547, 43.804004], [-88.483834, 43.804001], [-88.483835, 43.804043], [-88.483548, 43.804045]]]}, "properties": {"mapid": 8, "subid": "39", "site": "193 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483797, 43.804151], [-88.483832, 43.804194], [-88.483604, 43.804292], [-88.483569, 43.804249], [-88.483797, 43.804151]]]}, "properties": {"mapid": 8, "subid": "38", "site": "191 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48389, 43.804184], [-88.483943, 43.80423], [-88.483852, 43.804284], [-88.483799, 43.804238], [-88.48389, 43.804184]]]}, "properties": {"mapid": 8, "subid": "37", "site": "190 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484668, 43.804325], [-88.484453, 43.804324], [-88.484454, 43.804245], [-88.484669, 43.804246], [-88.484668, 43.804325]]]}, "properties": {"mapid": 8, "subid": "32", "site": "185 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484738, 43.804263], [-88.484783, 43.804266], [-88.484773, 43.804348], [-88.484727, 43.804346], [-88.484738, 43.804263]]]}, "properties": {"mapid": 8, "subid": "35", "site": "188 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.486444, 43.804084], [-88.486452, 43.804147], [-88.486412, 43.80415], [-88.486423, 43.804232], [-88.486313, 43.804239], [-88.486295, 43.804093], [-88.486444, 43.804084]]]}, "properties": {"mapid": 8, "subid": "42", "site": "26 LAKEVIEW LA, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.486287, 43.804223], [-88.486253, 43.804254], [-88.486154, 43.804196], [-88.486188, 43.804166], [-88.486287, 43.804223]]]}, "properties": {"mapid": 8, "subid": "40", "site": "24 LAKEVIEW LA, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.485782, 43.804261], [-88.485732, 43.804337], [-88.485497, 43.804257], [-88.485547, 43.804181], [-88.485782, 43.804261]]]}, "properties": {"mapid": 8, "subid": "41", "site": "25 LAKEVIEW LA, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.486159, 43.804256], [-88.486215, 43.804276], [-88.486085, 43.804468], [-88.486029, 43.804449], [-88.486159, 43.804256]]]}, "properties": {"mapid": 8, "subid": "31", "site": "184 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.486291, 43.804548], [-88.486234, 43.80453], [-88.486355, 43.80433], [-88.486412, 43.804349], [-88.486291, 43.804548]]]}, "properties": {"mapid": 8, "subid": "29", "site": "182 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.486236, 43.804447], [-88.486195, 43.804511], [-88.486122, 43.804487], [-88.486162, 43.804423], [-88.486236, 43.804447]]]}, "properties": {"mapid": 8, "subid": "43", "site": "27 LAKEVIEW LA, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.485146, 43.804388], [-88.48539, 43.804468], [-88.48534, 43.804547], [-88.485097, 43.804467], [-88.485146, 43.804388]]]}, "properties": {"mapid": 8, "subid": "28", "site": "181 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48648, 43.804387], [-88.486542, 43.804387], [-88.486542, 43.8046], [-88.48648, 43.8046], [-88.48648, 43.804387]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.486774, 43.804444], [-88.486777, 43.804634], [-88.486721, 43.804634], [-88.486718, 43.804444], [-88.486774, 43.804444]]]}, "properties": {"mapid": 3, "subid": "25", "site": "180 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48556, 43.804599], [-88.485487, 43.804573], [-88.485522, 43.804524], [-88.485594, 43.80455], [-88.48556, 43.804599]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.486965, 43.804695], [-88.486908, 43.804675], [-88.487022, 43.804513], [-88.487078, 43.804534], [-88.486965, 43.804695]]]}, "properties": {"mapid": 3, "subid": "24", "site": "178 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.485606, 43.804562], [-88.485794, 43.804623], [-88.485746, 43.8047], [-88.485558, 43.80464], [-88.485606, 43.804562]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.487122, 43.804657], [-88.487067, 43.804717], [-88.487005, 43.804688], [-88.48706, 43.804628], [-88.487122, 43.804657]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.487116, 43.804802], [-88.487061, 43.804772], [-88.487239, 43.804601], [-88.487295, 43.804631], [-88.487116, 43.804802]]]}, "properties": {"mapid": 3, "subid": "23", "site": "176 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.485838, 43.804828], [-88.485741, 43.804795], [-88.485835, 43.80465], [-88.485932, 43.804682], [-88.485838, 43.804828]]]}, "properties": {"mapid": 8, "subid": "27", "site": "179 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48726, 43.804803], [-88.487183, 43.804855], [-88.487131, 43.804815], [-88.487207, 43.804763], [-88.48726, 43.804803]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.487222, 43.80491], [-88.487183, 43.804873], [-88.487416, 43.804743], [-88.487455, 43.804779], [-88.487222, 43.80491]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.486418, 43.804807], [-88.486644, 43.804841], [-88.486621, 43.80492], [-88.486396, 43.804886], [-88.486418, 43.804807]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.487387, 43.804946], [-88.487301, 43.804996], [-88.487248, 43.80495], [-88.487334, 43.804899], [-88.487387, 43.804946]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.487581, 43.804919], [-88.487349, 43.805054], [-88.487309, 43.805018], [-88.487541, 43.804883], [-88.487581, 43.804919]]]}, "properties": {"mapid": 3, "subid": "19", "site": "172 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.486948, 43.805158], [-88.486837, 43.804989], [-88.486935, 43.804955], [-88.487047, 43.805124], [-88.486948, 43.805158]]]}, "properties": {"mapid": 3, "subid": "22", "site": "175 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.487507, 43.80505], [-88.4876, 43.805103], [-88.487502, 43.805191], [-88.487346, 43.8051], [-88.487417, 43.805037], [-88.48748, 43.805074], [-88.487507, 43.80505]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.486931, 43.805161], [-88.486969, 43.805227], [-88.486874, 43.805256], [-88.486835, 43.805191], [-88.486931, 43.805161]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.487121, 43.805204], [-88.48715, 43.805243], [-88.486892, 43.805342], [-88.486863, 43.805303], [-88.487121, 43.805204]]]}, "properties": {"mapid": 3, "subid": "20", "site": "173 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.487222, 43.805416], [-88.486932, 43.805444], [-88.486923, 43.805399], [-88.487213, 43.805371], [-88.487222, 43.805416]]]}, "properties": {"mapid": 3, "subid": "18", "site": "171 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.487127, 43.805438], [-88.487213, 43.805438], [-88.487213, 43.80548], [-88.487127, 43.80548], [-88.487127, 43.805438]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.487245, 43.805523], [-88.487245, 43.805568], [-88.48695, 43.805568], [-88.48695, 43.805523], [-88.487245, 43.805523]]]}, "properties": {"mapid": 3, "subid": "16", "site": "169 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.487105, 43.805583], [-88.487234, 43.805583], [-88.487234, 43.805631], [-88.487105, 43.805631], [-88.487105, 43.805583]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48372216016038, 43.803911563774875], [-88.48381373628476, 43.803910152087205], [-88.4838154109172, 43.80396716707408], [-88.4837238347058, 43.80396857876309], [-88.48372216016038, 43.803911563774875]]]}, "properties": {"mapid": "", "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48419456118398, 43.80434322047168], [-88.48419511538388, 43.80433391818981], [-88.4841838779738, 43.804333567436814], [-88.48419025376491, 43.80422659389495], [-88.48428818793931, 43.804229655686655], [-88.4842796629853, 43.804372674677495], [-88.48418172857771, 43.8043696128785], [-88.4841833225295, 43.804342869718454], [-88.48419456118398, 43.80434322047168]]]}, "properties": {"mapid": 8, "subid": "34", "site": "187 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48389839163654, 43.80437738887731], [-88.48385511498095, 43.80435615906692], [-88.48400041143842, 43.804200809590725], [-88.4840436880331, 43.80422204024667], [-88.48389839163654, 43.80437738887731]]]}, "properties": {"mapid": 8, "subid": "36", "site": "189 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48711162915333, 43.80465313666348], [-88.48708526780048, 43.80467790427582], [-88.4871068667364, 43.80468996215998], [-88.48712074159131, 43.80467692638329], [-88.487142340534, 43.8046889842607], [-88.48723807474268, 43.8045990376967], [-88.48727947344011, 43.80462214880774], [-88.48709910543955, 43.804791614923666], [-88.48705410583287, 43.80476649364925], [-88.48710266727949, 43.804720868446324], [-88.4870630677684, 43.804698761870775], [-88.48705196836791, 43.80470919066668], [-88.48699617000635, 43.80467803997243], [-88.48705583081292, 43.80462198599806], [-88.48711162915333, 43.80465313666348]]]}, "properties": {"mapid": 3, "subid": "21", "site": "174 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48724609730652, 43.80493864305219], [-88.48731709092601, 43.804896723743695], [-88.48738715785628, 43.80495896441369], [-88.48752789952313, 43.80487586073812], [-88.48756648649476, 43.8049101376863], [-88.48733731528823, 43.80504545660652], [-88.48729872711787, 43.80501117958162], [-88.48736473947557, 43.804972201776955], [-88.48734544540072, 43.80495506282058], [-88.48729687014186, 43.804983744800744], [-88.48724609730652, 43.80493864305219]]]}, "properties": {"mapid": 3, "subid": "17", "site": "170 TWIN LAKES DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}]};
+var isApartment = true;
+var _TERRITORY = 'Apartment_415';
+var _BUILD_TS = '20260711_191257';
+var tableData = [{"mapid": "4", "owner": "", "owner2": "", "site": "537 MAINE AVENUE", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "1901 CHAPMAN AVE", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "6", "owner": "", "owner2": "", "site": "513 FLORIDA AVENUE", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "235 WINNEBAGO ST", "city": "N Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "10", "owner": "", "owner2": "", "site": "529 SARATOGA AVENUE", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "PO BOX 55", "city": "Eldorado", "state": "WI", "zip": "54932", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "11", "owner": "", "owner2": "", "site": "525 SARATOGA AVENUE", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "PO BOX 55", "city": "Eldorado", "state": "WI", "zip": "54932", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "12", "owner": "", "owner2": "", "site": "521 SARATOGA AVENUE", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "PO BOX 55", "city": "Eldorado", "state": "WI", "zip": "54932", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "14", "owner": "", "owner2": "", "site": "513 SARATOGA AVENUE", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "PO BOX 55", "city": "Eldorado", "state": "WI", "zip": "54932", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "15", "owner": "", "owner2": "", "site": "126 JEFFERSON STREET", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "N7970 FAIRFIELD DR", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "16", "owner": "", "owner2": "", "site": "169 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "17", "owner": "", "owner2": "", "site": "170 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "18", "owner": "", "owner2": "", "site": "171 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "19", "owner": "", "owner2": "", "site": "172 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "20", "owner": "", "owner2": "", "site": "173 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "21", "owner": "", "owner2": "", "site": "174 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "22", "owner": "", "owner2": "", "site": "175 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "23", "owner": "", "owner2": "", "site": "176 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "24", "owner": "", "owner2": "", "site": "178 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "25", "owner": "", "owner2": "", "site": "180 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "26", "owner": "", "owner2": "", "site": "177 TWIN LAKES DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "", "city": "", "state": "", "zip": "", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "27", "owner": "", "owner2": "", "site": "179 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "28", "owner": "", "owner2": "", "site": "181 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "29", "owner": "", "owner2": "", "site": "182 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "30", "owner": "", "owner2": "", "site": "183 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "31", "owner": "", "owner2": "", "site": "184 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "32", "owner": "", "owner2": "", "site": "185 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "33", "owner": "", "owner2": "", "site": "186 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "34", "owner": "", "owner2": "", "site": "187 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "35", "owner": "", "owner2": "", "site": "188 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "36", "owner": "", "owner2": "", "site": "189 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "37", "owner": "", "owner2": "", "site": "190 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "38", "owner": "", "owner2": "", "site": "191 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "39", "owner": "", "owner2": "", "site": "193 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "40", "owner": "", "owner2": "", "site": "24 LAKEVIEW LA", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "41", "owner": "", "owner2": "", "site": "25 LAKEVIEW LA", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "42", "owner": "", "owner2": "", "site": "26 LAKEVIEW LA", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "43", "owner": "", "owner2": "", "site": "27 LAKEVIEW LA", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "44", "owner": "", "owner2": "", "site": "192 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "45", "owner": "", "owner2": "", "site": "194 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "46", "owner": "", "owner2": "", "site": "195 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "47", "owner": "", "owner2": "", "site": "196 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "48", "owner": "", "owner2": "", "site": "197 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "49", "owner": "", "owner2": "", "site": "198 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "50", "owner": "", "owner2": "", "site": "199 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "51", "owner": "", "owner2": "", "site": "200 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "52", "owner": "", "owner2": "", "site": "201 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "53", "owner": "", "owner2": "", "site": "203 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "54", "owner": "", "owner2": "", "site": "205 TWIN LAKES DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}];
+
+if (boundaryData) {
+  var boundary = L.geoJSON(boundaryData, {
+    style: {
+      color: '#4CAF50', weight: 3, opacity: 1,
+      fillColor: '#4CAF50', fillOpacity: 0.04,
+      dashArray: '8,5'
+    }
+  }).addTo(map);
+  map.fitBounds(boundary.getBounds(), {padding: [30, 30]});
+  // Territory name label — centered on boundary, semi-transparent
+  var bounds = boundary.getBounds();
+  var center = bounds.getCenter();
+  L.marker(center, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:52px;font-weight:900;'
+           +'color:#1A3A6B;opacity:0.55;'
+           +'white-space:nowrap;pointer-events:none;'
+           +'position:relative;z-index:9999;'
+           +'text-shadow:2px 2px 0px white,-2px -2px 0px white,2px -2px 0px white,-2px 2px 0px white;'
+           +'transform:translate(-50%,-50%);">Apartment_415</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    }),
+    interactive: false
+  }).addTo(map);
+}
+
+var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.4852385407485, 43.8046234520962], [-88.48540599033437, 43.80462543797631], [-88.48540981105484, 43.80469396146588], [-88.4854100199242, 43.80469770641987], [-88.4852385407485, 43.8046234520962]]]], "type": "MultiPolygon"}, "properties": {"mapid": 6, "owner": "Unknown Owner", "site": "513 FLORIDA AVENUE, North Fond du Lac WI 54937", "mail": "235 WINNEBAGO ST", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "N Fond du Lac", "state": "WI", "zip": "54937", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.48667473481811, 43.80470895147332], [-88.48667413327003, 43.80469817485017], [-88.48669425008197, 43.804702526874884], [-88.48672003229859, 43.80470681565471], [-88.48672018082813, 43.80470948956034], [-88.48672530519674, 43.80480132755438], [-88.48667936030095, 43.80479185335037], [-88.48667473481811, 43.80470895147332]]]], "type": "MultiPolygon"}, "properties": {"mapid": 5, "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "", "state": "", "zip": "", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.4865152835846, 43.80506810007013], [-88.48640517336078, 43.80503445543856], [-88.48669308581573, 43.80503786616755], [-88.48670013779534, 43.80516427862654], [-88.4865152835846, 43.80506810007013]]]], "type": "MultiPolygon"}, "properties": {"mapid": 4, "owner": "Unknown Owner", "site": "537 MAINE AVENUE, North Fond du Lac WI 54937", "mail": "1901 CHAPMAN AVE", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "Fond du Lac", "state": "WI", "zip": "54937", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.48683372005709, 43.80635432159445], [-88.48730807365622, 43.806359938318565], [-88.48735375068891, 43.80639639522567], [-88.48683714866638, 43.80639987955149], [-88.48683372005709, 43.80635432159445]]], [[[-88.48674595355988, 43.805188116298815], [-88.48670013779534, 43.80516427862654], [-88.48669308581573, 43.80503786616755], [-88.48673853207505, 43.80503840514723], [-88.48674770777397, 43.805202862482474], [-88.48674955507995, 43.805235971823635], [-88.48674595355988, 43.805188116298815]]], [[[-88.4854100199242, 43.80469770641987], [-88.48540981105484, 43.80469396146588], [-88.48540599033437, 43.80462543797631], [-88.4854006403465, 43.8045295040092], [-88.48544608620891, 43.80453004260284], [-88.48545525828467, 43.804694500056016], [-88.48545656092381, 43.80471785971507], [-88.4854100199242, 43.80469770641987]]]], "type": "MultiPolygon"}, "properties": {"mapid": 2, "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "", "state": "", "zip": "", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.48741114139557, 43.80639600814255], [-88.48735375068891, 43.80639639522567], [-88.48730807365622, 43.806359938318565], [-88.48729889624357, 43.80619548106153], [-88.48728971888119, 43.80603102379902], [-88.48728054281176, 43.80586656653116], [-88.48727136554987, 43.80570210925766], [-88.48727007597508, 43.80568290140115], [-88.48738518818529, 43.80568426415614], [-88.48741114139557, 43.80639600814255]]]], "type": "MultiPolygon"}, "properties": {"mapid": 1, "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "", "state": "", "zip": "", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.48342690538777, 43.80351079759445], [-88.48342796089135, 43.8035297352468], [-88.48342728284058, 43.803530097078166], [-88.48342690538777, 43.80351079759445]]]], "type": "MultiPolygon"}, "properties": {"mapid": 15, "owner": "Unknown Owner", "site": "126 JEFFERSON STREET, North Fond du Lac WI 54937", "mail": "N7970 FAIRFIELD DR", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "Fond du Lac", "state": "WI", "zip": "54937", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.48342728284058, 43.803530097078166], [-88.48342796089135, 43.8035297352468], [-88.4834371829245, 43.803695183793884], [-88.48344013328968, 43.80374812829965], [-88.48343163570688, 43.80375266283787], [-88.48342728284058, 43.803530097078166]]]], "type": "MultiPolygon"}, "properties": {"mapid": 14, "owner": "Unknown Owner", "site": "513 SARATOGA AVENUE, North Fond du Lac WI 54937", "mail": "PO BOX 55", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "Eldorado", "state": "WI", "zip": "54932", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.48343163570688, 43.80375266283787], [-88.48344013328968, 43.80374812829965], [-88.48344640376551, 43.803860633235224], [-88.48345230577644, 43.80396652134285], [-88.48343598857205, 43.80397522854107], [-88.48343163570688, 43.80375266283787]]]], "type": "MultiPolygon"}, "properties": {"mapid": 12, "owner": "Unknown Owner", "site": "521 SARATOGA AVENUE, North Fond du Lac WI 54937", "mail": "PO BOX 55", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "Eldorado", "state": "WI", "zip": "54932", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.48343744874, 43.804049888171576], [-88.48343598857205, 43.80397522854107], [-88.48345230577644, 43.80396652134285], [-88.48345486171344, 43.80401237741869], [-88.48346477636194, 43.804190256796716], [-88.48346028283805, 43.80418583986539], [-88.48344092503577, 43.80419623920329], [-88.48343744874, 43.804049888171576]]]], "type": "MultiPolygon"}, "properties": {"mapid": 11, "owner": "Unknown Owner", "site": "525 SARATOGA AVENUE, North Fond du Lac WI 54937", "mail": "PO BOX 55", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "Eldorado", "state": "WI", "zip": "54932", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.48344549536705, 43.804388648809585], [-88.48344092503577, 43.80419623920329], [-88.48346028283805, 43.80418583986539], [-88.48346477636194, 43.804190256796716], [-88.48347407278908, 43.804357044526604], [-88.4834759603949, 43.80439091388055], [-88.48344549536705, 43.804388648809585]]]], "type": "MultiPolygon"}, "properties": {"mapid": 10, "owner": "Unknown Owner", "site": "529 SARATOGA AVENUE, North Fond du Lac WI 54937", "mail": "PO BOX 55", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "Eldorado", "state": "WI", "zip": "54932", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.48467098099503, 43.804479763511175], [-88.48467499470355, 43.80447981113066], [-88.48467500875158, 43.80448006297436], [-88.48467098099503, 43.804479763511175]]]], "type": "MultiPolygon"}, "properties": {"mapid": 9, "owner": "Unknown Owner", "site": "North Fond du Lac WI 54937", "mail": "16 GARFIELD ST", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "N Fond du Lac", "state": "WI", "zip": "54937", "verified_name": ""}}]};
+
+var _parcelLayers={};
+
+function getPopup(p) {
+  var badge = '';
+  if (p.dnc === 'YES') badge = '<span class="popup-badge badge-dnc">DO NOT CONTACT</span>';
+  else if (p.sheet === 'Institutions') badge = '<span class="popup-badge badge-inst">' + p.btype + '</span>';
+  else if (p.sheet === 'Vacant') badge = '<span class="popup-badge badge-vacant">Vacant</span>';
+  else if (p.btype === 'Commercial / Rental') badge = '<span class="popup-badge badge-biz">Business</span>';
+  else if (p.occupied === 'Yes') badge = '<span class="popup-badge badge-owner">Owner Occupied</span>';
+  if (p.research === 'Yes') badge += '<span class="popup-badge badge-research">Research Needed</span>';
+
+  var mailHtml = p.mail ? '<div class="popup-mail"> ' + p.mail + '</div>' : '';
+  var saluteHtml = p.salute && p.salute !== 'nan' ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(p.site + ', Fond du Lac, WI');
+  var viewUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(p.site + ', Fond du Lac, WI');
+  var mapsHtml = p.site ? '<div style="margin-top:6px"><a href="' + mapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>' : '';
+
+  return '<div class="popup-inner">' +
+    '<div class="popup-mapid">Parcel #' + p.mapid + '</div>' +
+    '<div class="popup-site">' + p.site + '</div>' +
+    '<div class="popup-owner">' + p.owner + '</div>' +
+    mailHtml + saluteHtml +
+    mapsHtml +
+    '<div style="margin-top:6px">' + badge + '</div>' +
+    '</div>';
+}
+
+function getParcelArea(feature) {
+  var coords = feature.geometry.coordinates;
+  var allPoints = [];
+  function collectPoints(c) {
+    if (typeof c[0] === 'number') { allPoints.push(c); }
+    else { c.forEach(collectPoints); }
+  }
+  collectPoints(coords);
+  if (allPoints.length < 2) return 0;
+  var lats = allPoints.map(function(p) { return p[1]; });
+  var lngs = allPoints.map(function(p) { return p[0]; });
+  return (Math.max.apply(null,lats)-Math.min.apply(null,lats)) * (Math.max.apply(null,lngs)-Math.min.apply(null,lngs));
+}
+function getOpacity(feature) {
+  return 1.0;
+}
+// Store per-parcel area for label sizing
+var parcelAreas = {};
+parcelsData.features.forEach(function(f) {
+  parcelAreas[f.properties.mapid] = getParcelArea(f);
+});
+
+L.geoJSON(parcelsData, {
+  style: function(feature) {
+    var p = feature.properties;
+    return {
+      fillColor: p.fill,
+      fillOpacity: getOpacity(feature),
+      color: 'rgba(0,0,0,0.65)',
+      weight: 2.0
+    };
+  },
+  onEachFeature: function(feature, layer) {
+    var p = feature.properties;
+    _parcelLayers[p.mapid]=layer;
+    layer._origStyle={
+      fillColor:layer.options.fillColor,
+      fillOpacity:layer.options.fillOpacity,
+      color:layer.options.color,
+      weight:layer.options.weight
+    };
+    layer.bindPopup(getPopup(p), {maxWidth: 300});
+    var area = getParcelArea(feature);
+    // Store area on tooltip element for zoom-aware sizing
+    var tt = layer.bindTooltip(String(p.mapid), {
+      permanent: true, direction: 'center',
+      className: 'mapid-label',
+      offset: [0, 0]
+    });
+    layer.on('tooltipopen', function(e) {
+      e.tooltip.getElement().setAttribute('data-area', area);
+    });
+  }
+}).addTo(map);
+
+if (buildingsData) {
+  L.geoJSON(buildingsData, {
+    style: {
+      fillColor: '#000000',
+      fillOpacity: 1.0,
+      color: '#000000',
+      weight: 1.5
+    },
+    interactive: isApartment,
+    onEachFeature: isApartment ? function(feature, layer) {
+      var p = feature.properties;
+      // Permanent sub-ID label on each building footprint
+      var label = p.subid ? p.subid.toUpperCase() : (p.mapid ? String(p.mapid) : '');
+      if (label) {
+        layer.bindTooltip(label, {
+          permanent: true, direction: 'center',
+          className: 'mapid-label', offset: [0, 0]
+        });
+      }
+      if (p.site && p.site !== '') {
+        var subLabel = p.subid ? p.subid.toUpperCase() : ('Parcel #' + p.mapid);
+        var saluteHtml = p.salute && p.salute !== 'nan' && p.salute !== ''
+          ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+        var html = '<div class="popup-inner">' +
+          '<div class="popup-mapid">Building ' + subLabel + '</div>' +
+          '<div class="popup-site">' + p.site + '</div>' +
+          '<div class="popup-owner">' + (p.owner || '') + '</div>' +
+          saluteHtml +
+          '</div>';
+        layer.bindPopup(html, {maxWidth: 300});
+      }
+    } : function(feature, layer) {}
+  }).addTo(map);
+}
+
+if (!boundaryData) {
+  map.setView([43.77, -88.43], 14);
+}
+
+// Scale MapID labels by zoom level AND parcel area
+function updateLabelSizes() {
+  var z = map.getZoom();
+  // Base size from zoom
+  var baseSize;
+  if      (z <= 13) baseSize = 11;
+  else if (z <= 14) baseSize = 15;
+  else if (z <= 15) baseSize = 19;
+  else if (z <= 16) baseSize = 24;
+  else              baseSize = 30;
+  document.querySelectorAll('.mapid-label').forEach(function(el) {
+    var area = parseFloat(el.getAttribute('data-area') || 0);
+    var scale = 1.0;
+    // Shrink labels for small parcels
+    if      (area < 0.000003) scale = 0.45;
+    else if (area < 0.000008) scale = 0.60;
+    else if (area < 0.00002)  scale = 0.75;
+    else if (area < 0.00006)  scale = 0.88;
+    var finalSize = Math.max(7, Math.round(baseSize * scale));
+    el.style.fontSize = finalSize + 'px';
+  });
+}
+map.on('zoomend', updateLabelSizes);
+map.on('load', updateLabelSizes);
+setTimeout(updateLabelSizes, 500);
+</script>
+<style>
+.mapid-label {
+  background: transparent; border: none; box-shadow: none;
+  font-weight: bold; color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9);
+  pointer-events: none; transition: font-size 0.1s;
+}
+</style>
+<script>
+var _allRows=[];
+var _sortState={conf:{col:-1,asc:true},ver:{col:-1,asc:true},res:{col:-1,asc:true},dnc:{col:-1,asc:true}};
+
+function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
+function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
+function _setDone(mid,done){if(done)localStorage.setItem(_doneKey(mid),'1');else localStorage.removeItem(_doneKey(mid));}
+
+function _toggleDone(mid){
+  var done=!_isDone(mid);
+  _setDone(mid,done);
+  _updateParcel(mid,done);
+  _updateTableRow(mid,done);}
+
+function _updateParcel(mid,done){
+  var lyr=_parcelLayers[mid];
+  if(lyr){
+    if(done){lyr.setStyle({fillColor:'#222222',fillOpacity:0.75,color:'#FFFFFF',weight:4});}
+    else{lyr.setStyle(lyr._origStyle||{fillColor:'#AAAAAA',fillOpacity:0.4,color:'rgba(0,0,0,0.65)',weight:2.0});}}}
+
+function _updateTableRow(mid,done){
+  document.querySelectorAll('.ml-check[data-mid="'+mid+'"]').forEach(function(el){
+    el.textContent=done?'☑':'☐';});
+  document.querySelectorAll('.ml-row[data-mid="'+mid+'"]').forEach(function(el){
+    el.style.opacity=done?'0.45':'';});}
+
+function _applyDoneState(){
+  // Clear done state if this is a freshly generated map (build timestamp changed)
+  var buildKey='build_'+_TERRITORY;
+  var lastBuild=localStorage.getItem(buildKey);
+  if(lastBuild!==_BUILD_TS){
+    // New pipeline run - clear all done state for this territory
+    var toRemove=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('done_'+_TERRITORY+'_')===0)toRemove.push(k);}
+    toRemove.forEach(function(k){localStorage.removeItem(k);});
+    localStorage.setItem(buildKey,_BUILD_TS);}
+  tableData.forEach(function(p){if(_isDone(p.mapid))_updateParcel(p.mapid,true);});
+  var m=window.location.hash.match(/done=([0-9,]+)/);
+  if(m){m[1].split(',').forEach(function(s){
+    var mid=parseInt(s);
+    if(!isNaN(mid)){_setDone(mid,true);_updateParcel(mid,true);}});}}
+setTimeout(_applyDoneState,400);
+
+function shareProgress(){
+  var done=[];
+  tableData.forEach(function(p){if(_isDone(p.mapid))done.push(p.mapid);});
+  if(!done.length){alert('No parcels checked off yet.');return;}
+  var url=window.location.href.split('#')[0]+'#done='+done.join(',');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){
+      alert('Progress link copied!\nPaste it into an email to share your progress.');});}
+  else{prompt('Copy this link to share your progress:',url);}}
+
+function _sortIndicator(sec,idx){
+  if(idx===0)return '';
+  var s=_sortState[sec];
+  if(s.col!==idx)return ' ▸';
+  return s.asc?' ▲':' ▼';}
+
+function _colHdr(sec){
+  var isConf=(sec==='conf');
+  var cols=isConf
+    ?['','MapID','Owner 1','Owner 2','Site Address']
+    :['','MapID','Owner 1','Owner 2','Site Address','Reason/Notes'];
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+'">';
+  cols.forEach(function(c,i){
+    if(i===0){h+='<span></span>';return;}
+    h+='<span data-sec="'+sec+'" data-col="'+i+'" onclick="_sortSection(this.dataset.sec,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(sec,i)+'</span>';});
+  h+='</div>';
+  return h;}
+
+function _sortSection(sec,col){
+  if(col===0)return;
+  var s=_sortState[sec];
+  if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
+  renderTable(_allRows);}
+
+function _sortRows(arr,sec){
+  var s=_sortState[sec];
+  if(s.col<=0)return arr.slice();
+  var cols=(sec==='conf')
+    ?['','mapid','owner','owner2','site_full']
+    :['','mapid','owner','owner2','site_full','notes'];
+  var key=cols[s.col]||'mapid';
+  return arr.slice().sort(function(a,b){
+    var av,bv;
+    if(key==='site_full'){
+      av=((a.site||'')+(a.site_city||'')+(a.site_state||'')+(a.site_zip||'')).toLowerCase();
+      bv=((b.site||'')+(b.site_city||'')+(b.site_state||'')+(b.site_zip||'')).toLowerCase();}
+    else if(key==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
+    else{av=String(a[key]||'').toLowerCase();bv=String(b[key]||'').toLowerCase();}
+    if(av<bv)return s.asc?-1:1;
+    if(av>bv)return s.asc?1:-1;
+    return 0;});}
+
+function _row(p,cls,sec){
+  var isConf=(sec==='conf');
+  var mid=p.mapid;
+  var done=_isDone(mid);
+  var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var rowStyle=done?'opacity:0.45;':'';
+  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" style="grid-template-columns:'+grid+';'+rowStyle+'">';
+  r+='<span class="ml-check" data-mid="'+mid+'" onclick="_toggleDone('+mid+')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'☑':'☐')+'</span>';
+  r+='<span>'+mid+'</span>';
+  r+='<span>'+(p.owner||'')+'</span>';
+  r+='<span>'+(p.owner2||'')+'</span>';
+  r+='<span>'+sf+'</span>';
+  if(!isConf){r+='<span>'+(p.notes||'')+'</span>';}
+  r+='</div>';
+  return r;}
+
+function setParcelOpacity(val){
+  document.getElementById('opacity-val').textContent=Math.round(val*100)+'%';
+  Object.keys(_parcelLayers).forEach(function(mid){
+    var lyr=_parcelLayers[mid];
+    if(lyr&&!_isDone(parseInt(mid))){
+      lyr.setStyle({fillOpacity:val});}});}
+
+function buildTable(){_allRows=tableData.slice();renderTable(_allRows);}
+
+function filterTable(){
+  var q=document.getElementById('search-box').value.toLowerCase();
+  renderTable(_allRows.filter(function(p){
+    var sf=(p.site||'')+(p.site_city||'')+(p.site_state||'')+(p.site_zip||'');
+    return [p.mapid,p.owner,p.owner2,sf,p.notes].join(' ').toLowerCase().indexOf(q)>=0;}));}
+
+function renderTable(rows){
+  var conf=[],res=[],dnc=[];
+  rows.forEach(function(p){
+    if(p.dnc==='YES'){dnc.push(p);}
+    else if(p.occupied==='Yes'&&p.confidence==='High'&&p.research!=='Yes'){conf.push(p);}
+    else{res.push(p);}});
+  conf=_sortRows(conf,'conf');res=_sortRows(res,'res');dnc=_sortRows(dnc,'dnc');
+  var h='';
+  h+='<div class=ml-hdr style="background:#375623">✔ CONFIDENT RESIDENTS ('+conf.length+' parcels) — Ready to write letters</div>';
+  h+=_colHdr('conf');
+  conf.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-g':'ml-odd','conf');});
+  if(!conf.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#7F6000">? NEEDS RESEARCH ('+res.length+' parcels) — Verify before writing</div>';
+  h+=_colHdr('res');
+  res.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-y':'ml-odd','res');});
+  if(!res.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#C00000">✘ DO NOT CALL ('+dnc.length+' parcels)</div>';
+  h+=_colHdr('dnc');
+  dnc.forEach(function(p){h+=_row(p,'ml-dnc','dnc');});
+  if(!dnc.length)h+='<div class=ml-none>None</div>';
+  document.getElementById('table-body').innerHTML=h;}
+
+function showTab(tab){
+  document.getElementById('map').style.display=tab==='map'?'block':'none';
+  document.getElementById('table-view').style.display=tab==='table'?'block':'none';
+  if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});
+  if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}}
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_415 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_415 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_415/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var id=parseInt(val);if(isNaN(id))return;var found=null;parcelsData.features.forEach(function(f){if(f.properties.mapid===id){found=f;}});if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function printMap(){window.print();}</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script></body>
+</html>
