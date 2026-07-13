@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Apartment_471 Territory Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f0f0; }
+#header {
+  background: #4CAF50; color: white;
+  padding: 8px 16px; display: flex;
+  align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 4px; min-height: 56px; box-sizing: border-box;
+}
+#header h1 { font-size: 17px; font-weight: bold; margin: 0; line-height: 1.2; }
+#header .subtitle { font-size: 10px; opacity: 0.75; margin-top: 1px; }
+#header .stats { font-size: 12px; opacity: 0.9; }
+#map { height: calc(100vh - 96px); width: 100%; display: block; }
+.leaflet-popup-content-wrapper {
+  border-radius:0.7em;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  border-left: 6px solid #4CAF50;
+  padding: 0;
+}
+.leaflet-popup-content { margin: 0; width: 360px !important; }
+.popup-inner { padding: 18px 22px; }
+.popup-mapid {
+  font-size: 14px; color: #888; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+.popup-site {
+  font-size: 20px; font-weight: bold; color: #4CAF50;
+  margin-bottom: 7px; line-height: 1.3;
+}
+.popup-owner { font-size: 17px; color: #222; margin-bottom: 4px; }
+.popup-mail { font-size: 17px; color: #555; margin-bottom: 10px; }
+.popup-badge {
+  display: inline-block; padding: 5px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: bold; color: white; margin-right: 4px;
+}
+.badge-owner  { background: #4CAF50; }
+.badge-vacant { background: #808080; }
+.badge-inst   { background: #548235; }
+.badge-biz    { background: #7B2D8B; }
+.badge-dnc    { background: #cc0000; }
+.badge-research { background: #FFFF00; color: #333; }
+.legend-resizer{position:absolute;bottom:4px;right:4px;width:14px;height:14px;cursor:se-resize;opacity:0.4;z-index:10;background:linear-gradient(135deg,transparent 50%,#888 50%,#888 60%,transparent 60%,transparent 70%,#888 70%,#888 80%,transparent 80%);}.legend-resizer:hover{opacity:0.8;}#legend {
+  position: absolute; bottom: 24px; right: 10px; z-index: 1000;
+  background: white; border-radius:0.7em; padding:1em 1.3em;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2); font-size: 17px;
+  display:inline-block;width:max-content;min-width:80px;cursor:move;user-select:none;overflow:hidden;
+}
+#legend h4 {
+  font-size: 1.05em; margin-bottom: 0.7em; white-space: nowrap; color: #333;
+  border-bottom: 2px solid #eee; padding-bottom: 6px;
+}
+#legend-close {
+  float: right; cursor: pointer; font-size: 16px; color: #aaa;
+}
+#legend-close:hover { color: #333; }
+.legend-row { display: flex; align-items: center; margin-bottom: 10px; }
+.legend-swatch {
+  width: 20px; height: 20px; border-radius: 4px;
+  margin-right: 12px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.25);
+  display: inline-block !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+#notes-bar {
+  display: none; position: absolute; top: 58px; left: 10px;
+  right: 10px; z-index: 1000;
+  background: #FFF8E1; border-left: 4px solid #F5A623;
+  border-radius: 6px; padding: 8px 12px;
+  font-size: 12px; color: #555; max-width: 500px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#tab-bar {
+  display: flex; background: #4CAF50;
+  padding: 0 12px; height: 40px; box-sizing: border-box;
+}
+.tab-btn {
+  padding: 8px 20px; cursor: pointer; color: rgba(255,255,255,0.7);
+  font-size: 13px; font-weight: bold; border: none;
+  background: transparent; border-bottom: 3px solid transparent;
+}
+.tab-btn.active {
+  color: white; border-bottom: 3px solid white;
+}
+
+#table-view {
+  display: none; height: calc(100vh - 90px);
+  overflow-x: scroll; overflow-y: auto; padding: 16px; background: #f5f5f5;
+}
+#table-view::-webkit-scrollbar {
+  height: 12px; width: 12px;
+}
+#table-view::-webkit-scrollbar-track {
+  background: #ddd; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb {
+  background: #888; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+#search-box {
+  width: 100%; max-width: 400px; padding: 8px 12px;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: 14px; margin-bottom: 12px;
+}
+#data-table {
+  width: 1480px; border-collapse: collapse;
+  table-layout: fixed;
+  background: white; font-size: 13px;
+}
+#table-wrapper {
+  display: block; overflow-x: auto;
+  border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#data-table th {
+  background: #4CAF50; color: white;
+  padding: 10px 12px; text-align: left;
+  cursor: pointer; white-space: nowrap;
+  user-select: none; position: sticky;
+  top: 0; z-index: 10; min-width: 60px;
+}
+#data-table th:hover { opacity: 0.85; }
+#data-table th.sort-asc::after { content: " "; font-size: 10px; }
+#data-table th.sort-desc::after { content: " "; font-size: 10px; }
+#data-table td {
+  padding: 8px 12px; border-bottom: 1px solid #eee;
+  vertical-align: top; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  max-width: 0;
+}
+#data-table td:hover {
+  white-space: normal; overflow: visible;
+  background: #fffde7; position: relative; z-index: 5;
+}
+#data-table th {
+  position: sticky; top: 0; z-index: 10;
+  resize: horizontal; overflow: auto;
+  min-width: 40px;
+}
+#data-table tr:hover td { background: #f0f4ff; }
+.badge-res   { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-biz2  { background: #7B2D8B; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-inst2 { background: #548235; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-vac2  { background: #808080; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-dnc2  { background: #cc0000; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-res2  { background: #E65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+#btn-bar {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; gap: 8px; align-items: center;
+}
+#share-btn, #print-btn {
+  background: rgba(255,255,255,0.95); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 14px;
+  font-size: 13px; font-weight: bold; color: #333;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#share-btn:hover, #print-btn:hover { background: #f0f0f0; }
+@media print {
+  @page { margin: 0; size: auto; }
+  #header, #tab-bar, #btn-bar, #share-btn, #print-btn, #mapid-search,
+  #notes-bar, #table-view,
+  .leaflet-control-container { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important;
+                overflow: hidden !important; }
+  #map { position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          z-index: 1 !important; }
+  #legend { z-index: 2 !important;
+             max-width: 200px !important;
+             right: 10px !important;
+             bottom: 10px !important;
+             left: auto !important;
+             top: auto !important;
+             font-size: 13px !important; }
+}
+#mapid-search {
+  background: rgba(255,255,255,0.97); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex; align-items: center; gap: 8px;
+}
+#mapid-search input {
+  border: none; outline: none; font-size: 13px;
+  width: 80px; background: transparent;
+}
+#mapid-search label {
+  font-size: 12px; color: #666; white-space: nowrap;
+}
+#mapid-search-clear {
+  cursor: pointer; color: #aaa; font-size: 14px;
+  display: none;
+}
+#mapid-search-clear:hover { color: #333; }
+.ml-hdr{padding:10px 16px;font-weight:bold;font-size:13px;color:white;letter-spacing:0.5px;}
+.ml-col-header{display:grid;background:#4472C4;color:white;font-size:12px;font-weight:bold;}
+.ml-col-header span{padding:6px 8px;white-space:nowrap;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.2);cursor:pointer;user-select:none;}
+.ml-col-header span:hover{background:rgba(255,255,255,0.15);}
+.ml-row{display:grid;font-size:12px;border-bottom:1px solid #eee;}
+.ml-row span{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ml-row:hover span{white-space:normal;overflow:visible;background:#fffde7;
+  position:relative;z-index:5;}
+.check-icon{font-size:16px;cursor:pointer;background:rgba(255,255,255,0.85);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  line-height:1;border:none!important;box-shadow:none!important;}
+.check-icon:hover{background:rgba(255,255,255,1);}
+.ml-even-g{background:#E2EFDA;}
+.ml-odd{background:#FFFFFF;}
+.ml-even-y{background:#FFF2CC;}
+.ml-dnc{background:#FFB3B3;}
+.ml-gap{height:12px;background:#e8e8e8;}
+.ml-none{padding:8px 16px;color:#888;font-size:12px;font-style:italic;}
+</style>
+</head>
+<body>
+<div id="header">
+  <div>
+    <h1>Apartment_471 Territory</h1>
+    <div class="subtitle">Apartment_471_20260713_1057.xlsx</div>
+  </div>
+  <div class="stats">
+    2 parcels &nbsp;&nbsp;
+    0 owner occupied &nbsp;&nbsp;
+    2 need research &nbsp;&nbsp;
+    0 vacant
+    
+  </div>
+</div>
+<div id="notes-bar">Before working apartment territories.  Please review the following:  KM 12/08 pg. 3-4 and KM 11/85 Pg. 3-6 | Condo's located Sout of East Pioneer Rd. and North of Route 151. | Sign posted at property mentions no distribution of literature.  So if this is worked in door to door please only share Bible verses with the neighbors. | If handled with letter writing please look up the following address in the reverse directory:</div>
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="showTab('map')">&#x1F5FA; Map</button>
+  <button class="tab-btn" onclick="showTab('table')">&#x1F4CB; Mailing List</button>
+</div>
+<div id="map"></div>
+<div id="table-view">
+  <div style="padding:10px 16px 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()"
+      style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:300px;">
+    <button onclick="shareProgress()" style="padding:7px 14px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:white;font-weight:bold;">&#x1F4CB; Share Progress</button>
+  </div>
+  <div id="table-body"></div>
+</div>
+<div id="btn-bar">
+<button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+<button id="print-btn" onclick="printMap()">&#x1F5A8; Print Map</button>
+<div id="mapid-search">
+  <label>&#x1F50D; MapID</label>
+  <input type="number" id="mapid-input" placeholder="e.g. 42" min="1"
+    oninput="searchMapID(this.value)"
+    onkeydown="if(event.key==='Escape'){clearMapID();}" />
+  <span id="mapid-search-clear" onclick="clearMapID()">&#x2715;</span>
+</div>
+<div id="opacity-ctrl" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.97);border:1px solid #ccc;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <label style="font-size:12px;color:#666;white-space:nowrap;">&#x1F3A8; Fill</label>
+  <input type="range" id="opacity-slider" min="0" max="100" value="100"
+    style="width:80px;cursor:pointer;"
+    oninput="setParcelOpacity(this.value/100)" />
+  <span id="opacity-val" style="font-size:12px;color:#666;width:32px;">100%</span>
+</div>
+</div>
+<div id="legend">
+  <h4>Legend <span id="legend-close" onclick="document.getElementById('legend').style.display='none'">&#x2715;</span></h4>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#2E5496"></div>Confident Resident
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#FFFF00"></div>Needs Research
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#228B22"></div>Verified
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#E65100"></div>Suspect — verify before mailing
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#8B4513"></div>Institution
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#7B2D8B"></div>Business
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#808080"></div>Vacant
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#CC0000"></div>Do Not Contact
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#222222;border:2px solid #FFFFFF;box-sizing:border-box"></div>Completed
+  </div>
+  <div class="legend-resizer" id="legend-resizer"></div>
+</div>
+<script>
+var map = L.map('map', {zoomControl: true, preferCanvas: true, scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.25});
+document.getElementById('map').addEventListener('wheel', function(e){ e.preventDefault(); var delta = e.deltaY > 0 ? -0.25 : 0.25; var mousePos = map.mouseEventToLatLng(e); map.setZoomAround(mousePos, map.getZoom() + delta); }, {passive: false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: ' OpenStreetMap contributors | CartoDB', maxZoom: 20, subdomains: 'abcd'
+}).addTo(map);
+
+var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.44192624092102, 43.745006533691836], [-88.44194769859314, 43.74630477377163], [-88.44020962715149, 43.74740147404901], [-88.43853056430817, 43.746277646654974], [-88.43908309936523, 43.74607225523011], [-88.43915283679962, 43.74559558939646], [-88.43946933746338, 43.74561109078408], [-88.43981266021729, 43.745568461958456], [-88.440300822258, 43.74537856954808], [-88.44097673892975, 43.74511504438876], [-88.44137370586395, 43.74494452749101], [-88.4419584274292, 43.744894147405546], [-88.44193160533905, 43.745033661384525], [-88.44192624092102, 43.745006533691836], [-88.44192624092102, 43.745006533691836], [-88.44192624092102, 43.745006533691836]]], "type": "Polygon"}, "properties": {}}]};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.441792, 43.745354], [-88.441757, 43.745354], [-88.441758, 43.745406], [-88.44179, 43.745406], [-88.441792, 43.745569], [-88.44155, 43.74557], [-88.441549, 43.745491], [-88.441568, 43.745491], [-88.441566, 43.745283], [-88.441593, 43.745283], [-88.441592, 43.745188], [-88.44156, 43.745189], [-88.441559, 43.745119], [-88.441789, 43.745118], [-88.441792, 43.745354]]]}, "properties": {"mapid": 64, "subid": "64e", "site": "16 STONE CASTLE DR, Fond du Lac WI 54935", "owner": "KATHLEEN A MAGDEFRAU REV TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.440407, 43.745559], [-88.440396, 43.745542], [-88.440695, 43.745439], [-88.440795, 43.74559], [-88.44044, 43.745712], [-88.440437, 43.745707], [-88.440325, 43.745746], [-88.440344, 43.745774], [-88.440248, 43.745807], [-88.440144, 43.74565], [-88.440407, 43.745559]]]}, "properties": {"mapid": 74, "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.441257, 43.745302], [-88.441255, 43.745372], [-88.441214, 43.745371], [-88.441211, 43.745464], [-88.441251, 43.745465], [-88.441248, 43.745587], [-88.441211, 43.745586], [-88.441208, 43.745683], [-88.441245, 43.745683], [-88.441242, 43.745805], [-88.441205, 43.745805], [-88.441202, 43.745895], [-88.441242, 43.745895], [-88.44124, 43.74597], [-88.441015, 43.745967], [-88.441027, 43.745529], [-88.441022, 43.745529], [-88.441028, 43.745299], [-88.441257, 43.745302]]]}, "properties": {"mapid": 89, "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.439992, 43.746187], [-88.439878, 43.745993], [-88.439853, 43.746001], [-88.439754, 43.745831], [-88.439722, 43.745841], [-88.439694, 43.745793], [-88.43991, 43.745727], [-88.439993, 43.745869], [-88.440027, 43.745858], [-88.440097, 43.745978], [-88.440074, 43.745985], [-88.440112, 43.746049], [-88.44016, 43.746035], [-88.44021, 43.74612], [-88.439992, 43.746187]]]}, "properties": {"mapid": 29, "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.440887, 43.746332], [-88.440603, 43.746125], [-88.440613, 43.746118], [-88.440459, 43.746005], [-88.440616, 43.745893], [-88.441054, 43.746213], [-88.440887, 43.746332]]]}, "properties": {"mapid": 85, "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.440261, 43.746146], [-88.440335, 43.7462], [-88.440304, 43.746222], [-88.440387, 43.746282], [-88.440405, 43.746268], [-88.440615, 43.746419], [-88.440625, 43.746411], [-88.440695, 43.746462], [-88.44053, 43.746581], [-88.440094, 43.746266], [-88.440261, 43.746146]]]}, "properties": {"mapid": 2, "subid": "2t", "site": "29 KINGS CREST LA, Fond du Lac WI 54935", "owner": "LAWRENCE W KUEHL", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44018, 43.746831], [-88.440111, 43.74678], [-88.440139, 43.74676], [-88.440049, 43.746694], [-88.44004, 43.746701], [-88.439825, 43.746543], [-88.43982, 43.746547], [-88.439651, 43.746423], [-88.439818, 43.746304], [-88.43986, 43.746335], [-88.439849, 43.746343], [-88.439952, 43.746419], [-88.439947, 43.746422], [-88.440344, 43.746714], [-88.44018, 43.746831]]]}, "properties": {"mapid": 30, "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.441161, 43.746649], [-88.440705, 43.746958], [-88.440552, 43.746841], [-88.440627, 43.74679], [-88.440653, 43.74681], [-88.440741, 43.74675], [-88.440711, 43.746727], [-88.440837, 43.746642], [-88.440848, 43.74665], [-88.441015, 43.746537], [-88.441161, 43.746649]]]}, "properties": {"mapid": 24, "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44065, 43.747016], [-88.440467, 43.747135], [-88.440474, 43.747141], [-88.440249, 43.747288], [-88.440261, 43.747297], [-88.440205, 43.747334], [-88.440054, 43.747213], [-88.440217, 43.747107], [-88.4402, 43.747093], [-88.440326, 43.74701], [-88.440345, 43.747025], [-88.440436, 43.746966], [-88.440408, 43.746944], [-88.440491, 43.746889], [-88.44065, 43.747016]]]}, "properties": {"mapid": 2, "subid": "2ab", "site": "86 STONE CASTLE DR, Fond du Lac WI 54935", "owner": "LAWRENCE W KUEHL", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.441773, 43.74609], [-88.441535, 43.74609], [-88.441535, 43.746008], [-88.441577, 43.746008], [-88.441578, 43.745927], [-88.441541, 43.745927], [-88.441541, 43.745797], [-88.441584, 43.745797], [-88.441585, 43.745714], [-88.441546, 43.745714], [-88.441546, 43.745638], [-88.441774, 43.745638], [-88.441773, 43.74609]]]}, "properties": {"mapid": 64, "subid": "64r", "site": "36 STONE CASTLE DR, Fond du Lac WI 54935", "owner": "KATHLEEN A MAGDEFRAU REV TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.441445, 43.746447], [-88.441434, 43.746439], [-88.441263, 43.746559], [-88.441281, 43.746573], [-88.441236, 43.746605], [-88.441067, 43.746479], [-88.44114, 43.746428], [-88.441162, 43.746445], [-88.441248, 43.746384], [-88.441225, 43.746367], [-88.441353, 43.746277], [-88.441365, 43.746286], [-88.44153, 43.746171], [-88.44168, 43.746282], [-88.441445, 43.746447]]]}, "properties": {"mapid": 88, "subid": "", "site": "", "owner": "", "salute": "", "sheet": ""}}]};
+var isApartment = true;
+var _TERRITORY = 'Apartment_471';
+var _BUILD_TS = '20260713_105717';
+var tableData = [{"mapid": "2a", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "100 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2aa", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "82 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2ab", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "86 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2ac", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "9 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2ad", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "90 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2ae", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "92 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2af", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "95 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2ag", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "96 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2ah", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "99 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2b", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "103 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2c", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "104 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2d", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "107 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2e", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "108 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2f", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "111 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2g", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "112 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2h", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "118 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2i", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "119 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2j", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "122 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2k", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "123 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2l", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "126 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2m", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "127 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2n", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "13 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2o", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "130 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2p", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "131 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2q", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "17 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2r", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "21 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2s", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "25 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2t", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "29 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2u", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "33 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2v", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "37 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2w", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "64 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2x", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "68 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2y", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "72 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "2z", "owner": "LAWRENCE W KUEHL", "owner2": "LINDA M KUEHL", "site": "76 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "64 STONE CASTLE DR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64a", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "10 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64b", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "12 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64c", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "14 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64d", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "15 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64e", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "16 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64f", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "18 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64g", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "19 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64h", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "20 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64i", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "23 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64j", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "26 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64k", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "27 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64l", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "28 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64m", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "30 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64n", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "31 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64o", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "32 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64p", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "34 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64q", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "35 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64r", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "36 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64s", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "38 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64t", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "40 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64u", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "44 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64v", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "48 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64w", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "52 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64x", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "56 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64y", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "6 KINGS CREST LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "64z", "owner": "KATHLEEN A MAGDEFRAU REV TR", "owner2": "", "site": "8 STONE CASTLE DR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "34 KINGS CREST LN", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Apartment Building", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}];
+
+if (boundaryData) {
+  var boundary = L.geoJSON(boundaryData, {
+    style: {
+      color: '#4CAF50', weight: 3, opacity: 1,
+      fillColor: '#4CAF50', fillOpacity: 0.04,
+      dashArray: '8,5'
+    }
+  }).addTo(map);
+  map.fitBounds(boundary.getBounds(), {padding: [30, 30]});
+  // Territory name label — centered on boundary, semi-transparent
+  var bounds = boundary.getBounds();
+  var center = bounds.getCenter();
+  L.marker(center, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:52px;font-weight:900;'
+           +'color:#1A3A6B;opacity:0.55;'
+           +'white-space:nowrap;pointer-events:none;'
+           +'position:relative;z-index:9999;'
+           +'text-shadow:2px 2px 0px white,-2px -2px 0px white,2px -2px 0px white,-2px 2px 0px white;'
+           +'transform:translate(-50%,-50%);">Apartment_471</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    }),
+    interactive: false
+  }).addTo(map);
+}
+
+var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.44083158174233, 43.74643484888009], [-88.44031207906087, 43.74604839010228], [-88.43998436285361, 43.74562062775115], [-88.43998952401381, 43.745618969951074], [-88.4400128849533, 43.74561110626646], [-88.44003605375443, 43.74560294817453], [-88.44005902172403, 43.74559449837083], [-88.4400817826519, 43.74558575955219], [-88.44010433157017, 43.74557673351623], [-88.44127630918607, 43.74509786014666], [-88.44129715622883, 43.74508958000474], [-88.44131238448558, 43.74508382778961], [-88.44132774786817, 43.74507826914298], [-88.44134324265062, 43.745072905862926], [-88.44135886510786, 43.74506773884741], [-88.44137460903008, 43.74506277079331], [-88.44139046945078, 43.745058002597965], [-88.44140644264488, 43.74505343515946], [-88.44142252364406, 43.745049071175224], [-88.44143870748184, 43.74504491154264], [-88.44145498919166, 43.74504095715915], [-88.44147136256558, 43.7450372089215], [-88.44148782511907, 43.74503366862848], [-88.44150436940281, 43.74503033717615], [-88.44152099169168, 43.745027215462635], [-88.44153768577685, 43.745024305284694], [-88.44155444793506, 43.745021605740405], [-88.44157127319893, 43.74501911862722], [-88.44158815535967, 43.74501684574194], [-88.44160508945251, 43.74501478618198], [-88.4416220705101, 43.74501294174485], [-88.44163909232627, 43.745011311527286], [-88.44165615241658, 43.745009897328046], [-88.44167324333252, 43.74500869914332], [-88.44169036134902, 43.745007717871154], [-88.44170749901853, 43.74500695260779], [-88.44172465261512, 43.74500640515131], [-88.44174181841638, 43.7450060736998], [-88.44175898773062, 43.745005960048836], [-88.44177615807517, 43.745006064197135], [-88.44190200571944, 43.74500761954263], [-88.4418727914554, 43.746257827384376], [-88.441274450853, 43.74668133671226], [-88.44096773093223, 43.7464535475865], [-88.44083158174233, 43.74643484888009]]]], "type": "MultiPolygon"}, "properties": {"mapid": 64, "owner": "KATHLEEN A MAGDEFRAU REV TR", "site": "64A: 10 KINGS CREST LA, Fond du Lac WI 54935 | 64B: 12 STONE CASTLE DR, Fond du Lac WI 54935 | 64C: 14 KINGS CREST LA, Fond du Lac WI 54935 | 64D: 15 STONE CASTLE DR, Fond du Lac WI 54935 | 64E: 16 STONE CASTLE DR, Fond du Lac WI 54935 | 64F: 18 KINGS CREST LA, Fond du Lac WI 54935 | 64G: 19 STONE CASTLE DR, Fond du Lac WI 54935 | 64H: 20 STONE CASTLE DR, Fond du Lac WI 54935 | 64I: 23 STONE CASTLE DR, Fond du Lac WI 54935 | 64J: 26 KINGS CREST LA, Fond du Lac WI 54935 | 64K: 27 STONE CASTLE DR, Fond du Lac WI 54935 | 64L: 28 STONE CASTLE DR, Fond du Lac WI 54935 | 64M: 30 KINGS CREST LA, Fond du Lac WI 54935 | 64N: 31 STONE CASTLE DR, Fond du Lac WI 54935 | 64O: 32 STONE CASTLE DR, Fond du Lac WI 54935 | 64P: 34 KINGS CREST LA, Fond du Lac WI 54935 | 64Q: 35 STONE CASTLE DR, Fond du Lac WI 54935 | 64R: 36 STONE CASTLE DR, Fond du Lac WI 54935 | 64S: 38 KINGS CREST LA, Fond du Lac WI 54935 | 64T: 40 STONE CASTLE DR, Fond du Lac WI 54935 | 64U: 44 STONE CASTLE DR, Fond du Lac WI 54935 | 64V: 48 STONE CASTLE DR, Fond du Lac WI 54935 | 64W: 52 STONE CASTLE DR, Fond du Lac WI 54935 | 64X: 56 STONE CASTLE DR, Fond du Lac WI 54935 | 64Y: 6 KINGS CREST LA, Fond du Lac WI 54935 | 64Z: 8 STONE CASTLE DR, Fond du Lac WI 54935", "mail": "34 KINGS CREST LN", "sheet": "Multi_Occupant", "occupied": "No", "btype": "Apartment Building", "research": "Yes", "salute": "Dear Resident", "dnc": "", "fill": "#2E5496", "owner2": "", "ownertype": "Business / Rental", "confidence": "High", "addressas": "Kathleen A Magdefrau Rev Tr", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "city": "Fond du Lac", "state": "WI", "zip": "54935", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.44020962715149, 43.74740147404901], [-88.43880433567001, 43.74646088682217], [-88.43863833217057, 43.74633743152354], [-88.43893661929864, 43.746126705620554], [-88.43908024974904, 43.746073314505395], [-88.43911625060942, 43.74606610509221], [-88.43915921979921, 43.74570255640961], [-88.43918471922579, 43.745705185395444], [-88.43921027857165, 43.74570749130551], [-88.43923588914619, 43.74570947413516], [-88.43926154350206, 43.74571113208038], [-88.43928723419005, 43.74571246513721], [-88.43931295376099, 43.74571347330166], [-88.43933869228373, 43.74571415566842], [-88.43936444479198, 43.745714512234876], [-88.43939020011217, 43.74571454299505], [-88.43941595327804, 43.74571424794634], [-88.43944169559899, 43.74571362708416], [-88.43946741962579, 43.745712680404516], [-88.43949311542544, 43.7457114088022], [-88.4395187780317, 43.745709812274605], [-88.43954439751246, 43.7457078908165], [-88.43956996765914, 43.74570564532462], [-88.4395954785378, 43.74570307759377], [-88.4396209251831, 43.74570018672136], [-88.43964629766117, 43.74569697450223], [-88.43967158852196, 43.745693441832444], [-88.43969679031537, 43.74568958960817], [-88.43972189683195, 43.74568541962617], [-88.43974689813965, 43.74568093188131], [-88.43977178802807, 43.745676129070375], [-88.4397965578066, 43.745671011188875], [-88.43982120126402, 43.74566558183362], [-88.43984570970979, 43.745659841000126], [-88.43987007693438, 43.74565379048521], [-88.43989429424464, 43.74564743298445], [-88.43991835543109, 43.74564077029464], [-88.43994225180143, 43.745633804211344], [-88.43996597714626, 43.745626536531425], [-88.43998436285361, 43.74562062775115], [-88.44031207906087, 43.74604839010228], [-88.44083158174233, 43.74643484888009], [-88.44096773093223, 43.7464535475865], [-88.441274450853, 43.74668133671226], [-88.44063661067415, 43.74713205304794], [-88.44020962715149, 43.74740147404901]]]], "type": "MultiPolygon"}, "properties": {"mapid": 2, "owner": "LAWRENCE W KUEHL & LINDA M KUEHL", "site": "2A: 100 STONE CASTLE DR, Fond du Lac WI 54935 | 2AA: 82 STONE CASTLE DR, Fond du Lac WI 54935 | 2AB: 86 STONE CASTLE DR, Fond du Lac WI 54935 | 2AC: 9 KINGS CREST LA, Fond du Lac WI 54935 | 2AD: 90 STONE CASTLE DR, Fond du Lac WI 54935 | 2AE: 92 STONE CASTLE DR, Fond du Lac WI 54935 | 2AF: 95 STONE CASTLE DR, Fond du Lac WI 54935 | 2AG: 96 STONE CASTLE DR, Fond du Lac WI 54935 | 2AH: 99 STONE CASTLE DR, Fond du Lac WI 54935 | 2B: 103 STONE CASTLE DR, Fond du Lac WI 54935 | 2C: 104 STONE CASTLE DR, Fond du Lac WI 54935 | 2D: 107 STONE CASTLE DR, Fond du Lac WI 54935 | 2E: 108 STONE CASTLE DR, Fond du Lac WI 54935 | 2F: 111 STONE CASTLE DR, Fond du Lac WI 54935 | 2G: 112 STONE CASTLE DR, Fond du Lac WI 54935 | 2H: 118 STONE CASTLE DR, Fond du Lac WI 54935 | 2I: 119 STONE CASTLE DR, Fond du Lac WI 54935 | 2J: 122 STONE CASTLE DR, Fond du Lac WI 54935 | 2K: 123 STONE CASTLE DR, Fond du Lac WI 54935 | 2L: 126 STONE CASTLE DR, Fond du Lac WI 54935 | 2M: 127 STONE CASTLE DR, Fond du Lac WI 54935 | 2N: 13 KINGS CREST LA, Fond du Lac WI 54935 | 2O: 130 STONE CASTLE DR, Fond du Lac WI 54935 | 2P: 131 STONE CASTLE DR, Fond du Lac WI 54935 | 2Q: 17 KINGS CREST LA, Fond du Lac WI 54935 | 2R: 21 KINGS CREST LA, Fond du Lac WI 54935 | 2S: 25 KINGS CREST LA, Fond du Lac WI 54935 | 2T: 29 KINGS CREST LA, Fond du Lac WI 54935 | 2U: 33 KINGS CREST LA, Fond du Lac WI 54935 | 2V: 37 KINGS CREST LA, Fond du Lac WI 54935 | 2W: 64 STONE CASTLE DR, Fond du Lac WI 54935 | 2X: 68 STONE CASTLE DR, Fond du Lac WI 54935 | 2Y: 72 STONE CASTLE DR, Fond du Lac WI 54935 | 2Z: 76 STONE CASTLE DR, Fond du Lac WI 54935", "mail": "64 STONE CASTLE DR", "sheet": "Multi_Occupant", "occupied": "No", "btype": "Apartment Building", "research": "Yes", "salute": "Dear Resident", "dnc": "", "fill": "#2E5496", "owner2": "LINDA M KUEHL", "ownertype": "Business / Rental", "confidence": "High", "addressas": "Lawrence W Kuehl \u2014 Linda M Kuehl", "notes": "Apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "city": "Fond du Lac", "state": "WI", "zip": "54935", "verified_name": ""}}]};
+
+var _parcelLayers={};
+
+// 2026-07-12: Google Maps sometimes can't geocode certain county-style
+// street-suffix abbreviations -- "LA" for Lane is the confirmed case
+// (Google appears to read it as the Louisiana state code instead), even
+// though the rest of the address is fine. Swap in the USPS-standard
+// abbreviation just for the directions/search links, leaving the
+// displayed/mailing address untouched. Add more replacements here if
+// other suffixes turn out to trip Google up too.
+function _mapsAddr(site) {
+  if (!site) return site;
+  return site.replace(/\bLA\b\.?/gi, 'Ln');
+}
+
+function getPopup(p) {
+  var badge = '';
+  if (p.dnc === 'YES') badge = '<span class="popup-badge badge-dnc">DO NOT CONTACT</span>';
+  else if (p.sheet === 'Institutions') badge = '<span class="popup-badge badge-inst">' + p.btype + '</span>';
+  else if (p.sheet === 'Vacant') badge = '<span class="popup-badge badge-vacant">Vacant</span>';
+  else if (p.btype === 'Commercial / Rental') badge = '<span class="popup-badge badge-biz">Business</span>';
+  else if (p.occupied === 'Yes') badge = '<span class="popup-badge badge-owner">Owner Occupied</span>';
+  if (p.research === 'Yes') badge += '<span class="popup-badge badge-research">Research Needed</span>';
+
+  var mailHtml = p.mail ? '<div class="popup-mail"> ' + p.mail + '</div>' : '';
+  var saluteHtml = p.salute && p.salute !== 'nan' ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+  // 2026-07-12: p.site is already the full "street, city state zip" address
+  // (built that way in refresh_html_map.py) -- appending ", Fond du Lac, WI"
+  // on top of that duplicated the city/state/zip and made Google Maps fail
+  // to find the address (confirmed by Steve). Use p.site as-is.
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+  var viewUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(_mapsAddr(p.site));
+  var mapsHtml = p.site ? '<div style="margin-top:6px"><a href="' + mapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>' : '';
+
+  return '<div class="popup-inner">' +
+    '<div class="popup-mapid">Parcel #' + p.mapid + '</div>' +
+    '<div class="popup-site">' + p.site + '</div>' +
+    '<div class="popup-owner">' + p.owner + '</div>' +
+    mailHtml + saluteHtml +
+    mapsHtml +
+    '<div style="margin-top:6px">' + badge + '</div>' +
+    '</div>';
+}
+
+function getParcelArea(feature) {
+  var coords = feature.geometry.coordinates;
+  var allPoints = [];
+  function collectPoints(c) {
+    if (typeof c[0] === 'number') { allPoints.push(c); }
+    else { c.forEach(collectPoints); }
+  }
+  collectPoints(coords);
+  if (allPoints.length < 2) return 0;
+  var lats = allPoints.map(function(p) { return p[1]; });
+  var lngs = allPoints.map(function(p) { return p[0]; });
+  return (Math.max.apply(null,lats)-Math.min.apply(null,lats)) * (Math.max.apply(null,lngs)-Math.min.apply(null,lngs));
+}
+function getOpacity(feature) {
+  return 1.0;
+}
+// Store per-parcel area for label sizing
+var parcelAreas = {};
+parcelsData.features.forEach(function(f) {
+  parcelAreas[f.properties.mapid] = getParcelArea(f);
+});
+
+L.geoJSON(parcelsData, {
+  style: function(feature) {
+    var p = feature.properties;
+    return {
+      fillColor: p.fill,
+      fillOpacity: getOpacity(feature),
+      color: 'rgba(0,0,0,0.65)',
+      weight: 2.0
+    };
+  },
+  onEachFeature: function(feature, layer) {
+    var p = feature.properties;
+    _parcelLayers[p.mapid]=layer;
+    layer._origStyle={
+      fillColor:layer.options.fillColor,
+      fillOpacity:layer.options.fillOpacity,
+      color:layer.options.color,
+      weight:layer.options.weight
+    };
+    layer.bindPopup(getPopup(p), {maxWidth: 300});
+    var area = getParcelArea(feature);
+    // Store area on tooltip element for zoom-aware sizing.
+    // 2026-07-11: skip the label entirely for placeholder mapids
+    // (prefixed "_dissolved" by refresh_html_map.py) -- these mark a
+    // parcel that was broken into individual buildings, kept only so the
+    // polygon/fill still shows; the placeholder name isn't a real MapID
+    // and showing it just confuses the map.
+    if (!(p.mapid && String(p.mapid).indexOf('_dissolved') === 0)) {
+      var tt = layer.bindTooltip(String(p.mapid), {
+        permanent: true, direction: 'center',
+        className: 'mapid-label',
+        offset: [0, 0]
+      });
+      layer.on('tooltipopen', function(e) {
+        e.tooltip.getElement().setAttribute('data-area', area);
+      });
+    }
+  }
+}).addTo(map);
+
+// 2026-07-12: building footprints used to be permanently solid black.
+// Now they default to grey and only turn black once the matching
+// mailing-list checkbox is marked done -- _buildingLayers is the
+// per-building lookup _updateParcel() (in the table-tracking script
+// below) uses to flip the color, same pattern as _parcelLayers.
+var _buildingLayers = {};
+var BUILDING_DEFAULT_FILL = '#C4C4C4';
+var BUILDING_DONE_FILL    = '#000000';
+
+if (buildingsData) {
+  L.geoJSON(buildingsData, {
+    style: function(feature) {
+      return {
+        fillColor: BUILDING_DEFAULT_FILL,
+        fillOpacity: 1.0,
+        color: '#000000',
+        weight: 1.5
+      };
+    },
+    interactive: isApartment,
+    onEachFeature: isApartment ? function(feature, layer) {
+      var p = feature.properties;
+      var bKey = p.subid ? p.subid : (p.mapid || '');
+      if (bKey !== '') {
+        _buildingLayers[bKey] = layer;
+        layer._origStyle = {
+          fillColor: layer.options.fillColor,
+          fillOpacity: layer.options.fillOpacity,
+          color: layer.options.color,
+          weight: layer.options.weight
+        };
+      }
+      // Permanent sub-ID label on each building footprint
+      var label = p.subid ? p.subid.toUpperCase() : (p.mapid ? String(p.mapid) : '');
+      if (label) {
+        layer.bindTooltip(label, {
+          permanent: true, direction: 'center',
+          className: 'mapid-label', offset: [0, 0]
+        });
+      }
+      if (p.site && p.site !== '') {
+        var subLabel = p.subid ? p.subid.toUpperCase() : ('Parcel #' + p.mapid);
+        var saluteHtml = p.salute && p.salute !== 'nan' && p.salute !== ''
+          ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+        var bMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+        var bMapsHtml = '<div style="margin-top:6px"><a href="' + bMapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>';
+        var html = '<div class="popup-inner">' +
+          '<div class="popup-mapid">Building ' + subLabel + '</div>' +
+          '<div class="popup-site">' + p.site + '</div>' +
+          '<div class="popup-owner">' + (p.owner || '') + '</div>' +
+          saluteHtml +
+          bMapsHtml +
+          '</div>';
+        layer.bindPopup(html, {maxWidth: 300});
+      }
+    } : function(feature, layer) {}
+  }).addTo(map);
+}
+
+if (!boundaryData) {
+  map.setView([43.77, -88.43], 14);
+}
+
+// Scale MapID labels by zoom level AND parcel area
+function updateLabelSizes() {
+  var z = map.getZoom();
+  // Base size from zoom
+  var baseSize;
+  if      (z <= 13) baseSize = 11;
+  else if (z <= 14) baseSize = 15;
+  else if (z <= 15) baseSize = 19;
+  else if (z <= 16) baseSize = 24;
+  else              baseSize = 30;
+  document.querySelectorAll('.mapid-label').forEach(function(el) {
+    var area = parseFloat(el.getAttribute('data-area') || 0);
+    var scale = 1.0;
+    // Shrink labels for small parcels
+    if      (area < 0.000003) scale = 0.45;
+    else if (area < 0.000008) scale = 0.60;
+    else if (area < 0.00002)  scale = 0.75;
+    else if (area < 0.00006)  scale = 0.88;
+    var finalSize = Math.max(7, Math.round(baseSize * scale));
+    el.style.fontSize = finalSize + 'px';
+  });
+}
+map.on('zoomend', updateLabelSizes);
+map.on('load', updateLabelSizes);
+setTimeout(updateLabelSizes, 500);
+</script>
+<style>
+.mapid-label {
+  background: transparent; border: none; box-shadow: none;
+  font-weight: bold; color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9);
+  pointer-events: none; transition: font-size 0.1s;
+}
+</style>
+<script>
+var _allRows=[];
+var _sortState={conf:{col:-1,asc:true},ver:{col:-1,asc:true},res:{col:-1,asc:true},dnc:{col:-1,asc:true}};
+
+function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
+function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
+function _setDone(mid,done){if(done)localStorage.setItem(_doneKey(mid),'1');else localStorage.removeItem(_doneKey(mid));}
+
+function _toggleDone(mid){
+  var done=!_isDone(mid);
+  _setDone(mid,done);
+  _updateParcel(mid,done);
+  _updateTableRow(mid,done);}
+
+function _updateParcel(mid,done){
+  var lyr=_parcelLayers[mid];
+  if(lyr){
+    if(done){lyr.setStyle({fillColor:'#222222',fillOpacity:0.75,color:'#FFFFFF',weight:4});}
+    else{lyr.setStyle(lyr._origStyle||{fillColor:'#AAAAAA',fillOpacity:0.4,color:'rgba(0,0,0,0.65)',weight:2.0});}}
+  var bld=_buildingLayers[mid];
+  if(bld){
+    if(done){bld.setStyle({fillColor:BUILDING_DONE_FILL});}
+    else{bld.setStyle({fillColor:(bld._origStyle&&bld._origStyle.fillColor)||BUILDING_DEFAULT_FILL});}}}
+
+function _updateTableRow(mid,done){
+  document.querySelectorAll('.ml-check[data-mid="'+mid+'"]').forEach(function(el){
+    el.textContent=done?'☑':'☐';});
+  document.querySelectorAll('.ml-row[data-mid="'+mid+'"]').forEach(function(el){
+    el.style.opacity=done?'0.45':'';});}
+
+function _applyDoneState(){
+  // Clear done state if this is a freshly generated map (build timestamp changed)
+  var buildKey='build_'+_TERRITORY;
+  var lastBuild=localStorage.getItem(buildKey);
+  if(lastBuild!==_BUILD_TS){
+    // New pipeline run - clear all done state for this territory
+    var toRemove=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('done_'+_TERRITORY+'_')===0)toRemove.push(k);}
+    toRemove.forEach(function(k){localStorage.removeItem(k);});
+    localStorage.setItem(buildKey,_BUILD_TS);}
+  tableData.forEach(function(p){if(_isDone(p.mapid))_updateParcel(p.mapid,true);});
+  var m=window.location.hash.match(/done=([0-9,]+)/);
+  if(m){m[1].split(',').forEach(function(s){
+    var mid=parseInt(s);
+    if(!isNaN(mid)){_setDone(mid,true);_updateParcel(mid,true);}});}}
+setTimeout(_applyDoneState,400);
+
+function shareProgress(){
+  var done=[];
+  tableData.forEach(function(p){if(_isDone(p.mapid))done.push(p.mapid);});
+  if(!done.length){alert('No parcels checked off yet.');return;}
+  var url=window.location.href.split('#')[0]+'#done='+done.join(',');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){
+      alert('Progress link copied!\nPaste it into an email to share your progress.');});}
+  else{prompt('Copy this link to share your progress:',url);}}
+
+function _sortIndicator(sec,idx){
+  if(idx===0)return '';
+  var s=_sortState[sec];
+  if(s.col!==idx)return ' ▸';
+  return s.asc?' ▲':' ▼';}
+
+function _colHdr(sec){
+  var isConf=(sec==='conf');
+  var cols=isConf
+    ?['','MapID','Owner 1','Owner 2','Site Address']
+    :['','MapID','Owner 1','Owner 2','Site Address','Reason/Notes'];
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+'">';
+  cols.forEach(function(c,i){
+    if(i===0){h+='<span></span>';return;}
+    h+='<span data-sec="'+sec+'" data-col="'+i+'" onclick="_sortSection(this.dataset.sec,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(sec,i)+'</span>';});
+  h+='</div>';
+  return h;}
+
+function _sortSection(sec,col){
+  if(col===0)return;
+  var s=_sortState[sec];
+  if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
+  renderTable(_allRows);}
+
+function _sortRows(arr,sec){
+  var s=_sortState[sec];
+  if(s.col<=0)return arr.slice();
+  var cols=(sec==='conf')
+    ?['','mapid','owner','owner2','site_full']
+    :['','mapid','owner','owner2','site_full','notes'];
+  var key=cols[s.col]||'mapid';
+  return arr.slice().sort(function(a,b){
+    var av,bv;
+    if(key==='site_full'){
+      av=((a.site||'')+(a.site_city||'')+(a.site_state||'')+(a.site_zip||'')).toLowerCase();
+      bv=((b.site||'')+(b.site_city||'')+(b.site_state||'')+(b.site_zip||'')).toLowerCase();}
+    else if(key==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
+    else{av=String(a[key]||'').toLowerCase();bv=String(b[key]||'').toLowerCase();}
+    if(av<bv)return s.asc?-1:1;
+    if(av>bv)return s.asc?1:-1;
+    return 0;});}
+
+function _row(p,cls,sec){
+  var isConf=(sec==='conf');
+  var mid=p.mapid;
+  var done=_isDone(mid);
+  var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var rowStyle=done?'opacity:0.45;':'';
+  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" style="grid-template-columns:'+grid+';'+rowStyle+'">';
+  r+='<span class="ml-check" data-mid="'+mid+'" onclick="_toggleDone('+mid+')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'☑':'☐')+'</span>';
+  r+='<span>'+mid+'</span>';
+  r+='<span>'+(p.owner||'')+'</span>';
+  r+='<span>'+(p.owner2||'')+'</span>';
+  r+='<span>'+sf+'</span>';
+  if(!isConf){r+='<span>'+(p.notes||'')+'</span>';}
+  r+='</div>';
+  return r;}
+
+function setParcelOpacity(val){
+  document.getElementById('opacity-val').textContent=Math.round(val*100)+'%';
+  Object.keys(_parcelLayers).forEach(function(mid){
+    var lyr=_parcelLayers[mid];
+    if(lyr&&!_isDone(parseInt(mid))){
+      lyr.setStyle({fillOpacity:val});}});}
+
+function buildTable(){_allRows=tableData.slice();renderTable(_allRows);}
+
+function filterTable(){
+  var q=document.getElementById('search-box').value.toLowerCase();
+  renderTable(_allRows.filter(function(p){
+    var sf=(p.site||'')+(p.site_city||'')+(p.site_state||'')+(p.site_zip||'');
+    return [p.mapid,p.owner,p.owner2,sf,p.notes].join(' ').toLowerCase().indexOf(q)>=0;}));}
+
+function renderTable(rows){
+  var conf=[],res=[],dnc=[];
+  rows.forEach(function(p){
+    if(p.dnc==='YES'){dnc.push(p);}
+    else if(p.occupied==='Yes'&&p.confidence==='High'&&p.research!=='Yes'){conf.push(p);}
+    else{res.push(p);}});
+  conf=_sortRows(conf,'conf');res=_sortRows(res,'res');dnc=_sortRows(dnc,'dnc');
+  var h='';
+  h+='<div class=ml-hdr style="background:#375623">✔ CONFIDENT RESIDENTS ('+conf.length+' parcels) — Ready to write letters</div>';
+  h+=_colHdr('conf');
+  conf.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-g':'ml-odd','conf');});
+  if(!conf.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#7F6000">? NEEDS RESEARCH ('+res.length+' parcels) — Verify before writing</div>';
+  h+=_colHdr('res');
+  res.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-y':'ml-odd','res');});
+  if(!res.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#C00000">✘ DO NOT CALL ('+dnc.length+' parcels)</div>';
+  h+=_colHdr('dnc');
+  dnc.forEach(function(p){h+=_row(p,'ml-dnc','dnc');});
+  if(!dnc.length)h+='<div class=ml-none>None</div>';
+  document.getElementById('table-body').innerHTML=h;}
+
+function showTab(tab){
+  document.getElementById('map').style.display=tab==='map'?'block':'none';
+  document.getElementById('table-view').style.display=tab==='table'?'block':'none';
+  if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});
+  if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}}
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_471 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_471 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_471/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var target=String(val).trim().toUpperCase();if(!target)return;var found=null;parcelsData.features.forEach(function(f){if(String(f.properties.mapid).toUpperCase()===target){found=f;}});if(!found && typeof buildingsData!=='undefined' && buildingsData){buildingsData.features.forEach(function(f){var subid=f.properties.subid?String(f.properties.subid).toUpperCase():'';var mapid=(f.properties.mapid!==undefined&&f.properties.mapid!=='')?String(f.properties.mapid).toUpperCase():'';if(subid===target || (!subid && mapid===target)){found=f;}});}if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function printMap(){window.print();}</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script></body>
+</html>
