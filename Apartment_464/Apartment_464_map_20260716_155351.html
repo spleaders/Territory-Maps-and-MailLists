@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Apartment_464 Territory Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f0f0; }
+#header {
+  background: #4CAF50; color: white;
+  padding: 8px 16px; display: flex;
+  align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 4px; min-height: 56px; box-sizing: border-box;
+}
+#header h1 { font-size: 17px; font-weight: bold; margin: 0; line-height: 1.2; }
+#header .subtitle { font-size: 10px; opacity: 0.75; margin-top: 1px; }
+#header .stats { font-size: 12px; opacity: 0.9; }
+#map { height: calc(100vh - 96px); width: 100%; display: block; }
+.leaflet-popup-content-wrapper {
+  border-radius:0.7em;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  border-left: 6px solid #4CAF50;
+  padding: 0;
+}
+.leaflet-popup-content { margin: 0; width: 360px !important; }
+.popup-inner { padding: 18px 22px; }
+.popup-mapid {
+  font-size: 14px; color: #888; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+.popup-site {
+  font-size: 20px; font-weight: bold; color: #4CAF50;
+  margin-bottom: 7px; line-height: 1.3;
+}
+.popup-owner { font-size: 17px; color: #222; margin-bottom: 4px; }
+.popup-mail { font-size: 17px; color: #555; margin-bottom: 10px; }
+.popup-badge {
+  display: inline-block; padding: 5px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: bold; color: white; margin-right: 4px;
+}
+.badge-owner  { background: #4CAF50; }
+.badge-vacant { background: #808080; }
+.badge-inst   { background: #548235; }
+.badge-biz    { background: #7B2D8B; }
+.badge-dnc    { background: #cc0000; }
+.badge-research { background: #FFFF00; color: #333; }
+.legend-resizer{position:absolute;bottom:4px;right:4px;width:14px;height:14px;cursor:se-resize;opacity:0.4;z-index:10;background:linear-gradient(135deg,transparent 50%,#888 50%,#888 60%,transparent 60%,transparent 70%,#888 70%,#888 80%,transparent 80%);}.legend-resizer:hover{opacity:0.8;}#legend {
+  position: absolute; bottom: 24px; right: 10px; z-index: 1000;
+  background: white; border-radius:0.7em; padding:1em 1.3em;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2); font-size: 17px;
+  display:inline-block;width:max-content;min-width:80px;cursor:move;user-select:none;overflow:hidden;
+}
+#legend h4 {
+  font-size: 1.05em; margin-bottom: 0.7em; white-space: nowrap; color: #333;
+  border-bottom: 2px solid #eee; padding-bottom: 6px;
+}
+#legend-close {
+  float: right; cursor: pointer; font-size: 16px; color: #aaa;
+}
+#legend-close:hover { color: #333; }
+.legend-row { display: flex; align-items: center; margin-bottom: 10px; }
+.legend-swatch {
+  width: 20px; height: 20px; border-radius: 4px;
+  margin-right: 12px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.25);
+  display: inline-block !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+#notes-bar {
+  display: none; position: absolute; top: 58px; left: 10px;
+  right: 10px; z-index: 1000;
+  background: #FFF8E1; border-left: 4px solid #F5A623;
+  border-radius: 6px; padding: 8px 12px;
+  font-size: 12px; color: #555; max-width: 500px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#tab-bar {
+  display: flex; background: #4CAF50;
+  padding: 0 12px; height: 40px; box-sizing: border-box;
+}
+.tab-btn {
+  padding: 8px 20px; cursor: pointer; color: rgba(255,255,255,0.7);
+  font-size: 13px; font-weight: bold; border: none;
+  background: transparent; border-bottom: 3px solid transparent;
+}
+.tab-btn.active {
+  color: white; border-bottom: 3px solid white;
+}
+
+#table-view {
+  display: none; height: calc(100vh - 90px);
+  overflow-x: scroll; overflow-y: auto; padding: 16px; background: #f5f5f5;
+}
+#table-view::-webkit-scrollbar {
+  height: 12px; width: 12px;
+}
+#table-view::-webkit-scrollbar-track {
+  background: #ddd; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb {
+  background: #888; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+#search-box {
+  width: 100%; max-width: 400px; padding: 8px 12px;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: 14px; margin-bottom: 12px;
+}
+#data-table {
+  width: 1480px; border-collapse: collapse;
+  table-layout: fixed;
+  background: white; font-size: 13px;
+}
+#table-wrapper {
+  display: block; overflow-x: auto;
+  border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#data-table th {
+  background: #4CAF50; color: white;
+  padding: 10px 12px; text-align: left;
+  cursor: pointer; white-space: nowrap;
+  user-select: none; position: sticky;
+  top: 0; z-index: 10; min-width: 60px;
+}
+#data-table th:hover { opacity: 0.85; }
+#data-table th.sort-asc::after { content: " "; font-size: 10px; }
+#data-table th.sort-desc::after { content: " "; font-size: 10px; }
+#data-table td {
+  padding: 8px 12px; border-bottom: 1px solid #eee;
+  vertical-align: top; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  max-width: 0;
+}
+#data-table td:hover {
+  white-space: normal; overflow: visible;
+  background: #fffde7; position: relative; z-index: 5;
+}
+#data-table th {
+  position: sticky; top: 0; z-index: 10;
+  resize: horizontal; overflow: auto;
+  min-width: 40px;
+}
+#data-table tr:hover td { background: #f0f4ff; }
+.badge-res   { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-biz2  { background: #7B2D8B; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-inst2 { background: #548235; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-vac2  { background: #808080; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-dnc2  { background: #cc0000; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-res2  { background: #E65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+#btn-bar {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; gap: 8px; align-items: center;
+}
+#share-btn, #print-btn {
+  background: rgba(255,255,255,0.95); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 14px;
+  font-size: 13px; font-weight: bold; color: #333;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#share-btn:hover, #print-btn:hover { background: #f0f0f0; }
+@media print {
+  @page { margin: 0; size: auto; }
+  #header, #tab-bar, #btn-bar, #share-btn, #print-btn, #mapid-search,
+  #notes-bar, #table-view,
+  .leaflet-control-container { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important;
+                overflow: hidden !important; }
+  #map { position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          z-index: 1 !important; }
+  #legend { z-index: 2 !important;
+             max-width: 200px !important;
+             right: 10px !important;
+             bottom: 10px !important;
+             left: auto !important;
+             top: auto !important;
+             font-size: 13px !important; }
+}
+#mapid-search {
+  background: rgba(255,255,255,0.97); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex; align-items: center; gap: 8px;
+}
+#mapid-search input {
+  border: none; outline: none; font-size: 13px;
+  width: 80px; background: transparent;
+}
+#mapid-search label {
+  font-size: 12px; color: #666; white-space: nowrap;
+}
+#mapid-search-clear {
+  cursor: pointer; color: #aaa; font-size: 14px;
+  display: none;
+}
+#mapid-search-clear:hover { color: #333; }
+.ml-hdr{padding:10px 16px;font-weight:bold;font-size:13px;color:white;letter-spacing:0.5px;}
+.ml-col-header{display:grid;background:#4472C4;color:white;font-size:12px;font-weight:bold;}
+.ml-col-header span{padding:6px 8px;white-space:nowrap;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.2);cursor:pointer;user-select:none;}
+.ml-col-header span:hover{background:rgba(255,255,255,0.15);}
+.ml-row{display:grid;font-size:12px;border-bottom:1px solid #eee;}
+.ml-row span{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ml-row:hover span{white-space:normal;overflow:visible;background:#fffde7;
+  position:relative;z-index:5;}
+.check-icon{font-size:16px;cursor:pointer;background:rgba(255,255,255,0.85);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  line-height:1;border:none!important;box-shadow:none!important;}
+.check-icon:hover{background:rgba(255,255,255,1);}
+.ml-even-g{background:#E2EFDA;}
+.ml-odd{background:#FFFFFF;}
+.ml-even-y{background:#FFF2CC;}
+.ml-dnc{background:#FFB3B3;}
+.ml-gap{height:12px;background:#e8e8e8;}
+.ml-none{padding:8px 16px;color:#888;font-size:12px;font-style:italic;}
+</style>
+</head>
+<body>
+<div id="header">
+  <div>
+    <h1>Apartment_464 Territory</h1>
+    <div class="subtitle">Apartment_464_20260716_1553.xlsx</div>
+  </div>
+  <div class="stats">
+    1 parcels &nbsp;&nbsp;
+    0 owner occupied &nbsp;&nbsp;
+    0 need research &nbsp;&nbsp;
+    0 vacant
+    
+  </div>
+</div>
+<div id="notes-bar">Before working apartment territories.  Please review the following:  KM 12/08 pg. 3-4 and KM 11/85 Pg. 3-6 | The Elms Trailer Park.  Located near the corner of East Pioneer Rd. and Main St. | Address: | 871 S Main St Trlr #1 - #74</div>
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="showTab('map')">&#x1F5FA; Map</button>
+  <button class="tab-btn" onclick="showTab('table')">&#x1F4CB; Mailing List</button>
+</div>
+<div id="map"></div>
+<div id="table-view">
+  <div style="padding:10px 16px 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()"
+      style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:300px;">
+    <button onclick="shareProgress()" style="padding:7px 14px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:white;font-weight:bold;">&#x1F4CB; Share Progress</button>
+  </div>
+  <div id="table-body"></div>
+</div>
+<div id="btn-bar">
+<button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+<button id="print-btn" onclick="printMap()">&#x1F5A8; Print Map</button>
+<div id="mapid-search">
+  <label>&#x1F50D; MapID</label>
+  <input type="number" id="mapid-input" placeholder="e.g. 42" min="1"
+    oninput="searchMapID(this.value)"
+    onkeydown="if(event.key==='Escape'){clearMapID();}" />
+  <span id="mapid-search-clear" onclick="clearMapID()">&#x2715;</span>
+</div>
+<div id="opacity-ctrl" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.97);border:1px solid #ccc;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <label style="font-size:12px;color:#666;white-space:nowrap;">&#x1F3A8; Fill</label>
+  <input type="range" id="opacity-slider" min="0" max="100" value="30"
+    style="width:80px;cursor:pointer;"
+    oninput="setParcelOpacity(this.value/100)" />
+  <span id="opacity-val" style="font-size:12px;color:#666;width:32px;">30%</span>
+</div>
+</div>
+<div id="legend">
+  <h4>Legend <span id="legend-close" onclick="document.getElementById('legend').style.display='none'">&#x2715;</span></h4>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#2E5496"></div>Confident Resident
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#FFFF00"></div>Needs Research
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#228B22"></div>Verified
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#E65100"></div>Suspect — verify before mailing
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#8B4513"></div>Institution
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#7B2D8B"></div>Business
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#808080"></div>Vacant
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#CC0000"></div>Do Not Contact
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#222222;border:2px solid #FFFFFF;box-sizing:border-box"></div>Completed
+  </div>
+  <div class="legend-resizer" id="legend-resizer"></div>
+</div>
+<script>
+var map = L.map('map', {zoomControl: true, preferCanvas: true, scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.25});
+document.getElementById('map').addEventListener('wheel', function(e){ e.preventDefault(); var delta = e.deltaY > 0 ? -0.25 : 0.25; var mousePos = map.mouseEventToLatLng(e); map.setZoomAround(mousePos, map.getZoom() + delta); }, {passive: false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: ' OpenStreetMap contributors | CartoDB', maxZoom: 20, subdomains: 'abcd'
+}).addTo(map);
+
+var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.44854593276978, 43.755399415393214], [-88.44459235668182, 43.75537229239842], [-88.44464063644409, 43.755062314441915], [-88.44479084014893, 43.75496544600121], [-88.44481766223907, 43.75467871449774], [-88.44480693340302, 43.7543842320641], [-88.44774663448334, 43.75441135550671], [-88.44799339771271, 43.754570221138145], [-88.4488034248352, 43.754690338774594], [-88.44854593276978, 43.755399415393214], [-88.44854593276978, 43.755399415393214]]], "type": "Polygon"}, "properties": {}}]};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44824, 43.75468], [-88.448296, 43.754684], [-88.448272, 43.754833], [-88.448217, 43.754829], [-88.44824, 43.75468]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.448674, 43.754731], [-88.448726, 43.754744], [-88.448658, 43.75489], [-88.448605, 43.754877], [-88.448674, 43.754731]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.448564, 43.754758], [-88.448517, 43.754878], [-88.448458, 43.754866], [-88.448505, 43.754745], [-88.448564, 43.754758]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.4475, 43.754609], [-88.4475, 43.754466], [-88.447554, 43.754466], [-88.447554, 43.754609], [-88.4475, 43.754609]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446606, 43.75446], [-88.446662, 43.754462], [-88.446656, 43.754622], [-88.4466, 43.754621], [-88.446606, 43.75446]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447111, 43.754621], [-88.447055, 43.754621], [-88.447055, 43.754464], [-88.447111, 43.754464], [-88.447111, 43.754621]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446794, 43.75446], [-88.446794, 43.754638], [-88.446741, 43.754638], [-88.446741, 43.75446], [-88.446794, 43.75446]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446328, 43.754642], [-88.446279, 43.754642], [-88.446279, 43.754462], [-88.446371, 43.754462], [-88.446371, 43.754531], [-88.446328, 43.754531], [-88.446328, 43.754642]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445944, 43.75446], [-88.445998, 43.75446], [-88.445998, 43.754646], [-88.445944, 43.754646], [-88.445944, 43.75446]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446497, 43.754646], [-88.446438, 43.754646], [-88.446438, 43.754462], [-88.446497, 43.754462], [-88.446497, 43.754646]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446175, 43.754648], [-88.446108, 43.754648], [-88.446108, 43.75446], [-88.446175, 43.75446], [-88.446175, 43.754648]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446958, 43.75464], [-88.446899, 43.75464], [-88.446899, 43.754471], [-88.446958, 43.754471], [-88.446958, 43.75464]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447355, 43.754493], [-88.44743, 43.754493], [-88.44743, 43.754566], [-88.447403, 43.754566], [-88.447403, 43.754619], [-88.447355, 43.754619], [-88.447355, 43.754493]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445008, 43.754628], [-88.444901, 43.754628], [-88.444901, 43.754502], [-88.445008, 43.754502], [-88.445008, 43.754628]]]}, "properties": {"mapid": 11, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44806, 43.754795], [-88.448001, 43.754795], [-88.448001, 43.754679], [-88.44806, 43.754679], [-88.44806, 43.754795]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447282, 43.754691], [-88.447339, 43.754814], [-88.447294, 43.754825], [-88.447237, 43.754702], [-88.447282, 43.754691]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44666, 43.754839], [-88.446522, 43.754716], [-88.446567, 43.754689], [-88.446705, 43.754812], [-88.44666, 43.754839]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446693, 43.754716], [-88.446736, 43.754689], [-88.446877, 43.754804], [-88.446801, 43.754853], [-88.446759, 43.754819], [-88.446793, 43.754797], [-88.446693, 43.754716]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447098, 43.754704], [-88.447232, 43.75481], [-88.447187, 43.75484], [-88.447052, 43.754734], [-88.447098, 43.754704]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445288, 43.754855], [-88.445175, 43.754731], [-88.445219, 43.75471], [-88.445332, 43.754834], [-88.445288, 43.754855]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446098, 43.754804], [-88.446016, 43.754733], [-88.446059, 43.754708], [-88.446199, 43.754829], [-88.446143, 43.754862], [-88.446085, 43.754812], [-88.446098, 43.754804]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445482, 43.754861], [-88.445384, 43.754731], [-88.445433, 43.754711], [-88.445531, 43.754841], [-88.445482, 43.754861]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445696, 43.754862], [-88.445581, 43.754739], [-88.44563, 43.754715], [-88.445746, 43.754837], [-88.445696, 43.754862]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445906, 43.754867], [-88.445782, 43.754749], [-88.445828, 43.754724], [-88.445952, 43.754842], [-88.445906, 43.754867]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.448062, 43.75501], [-88.448012, 43.755024], [-88.447941, 43.754889], [-88.44799, 43.754875], [-88.448062, 43.75501]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447746, 43.754945], [-88.447896, 43.754956], [-88.447892, 43.75499], [-88.447742, 43.75498], [-88.447746, 43.754945]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446253, 43.755041], [-88.446216, 43.755017], [-88.446301, 43.754946], [-88.446339, 43.75497], [-88.446253, 43.755041]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445096, 43.75508], [-88.445053, 43.755053], [-88.445183, 43.754946], [-88.445225, 43.754973], [-88.445096, 43.75508]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445754, 43.754944], [-88.445811, 43.754963], [-88.445736, 43.755082], [-88.445679, 43.755063], [-88.445754, 43.754944]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445371, 43.754943], [-88.445441, 43.754984], [-88.445378, 43.755041], [-88.445346, 43.755022], [-88.445275, 43.755086], [-88.445236, 43.755064], [-88.445371, 43.754943]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446705, 43.754989], [-88.446521, 43.755091], [-88.446484, 43.755057], [-88.446668, 43.754954], [-88.446705, 43.754989]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445589, 43.754949], [-88.445631, 43.754974], [-88.445483, 43.7551], [-88.445441, 43.755074], [-88.445589, 43.754949]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446505, 43.754984], [-88.446344, 43.755097], [-88.446302, 43.755066], [-88.446463, 43.754953], [-88.446505, 43.754984]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44612, 43.754994], [-88.445965, 43.755093], [-88.445929, 43.755063], [-88.446084, 43.754964], [-88.44612, 43.754994]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447776, 43.755131], [-88.447726, 43.75513], [-88.447732, 43.755001], [-88.447782, 43.755002], [-88.447776, 43.755131]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447835, 43.755031], [-88.447886, 43.755025], [-88.447909, 43.755136], [-88.447858, 43.755142], [-88.447835, 43.755031]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.448125, 43.755029], [-88.448148, 43.755163], [-88.448098, 43.755167], [-88.448076, 43.755033], [-88.448125, 43.755029]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44798, 43.755174], [-88.447947, 43.755041], [-88.448003, 43.755034], [-88.448036, 43.755167], [-88.44798, 43.755174]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446319, 43.755195], [-88.446349, 43.755272], [-88.446303, 43.755281], [-88.446273, 43.755204], [-88.446319, 43.755195]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446818, 43.755224], [-88.446824, 43.755262], [-88.446784, 43.755265], [-88.446779, 43.755227], [-88.446818, 43.755224]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444646, 43.755184], [-88.444753, 43.755184], [-88.444753, 43.755312], [-88.444646, 43.755312], [-88.444646, 43.755184]]]}, "properties": {"mapid": 11, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445082, 43.755314], [-88.445039, 43.755202], [-88.445088, 43.755192], [-88.445102, 43.755227], [-88.445134, 43.755221], [-88.445164, 43.755298], [-88.445082, 43.755314]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446233, 43.755342], [-88.446188, 43.755353], [-88.446121, 43.755205], [-88.446166, 43.755194], [-88.446233, 43.755342]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446921, 43.755356], [-88.446866, 43.755202], [-88.446917, 43.755193], [-88.446941, 43.755258], [-88.446975, 43.755252], [-88.446992, 43.755301], [-88.44695, 43.755309], [-88.446964, 43.755348], [-88.446921, 43.755356]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446539, 43.755265], [-88.446508, 43.75527], [-88.44653, 43.755356], [-88.446473, 43.755363], [-88.44643, 43.755199], [-88.446519, 43.755187], [-88.446539, 43.755265]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446051, 43.755351], [-88.446003, 43.755351], [-88.446003, 43.7552], [-88.446051, 43.7552], [-88.446051, 43.755351]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446688, 43.755351], [-88.446633, 43.755361], [-88.446576, 43.755209], [-88.44663, 43.755198], [-88.446688, 43.755351]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444938, 43.755194], [-88.444938, 43.755368], [-88.444885, 43.755368], [-88.444885, 43.755194], [-88.444938, 43.755194]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447139, 43.755356], [-88.447087, 43.75537], [-88.447005, 43.755209], [-88.447058, 43.755195], [-88.447139, 43.755356]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447508, 43.755374], [-88.447508, 43.755215], [-88.447564, 43.755215], [-88.447564, 43.755374], [-88.447508, 43.755374]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447854, 43.755241], [-88.447832, 43.755376], [-88.447776, 43.755372], [-88.447798, 43.755236], [-88.447854, 43.755241]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447701, 43.755386], [-88.447645, 43.755386], [-88.447645, 43.755227], [-88.447701, 43.755227], [-88.447701, 43.755386]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.448204, 43.755331], [-88.448183, 43.75537], [-88.448001, 43.755319], [-88.448022, 43.75528], [-88.448204, 43.755331]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44726768547535, 43.75456215978252], [-88.4472403904854, 43.75456208598624], [-88.44724016414203, 43.75460631207029], [-88.44720644611868, 43.754606221800806], [-88.44720720783627, 43.75445724991623], [-88.44724253121399, 43.75445734542654], [-88.44724249527981, 43.75446432853989], [-88.44726818602878, 43.75446439709552], [-88.44726768547535, 43.75456215978252]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44705146580094, 43.75481544959872], [-88.44701731417136, 43.754836643262394], [-88.44687529637554, 43.75471640793382], [-88.44690944798758, 43.75469521341215], [-88.44705146580094, 43.75481544959872]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.4463457340649, 43.75472045088931], [-88.4463746545772, 43.75469951597282], [-88.44652869676189, 43.754811317314044], [-88.4464965632711, 43.75483457907494], [-88.44647570339716, 43.7548194393446], [-88.44643395544765, 43.754819419786934], [-88.44643398659203, 43.754784504154046], [-88.4463457340649, 43.75472045088931]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44630244521012, 43.75482745361282], [-88.44627575914782, 43.7548072350872], [-88.4462888865501, 43.75479813321836], [-88.44619470190416, 43.75472677441842], [-88.44622423543916, 43.754706293430516], [-88.44637022136786, 43.75481689958951], [-88.44633904659341, 43.754838517448995], [-88.4463139301364, 43.754819488574256], [-88.44630244521012, 43.75482745361282]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "MultiPolygon", "coordinates": [[[[-88.4449181534738, 43.75496887668287], [-88.44490855869383, 43.755012768842484], [-88.44486146030866, 43.75500736050888], [-88.44488917737984, 43.75488055974421], [-88.44493851785263, 43.75488622564771], [-88.44493247671389, 43.75491386185356], [-88.44495714696444, 43.754916695248596], [-88.44494506593402, 43.75497196766209], [-88.4449181534738, 43.75496887668287]]], [[[-88.44488693395407, 43.754880302161396], [-88.44488835540322, 43.75487379941943], [-88.44489059882875, 43.75487405700219], [-88.44488917737984, 43.75488055974421], [-88.44488693395407, 43.754880302161396]]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44560131363916, 43.75531767271683], [-88.44555298539277, 43.755326308641145], [-88.44550917112906, 43.75519748732784], [-88.445563734647, 43.75518773658701], [-88.44557833983099, 43.75523067732029], [-88.44557210445866, 43.75523179125584], [-88.44560131363916, 43.75531767271683]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44531567488237, 43.75531356379721], [-88.44528923299734, 43.75531847596372], [-88.44529880141064, 43.75534553375514], [-88.44524591760458, 43.7553553589742], [-88.44518930743895, 43.755195267978614], [-88.44524374593095, 43.75518515372907], [-88.44528401092057, 43.75529902168356], [-88.44530889673639, 43.75529439767486], [-88.44531567488237, 43.75531356379721]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44545700344874, 43.75534727526559], [-88.4454101990219, 43.75535552935508], [-88.44536085759472, 43.755208516270116], [-88.44540766191288, 43.75520026310059], [-88.44545700344874, 43.75534727526559]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446709700707, 43.75520578710024], [-88.44676776922734, 43.75519464421296], [-88.44682318412228, 43.75534636113632], [-88.44676511546545, 43.755357504051375], [-88.446709700707, 43.75520578710024]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.4472437722152, 43.75539048209001], [-88.44716689911826, 43.755232132758664], [-88.44721399333378, 43.75522012056787], [-88.44729229099335, 43.7553814049682], [-88.44725636250561, 43.75539056846406], [-88.4472437722152, 43.75539048209001]]]}, "properties": {"mapid": 10, "subid": "12", "site": "871 S MAIN ST, Fond du Lac WI 54935", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}]};
+var isApartment = true;
+var _TERRITORY = 'Apartment_464';
+var _BUILD_TS = '20260716_155351';
+var tableData = [{"mapid": "12", "owner": "", "owner2": "", "site": "871 S MAIN ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}];
+
+if (boundaryData) {
+  var boundary = L.geoJSON(boundaryData, {
+    style: {
+      color: '#4CAF50', weight: 3, opacity: 1,
+      fillColor: '#4CAF50', fillOpacity: 0.04,
+      dashArray: '8,5'
+    }
+  }).addTo(map);
+  map.fitBounds(boundary.getBounds(), {padding: [30, 30]});
+  // Territory name label — centered on boundary, semi-transparent
+  var bounds = boundary.getBounds();
+  var center = bounds.getCenter();
+  L.marker(center, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:52px;font-weight:900;'
+           +'color:#1A3A6B;opacity:0.55;'
+           +'white-space:nowrap;pointer-events:none;'
+           +'position:relative;z-index:9999;'
+           +'text-shadow:2px 2px 0px white,-2px -2px 0px white,2px -2px 0px white,-2px 2px 0px white;'
+           +'transform:translate(-50%,-50%);">Apartment_464</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    }),
+    interactive: false
+  }).addTo(map);
+}
+
+var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.44459235668182, 43.75537229239842], [-88.44464063644409, 43.755062314441915], [-88.44479084014893, 43.75496544600121], [-88.44481766223907, 43.75467871449774], [-88.44480693340302, 43.7543842320641], [-88.44580982842243, 43.75439348537413], [-88.44581005531936, 43.75467237066947], [-88.44568567145306, 43.75467315853445], [-88.44557825726115, 43.75467383824465], [-88.44483451303172, 43.75467854332569], [-88.44483567652291, 43.755162370699516], [-88.4448361846924, 43.75537396514879], [-88.44459235668182, 43.75537229239842]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved1", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "city": "", "state": "", "zip": ""}}]};
+
+var _parcelLayers={};
+
+// 2026-07-12: Google Maps sometimes can't geocode certain county-style
+// street-suffix abbreviations -- "LA" for Lane is the confirmed case
+// (Google appears to read it as the Louisiana state code instead), even
+// though the rest of the address is fine. Swap in the USPS-standard
+// abbreviation just for the directions/search links, leaving the
+// displayed/mailing address untouched. Add more replacements here if
+// other suffixes turn out to trip Google up too.
+function _mapsAddr(site) {
+  if (!site) return site;
+  return site.replace(/\bLA\b\.?/gi, 'Ln');
+}
+
+function getPopup(p) {
+  var badge = '';
+  if (p.dnc === 'YES') badge = '<span class="popup-badge badge-dnc">DO NOT CONTACT</span>';
+  else if (p.sheet === 'Institutions') badge = '<span class="popup-badge badge-inst">' + p.btype + '</span>';
+  else if (p.sheet === 'Vacant') badge = '<span class="popup-badge badge-vacant">Vacant</span>';
+  else if (p.btype === 'Commercial / Rental') badge = '<span class="popup-badge badge-biz">Business</span>';
+  else if (p.occupied === 'Yes') badge = '<span class="popup-badge badge-owner">Owner Occupied</span>';
+  if (p.research === 'Yes') badge += '<span class="popup-badge badge-research">Research Needed</span>';
+
+  var mailHtml = p.mail ? '<div class="popup-mail"> ' + p.mail + '</div>' : '';
+  var saluteHtml = p.salute && p.salute !== 'nan' ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+  // 2026-07-12: p.site is already the full "street, city state zip" address
+  // (built that way in refresh_html_map.py) -- appending ", Fond du Lac, WI"
+  // on top of that duplicated the city/state/zip and made Google Maps fail
+  // to find the address (confirmed by Steve). Use p.site as-is.
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+  var viewUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(_mapsAddr(p.site));
+  var mapsHtml = p.site ? '<div style="margin-top:6px"><a href="' + mapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>' : '';
+
+  return '<div class="popup-inner">' +
+    '<div class="popup-mapid">Parcel #' + p.mapid + '</div>' +
+    '<div class="popup-site">' + p.site + '</div>' +
+    '<div class="popup-owner">' + p.owner + '</div>' +
+    mailHtml + saluteHtml +
+    mapsHtml +
+    '<div style="margin-top:6px">' + badge + '</div>' +
+    '</div>';
+}
+
+function getParcelArea(feature) {
+  var coords = feature.geometry.coordinates;
+  var allPoints = [];
+  function collectPoints(c) {
+    if (typeof c[0] === 'number') { allPoints.push(c); }
+    else { c.forEach(collectPoints); }
+  }
+  collectPoints(coords);
+  if (allPoints.length < 2) return 0;
+  var lats = allPoints.map(function(p) { return p[1]; });
+  var lngs = allPoints.map(function(p) { return p[0]; });
+  return (Math.max.apply(null,lats)-Math.min.apply(null,lats)) * (Math.max.apply(null,lngs)-Math.min.apply(null,lngs));
+}
+var DEFAULT_FILL_OPACITY = 0.3;  // 2026-07-14: matches opacity-slider's value="30" -- getOpacity()
+                                  // previously always returned 1.0 regardless of the slider default,
+                                  // so parcels loaded fully opaque until the slider was touched by hand.
+function getOpacity(feature) {
+  return DEFAULT_FILL_OPACITY;
+}
+// Store per-parcel area for label sizing
+var parcelAreas = {};
+parcelsData.features.forEach(function(f) {
+  parcelAreas[f.properties.mapid] = getParcelArea(f);
+});
+
+L.geoJSON(parcelsData, {
+  style: function(feature) {
+    var p = feature.properties;
+    return {
+      fillColor: p.fill,
+      fillOpacity: getOpacity(feature),
+      color: 'rgba(0,0,0,0.65)',
+      weight: 2.0
+    };
+  },
+  onEachFeature: function(feature, layer) {
+    var p = feature.properties;
+    _parcelLayers[p.mapid]=layer;
+    layer._origStyle={
+      fillColor:layer.options.fillColor,
+      fillOpacity:layer.options.fillOpacity,
+      color:layer.options.color,
+      weight:layer.options.weight
+    };
+    layer.bindPopup(getPopup(p), {maxWidth: 300});
+    var area = getParcelArea(feature);
+    // Store area on tooltip element for zoom-aware sizing.
+    // 2026-07-11: skip the label entirely for placeholder mapids
+    // (prefixed "_dissolved" by refresh_html_map.py) -- these mark a
+    // parcel that was broken into individual buildings, kept only so the
+    // polygon/fill still shows; the placeholder name isn't a real MapID
+    // and showing it just confuses the map.
+    // 2026-07-14: also skip it for Multi_Occupant parcels (townhouse-style
+    // complexes with many individually-addressed units) -- each building
+    // footprint inside now gets its own real street-address label, so the
+    // parcel's plain container number (e.g. "64") just lands on top of
+    // whichever building happens to sit at the parcel's center and looks
+    // like doubled/confusing text, same reasoning as the _dissolved case.
+    // Only when isApartment is true, though -- that's the only case where
+    // buildings actually get their own labels to replace this one; for any
+    // other territory type the parcel's own number is still the only label
+    // that area would have, so it must stay.
+    if (!(p.mapid && String(p.mapid).indexOf('_dissolved') === 0) &&
+        !(isApartment && p.sheet === 'Multi_Occupant')) {
+      var tt = layer.bindTooltip(String(p.mapid), {
+        permanent: true, direction: 'center',
+        className: 'mapid-label',
+        offset: [0, 0]
+      });
+      layer.on('tooltipopen', function(e) {
+        e.tooltip.getElement().setAttribute('data-area', area);
+      });
+    }
+  }
+}).addTo(map);
+
+// 2026-07-12: building footprints used to be permanently solid black.
+// Now they default to grey and only turn black once the matching
+// mailing-list checkbox is marked done -- _buildingLayers is the
+// per-building lookup _updateParcel() (in the table-tracking script
+// below) uses to flip the color, same pattern as _parcelLayers.
+var _buildingLayers = {};
+var BUILDING_DEFAULT_FILL = '#C4C4C4';
+var BUILDING_DONE_FILL    = '#000000';
+
+if (buildingsData) {
+  L.geoJSON(buildingsData, {
+    style: function(feature) {
+      return {
+        fillColor: BUILDING_DEFAULT_FILL,
+        fillOpacity: DEFAULT_FILL_OPACITY,
+        color: '#000000',
+        weight: 1.5
+      };
+    },
+    interactive: isApartment,
+    onEachFeature: isApartment ? function(feature, layer) {
+      var p = feature.properties;
+      var bKey = p.subid ? p.subid : (p.mapid || '');
+      if (bKey !== '') {
+        _buildingLayers[bKey] = layer;
+        layer._origStyle = {
+          fillColor: layer.options.fillColor,
+          fillOpacity: layer.options.fillOpacity,
+          color: layer.options.color,
+          weight: layer.options.weight
+        };
+      }
+      // Permanent sub-ID label on each building footprint
+      var label = p.subid ? p.subid.toUpperCase() : (p.mapid ? String(p.mapid) : '');
+      if (label) {
+        layer.bindTooltip(label, {
+          permanent: true, direction: 'center',
+          className: 'mapid-label', offset: [0, 0]
+        });
+      }
+      if (p.site && p.site !== '') {
+        var subLabel = p.subid ? p.subid.toUpperCase() : ('Parcel #' + p.mapid);
+        var saluteHtml = p.salute && p.salute !== 'nan' && p.salute !== ''
+          ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+        // 2026-07-15: p.note is a short data-provenance flag ("Approximate
+        // match" / "From Fond du Lac County GIS") -- shown as its own line,
+        // kept OUT of p.site itself so the Get Directions link below still
+        // gets a clean, real address.
+        var noteHtml = p.note && p.note !== ''
+          ? '<div class="popup-mail" style="color:#888;font-style:italic">' + p.note + '</div>' : '';
+        var bMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+        var bMapsHtml = '<div style="margin-top:6px"><a href="' + bMapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>';
+        var html = '<div class="popup-inner">' +
+          '<div class="popup-mapid">Building ' + subLabel + '</div>' +
+          '<div class="popup-site">' + p.site + '</div>' +
+          '<div class="popup-owner">' + (p.owner || '') + '</div>' +
+          saluteHtml + noteHtml +
+          bMapsHtml +
+          '</div>';
+        layer.bindPopup(html, {maxWidth: 300});
+      }
+    } : function(feature, layer) {}
+  }).addTo(map);
+}
+
+if (!boundaryData) {
+  map.setView([43.77, -88.43], 14);
+}
+
+// Scale MapID labels by zoom level AND parcel area
+function updateLabelSizes() {
+  var z = map.getZoom();
+  // Base size from zoom
+  var baseSize;
+  if      (z <= 13) baseSize = 11;
+  else if (z <= 14) baseSize = 15;
+  else if (z <= 15) baseSize = 19;
+  else if (z <= 16) baseSize = 24;
+  else              baseSize = 30;
+  document.querySelectorAll('.mapid-label').forEach(function(el) {
+    var area = parseFloat(el.getAttribute('data-area') || 0);
+    var scale = 1.0;
+    // Shrink labels for small parcels
+    if      (area < 0.000003) scale = 0.45;
+    else if (area < 0.000008) scale = 0.60;
+    else if (area < 0.00002)  scale = 0.75;
+    else if (area < 0.00006)  scale = 0.88;
+    var finalSize = Math.max(7, Math.round(baseSize * scale));
+    el.style.fontSize = finalSize + 'px';
+  });
+}
+map.on('zoomend', updateLabelSizes);
+map.on('load', updateLabelSizes);
+setTimeout(updateLabelSizes, 500);
+</script>
+<style>
+.mapid-label {
+  background: transparent; border: none; box-shadow: none;
+  font-weight: bold; color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9);
+  pointer-events: none; transition: font-size 0.1s;
+}
+</style>
+<script>
+var _allRows=[];
+var _sortState={conf:{col:-1,asc:true},ver:{col:-1,asc:true},res:{col:-1,asc:true},dnc:{col:-1,asc:true}};
+
+function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
+function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
+function _setDone(mid,done){if(done)localStorage.setItem(_doneKey(mid),'1');else localStorage.removeItem(_doneKey(mid));}
+
+function _toggleDone(mid){
+  var done=!_isDone(mid);
+  _setDone(mid,done);
+  _updateParcel(mid,done);
+  _updateTableRow(mid,done);}
+
+function _updateParcel(mid,done){
+  var lyr=_parcelLayers[mid];
+  if(lyr){
+    if(done){lyr.setStyle({fillColor:'#222222',fillOpacity:0.9,color:'#FFFFFF',weight:4});}
+    else{lyr.setStyle(lyr._origStyle||{fillColor:'#AAAAAA',fillOpacity:0.4,color:'rgba(0,0,0,0.65)',weight:2.0});}}
+  var bld=_buildingLayers[mid];
+  if(bld){
+    if(done){bld.setStyle({fillColor:BUILDING_DONE_FILL,fillOpacity:0.9});}
+    else{bld.setStyle({fillColor:(bld._origStyle&&bld._origStyle.fillColor)||BUILDING_DEFAULT_FILL});}}}
+
+function _updateTableRow(mid,done){
+  document.querySelectorAll('.ml-check[data-mid="'+mid+'"]').forEach(function(el){
+    el.textContent=done?'☑':'☐';});
+  document.querySelectorAll('.ml-row[data-mid="'+mid+'"]').forEach(function(el){
+    el.style.opacity=done?'0.45':'';});}
+
+function _applyDoneState(){
+  // Clear done state if this is a freshly generated map (build timestamp changed)
+  var buildKey='build_'+_TERRITORY;
+  var lastBuild=localStorage.getItem(buildKey);
+  if(lastBuild!==_BUILD_TS){
+    // New pipeline run - clear all done state for this territory
+    var toRemove=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('done_'+_TERRITORY+'_')===0)toRemove.push(k);}
+    toRemove.forEach(function(k){localStorage.removeItem(k);});
+    localStorage.setItem(buildKey,_BUILD_TS);}
+  tableData.forEach(function(p){if(_isDone(p.mapid))_updateParcel(p.mapid,true);});
+  var m=window.location.hash.match(/done=([0-9,]+)/);
+  if(m){m[1].split(',').forEach(function(s){
+    var mid=parseInt(s);
+    if(!isNaN(mid)){_setDone(mid,true);_updateParcel(mid,true);}});}}
+setTimeout(_applyDoneState,400);
+
+function shareProgress(){
+  var done=[];
+  tableData.forEach(function(p){if(_isDone(p.mapid))done.push(p.mapid);});
+  if(!done.length){alert('No parcels checked off yet.');return;}
+  var url=window.location.href.split('#')[0]+'#done='+done.join(',');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){
+      alert('Progress link copied!\nPaste it into an email to share your progress.');});}
+  else{prompt('Copy this link to share your progress:',url);}}
+
+function _sortIndicator(sec,idx){
+  if(idx===0)return '';
+  var s=_sortState[sec];
+  if(s.col!==idx)return ' ▸';
+  return s.asc?' ▲':' ▼';}
+
+function _colHdr(sec){
+  var isConf=(sec==='conf');
+  var cols=isConf
+    ?['','MapID','Owner 1','Owner 2','Site Address']
+    :['','MapID','Owner 1','Owner 2','Site Address','Reason/Notes'];
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+'">';
+  cols.forEach(function(c,i){
+    if(i===0){h+='<span></span>';return;}
+    h+='<span data-sec="'+sec+'" data-col="'+i+'" onclick="_sortSection(this.dataset.sec,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(sec,i)+'</span>';});
+  h+='</div>';
+  return h;}
+
+function _sortSection(sec,col){
+  if(col===0)return;
+  var s=_sortState[sec];
+  if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
+  renderTable(_allRows);}
+
+function _sortRows(arr,sec){
+  var s=_sortState[sec];
+  if(s.col<=0)return arr.slice();
+  var cols=(sec==='conf')
+    ?['','mapid','owner','owner2','site_full']
+    :['','mapid','owner','owner2','site_full','notes'];
+  var key=cols[s.col]||'mapid';
+  return arr.slice().sort(function(a,b){
+    var av,bv;
+    if(key==='site_full'){
+      av=((a.site||'')+(a.site_city||'')+(a.site_state||'')+(a.site_zip||'')).toLowerCase();
+      bv=((b.site||'')+(b.site_city||'')+(b.site_state||'')+(b.site_zip||'')).toLowerCase();}
+    else if(key==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
+    else{av=String(a[key]||'').toLowerCase();bv=String(b[key]||'').toLowerCase();}
+    if(av<bv)return s.asc?-1:1;
+    if(av>bv)return s.asc?1:-1;
+    return 0;});}
+
+function _row(p,cls,sec){
+  var isConf=(sec==='conf');
+  var mid=p.mapid;
+  var done=_isDone(mid);
+  var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var rowStyle=done?'opacity:0.45;':'';
+  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" style="grid-template-columns:'+grid+';'+rowStyle+'">';
+  r+='<span class="ml-check" data-mid="'+mid+'" onclick="_toggleDone('+mid+')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'☑':'☐')+'</span>';
+  r+='<span>'+mid+'</span>';
+  r+='<span>'+(p.owner||'')+'</span>';
+  r+='<span>'+(p.owner2||'')+'</span>';
+  r+='<span>'+sf+'</span>';
+  if(!isConf){r+='<span>'+(p.notes||'')+'</span>';}
+  r+='</div>';
+  return r;}
+
+function setParcelOpacity(val){
+  document.getElementById('opacity-val').textContent=Math.round(val*100)+'%';
+  Object.keys(_parcelLayers).forEach(function(mid){
+    var lyr=_parcelLayers[mid];
+    if(lyr&&!_isDone(parseInt(mid))){
+      lyr.setStyle({fillOpacity:val});}});
+  // 2026-07-14: buildings were never wired into the slider at all, so
+  // building footprints stayed opaque no matter what the slider showed.
+  Object.keys(_buildingLayers).forEach(function(bid){
+    var bld=_buildingLayers[bid];
+    if(bld){bld.setStyle({fillOpacity:val});}});}
+
+function buildTable(){_allRows=tableData.slice();renderTable(_allRows);}
+
+function filterTable(){
+  var q=document.getElementById('search-box').value.toLowerCase();
+  renderTable(_allRows.filter(function(p){
+    var sf=(p.site||'')+(p.site_city||'')+(p.site_state||'')+(p.site_zip||'');
+    return [p.mapid,p.owner,p.owner2,sf,p.notes].join(' ').toLowerCase().indexOf(q)>=0;}));}
+
+function renderTable(rows){
+  var conf=[],res=[],dnc=[];
+  rows.forEach(function(p){
+    if(p.dnc==='YES'){dnc.push(p);}
+    else if(p.occupied==='Yes'&&p.confidence==='High'&&p.research!=='Yes'){conf.push(p);}
+    else{res.push(p);}});
+  conf=_sortRows(conf,'conf');res=_sortRows(res,'res');dnc=_sortRows(dnc,'dnc');
+  var h='';
+  h+='<div class=ml-hdr style="background:#375623">✔ CONFIDENT RESIDENTS ('+conf.length+' parcels) — Ready to write letters</div>';
+  h+=_colHdr('conf');
+  conf.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-g':'ml-odd','conf');});
+  if(!conf.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#7F6000">? NEEDS RESEARCH ('+res.length+' parcels) — Verify before writing</div>';
+  h+=_colHdr('res');
+  res.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-y':'ml-odd','res');});
+  if(!res.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#C00000">✘ DO NOT CALL ('+dnc.length+' parcels)</div>';
+  h+=_colHdr('dnc');
+  dnc.forEach(function(p){h+=_row(p,'ml-dnc','dnc');});
+  if(!dnc.length)h+='<div class=ml-none>None</div>';
+  document.getElementById('table-body').innerHTML=h;}
+
+function showTab(tab){
+  document.getElementById('map').style.display=tab==='map'?'block':'none';
+  document.getElementById('table-view').style.display=tab==='table'?'block':'none';
+  if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});
+  if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}}
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_464 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_464 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_464/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var target=String(val).trim().toUpperCase();if(!target)return;var found=null;parcelsData.features.forEach(function(f){if(String(f.properties.mapid).toUpperCase()===target){found=f;}});if(!found && typeof buildingsData!=='undefined' && buildingsData){buildingsData.features.forEach(function(f){var subid=f.properties.subid?String(f.properties.subid).toUpperCase():'';var mapid=(f.properties.mapid!==undefined&&f.properties.mapid!=='')?String(f.properties.mapid).toUpperCase():'';if(subid===target || (!subid && mapid===target)){found=f;}});}if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function printMap(){window.print();}</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script></body>
+</html>
