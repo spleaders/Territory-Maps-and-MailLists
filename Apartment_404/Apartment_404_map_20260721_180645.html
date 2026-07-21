@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Apartment_404 Territory Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f0f0; }
+#header {
+  background: #4CAF50; color: white;
+  padding: 8px 16px; display: flex;
+  align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 4px; min-height: 56px; box-sizing: border-box;
+}
+#header h1 { font-size: 17px; font-weight: bold; margin: 0; line-height: 1.2; }
+#header .subtitle { font-size: 10px; opacity: 0.75; margin-top: 1px; }
+#header .stats { font-size: 12px; opacity: 0.9; }
+#map { height: calc(100vh - 96px); width: 100%; display: block; }
+.leaflet-popup-content-wrapper {
+  border-radius:0.7em;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  border-left: 6px solid #4CAF50;
+  padding: 0;
+}
+.leaflet-popup-content { margin: 0; width: 360px !important; }
+.popup-inner { padding: 18px 22px; }
+.popup-mapid {
+  font-size: 14px; color: #888; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+.popup-site {
+  font-size: 20px; font-weight: bold; color: #4CAF50;
+  margin-bottom: 7px; line-height: 1.3;
+}
+.popup-owner { font-size: 17px; color: #222; margin-bottom: 4px; }
+.popup-mail { font-size: 17px; color: #555; margin-bottom: 10px; }
+.popup-badge {
+  display: inline-block; padding: 5px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: bold; color: white; margin-right: 4px;
+}
+.badge-owner  { background: #4CAF50; }
+.badge-vacant { background: #808080; }
+.badge-inst   { background: #548235; }
+.badge-biz    { background: #7B2D8B; }
+.badge-dnc    { background: #cc0000; }
+.badge-research { background: #FFFF00; color: #333; }
+.legend-resizer{position:absolute;bottom:4px;right:4px;width:14px;height:14px;cursor:se-resize;opacity:0.4;z-index:10;background:linear-gradient(135deg,transparent 50%,#888 50%,#888 60%,transparent 60%,transparent 70%,#888 70%,#888 80%,transparent 80%);}.legend-resizer:hover{opacity:0.8;}#legend {
+  position: absolute; bottom: 24px; right: 10px; z-index: 1000;
+  background: white; border-radius:0.7em; padding:1em 1.3em;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2); font-size: 17px;
+  display:inline-block;width:max-content;min-width:80px;cursor:move;user-select:none;overflow:hidden;
+}
+#legend h4 {
+  font-size: 1.05em; margin-bottom: 0.7em; white-space: nowrap; color: #333;
+  border-bottom: 2px solid #eee; padding-bottom: 6px;
+}
+#legend-close {
+  float: right; cursor: pointer; font-size: 16px; color: #aaa;
+}
+#legend-close:hover { color: #333; }
+.legend-row { display: flex; align-items: center; margin-bottom: 10px; }
+.legend-swatch {
+  width: 20px; height: 20px; border-radius: 4px;
+  margin-right: 12px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.25);
+  display: inline-block !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+#notes-bar {
+  display: none; position: absolute; top: 58px; left: 10px;
+  right: 10px; z-index: 1000;
+  background: #FFF8E1; border-left: 4px solid #F5A623;
+  border-radius: 6px; padding: 8px 12px;
+  font-size: 12px; color: #555; max-width: 500px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#tab-bar {
+  display: flex; background: #4CAF50;
+  padding: 0 12px; height: 40px; box-sizing: border-box;
+}
+.tab-btn {
+  padding: 8px 20px; cursor: pointer; color: rgba(255,255,255,0.7);
+  font-size: 13px; font-weight: bold; border: none;
+  background: transparent; border-bottom: 3px solid transparent;
+}
+.tab-btn.active {
+  color: white; border-bottom: 3px solid white;
+}
+
+#table-view {
+  display: none; height: calc(100vh - 90px);
+  overflow-x: scroll; overflow-y: auto; padding: 16px; background: #f5f5f5;
+}
+#table-view::-webkit-scrollbar {
+  height: 12px; width: 12px;
+}
+#table-view::-webkit-scrollbar-track {
+  background: #ddd; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb {
+  background: #888; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+#search-box {
+  width: 100%; max-width: 400px; padding: 8px 12px;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: 14px; margin-bottom: 12px;
+}
+#data-table {
+  width: 1480px; border-collapse: collapse;
+  table-layout: fixed;
+  background: white; font-size: 13px;
+}
+#table-wrapper {
+  display: block; overflow-x: auto;
+  border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#data-table th {
+  background: #4CAF50; color: white;
+  padding: 10px 12px; text-align: left;
+  cursor: pointer; white-space: nowrap;
+  user-select: none; position: sticky;
+  top: 0; z-index: 10; min-width: 60px;
+}
+#data-table th:hover { opacity: 0.85; }
+#data-table th.sort-asc::after { content: " "; font-size: 10px; }
+#data-table th.sort-desc::after { content: " "; font-size: 10px; }
+#data-table td {
+  padding: 8px 12px; border-bottom: 1px solid #eee;
+  vertical-align: top; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  max-width: 0;
+}
+#data-table td:hover {
+  white-space: normal; overflow: visible;
+  background: #fffde7; position: relative; z-index: 5;
+}
+#data-table th {
+  position: sticky; top: 0; z-index: 10;
+  resize: horizontal; overflow: auto;
+  min-width: 40px;
+}
+#data-table tr:hover td { background: #f0f4ff; }
+.badge-res   { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-biz2  { background: #7B2D8B; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-inst2 { background: #548235; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-vac2  { background: #808080; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-dnc2  { background: #cc0000; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-res2  { background: #E65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+#btn-bar {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; gap: 8px; align-items: center;
+}
+#share-btn, #print-btn {
+  background: rgba(255,255,255,0.95); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 14px;
+  font-size: 13px; font-weight: bold; color: #333;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#share-btn:hover, #print-btn:hover { background: #f0f0f0; }
+@media print {
+  @page { margin: 0; size: auto; }
+  #header, #tab-bar, #btn-bar, #share-btn, #print-btn, #mapid-search,
+  #notes-bar, #table-view,
+  .leaflet-control-container { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important;
+                overflow: hidden !important; }
+  #map { position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          z-index: 1 !important; }
+  #legend { z-index: 2 !important;
+             max-width: 200px !important;
+             right: 10px !important;
+             bottom: 10px !important;
+             left: auto !important;
+             top: auto !important;
+             font-size: 13px !important; }
+}
+#mapid-search {
+  background: rgba(255,255,255,0.97); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex; align-items: center; gap: 8px;
+}
+#mapid-search input {
+  border: none; outline: none; font-size: 13px;
+  width: 80px; background: transparent;
+}
+#mapid-search label {
+  font-size: 12px; color: #666; white-space: nowrap;
+}
+#mapid-search-clear {
+  cursor: pointer; color: #aaa; font-size: 14px;
+  display: none;
+}
+#mapid-search-clear:hover { color: #333; }
+.ml-hdr{padding:10px 16px;font-weight:bold;font-size:13px;color:white;letter-spacing:0.5px;}
+.ml-col-header{display:grid;background:#4472C4;color:white;font-size:12px;font-weight:bold;}
+.ml-col-header span{padding:6px 8px;white-space:nowrap;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.2);cursor:pointer;user-select:none;}
+.ml-col-header span:hover{background:rgba(255,255,255,0.15);}
+.ml-row{display:grid;font-size:12px;border-bottom:1px solid #eee;}
+.ml-row span{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ml-row:hover span{white-space:normal;overflow:visible;background:#fffde7;
+  position:relative;z-index:5;}
+.check-icon{font-size:16px;cursor:pointer;background:rgba(255,255,255,0.85);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  line-height:1;border:none!important;box-shadow:none!important;}
+.check-icon:hover{background:rgba(255,255,255,1);}
+.ml-even-g{background:#E2EFDA;}
+.ml-odd{background:#FFFFFF;}
+.ml-even-y{background:#FFF2CC;}
+.ml-dnc{background:#FFB3B3;}
+.ml-gap{height:12px;background:#e8e8e8;}
+.ml-none{padding:8px 16px;color:#888;font-size:12px;font-style:italic;}
+</style>
+</head>
+<body>
+<div id="header">
+  <div>
+    <h1>Apartment_404 Territory</h1>
+    <div class="subtitle">Apartment_404_20260721_1806.xlsx</div>
+  </div>
+  <div class="stats">
+    2 parcels &nbsp;&nbsp;
+    0 owner occupied &nbsp;&nbsp;
+    0 need research &nbsp;&nbsp;
+    0 vacant
+    
+  </div>
+</div>
+<div id="notes-bar">Before working apartment territories.  Please review the following:  KM 12/08 pg. 3-4 and KM 11/85 Pg. 3-6 | This Territory is located in North Fond du Lac | Ashwood Grove Trailer Park in North Fond du Lac. | DO NOT CALL:</div>
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="showTab('map')">&#x1F5FA; Map</button>
+  <button class="tab-btn" onclick="showTab('table')">&#x1F4CB; Mailing List</button>
+</div>
+<div id="map"></div>
+<div id="table-view">
+  <div style="padding:10px 16px 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()"
+      style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:300px;">
+    <button onclick="shareProgress()" style="padding:7px 14px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:white;font-weight:bold;">&#x1F4CB; Share Progress</button>
+  </div>
+  <div id="table-body"></div>
+</div>
+<div id="btn-bar">
+<button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+<button id="print-btn" onclick="printMap()">&#x1F5A8; Print Map</button>
+<div id="mapid-search">
+  <label>&#x1F50D; MapID</label>
+  <input type="number" id="mapid-input" placeholder="e.g. 42" min="1"
+    oninput="searchMapID(this.value)"
+    onkeydown="if(event.key==='Escape'){clearMapID();}" />
+  <span id="mapid-search-clear" onclick="clearMapID()">&#x2715;</span>
+</div>
+<div id="opacity-ctrl" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.97);border:1px solid #ccc;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <label style="font-size:12px;color:#666;white-space:nowrap;">&#x1F3A8; Fill</label>
+  <input type="range" id="opacity-slider" min="0" max="100" value="30"
+    style="width:80px;cursor:pointer;"
+    oninput="setParcelOpacity(this.value/100)" />
+  <span id="opacity-val" style="font-size:12px;color:#666;width:32px;">30%</span>
+</div>
+</div>
+<div id="legend">
+  <h4>Legend <span id="legend-close" onclick="document.getElementById('legend').style.display='none'">&#x2715;</span></h4>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#2E5496"></div>Confident Resident
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#FFFF00"></div>Needs Research
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#228B22"></div>Verified
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#E65100"></div>Suspect — verify before mailing
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#8B4513"></div>Institution
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#7B2D8B"></div>Business
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#808080"></div>Vacant
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#CC0000"></div>Do Not Contact
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#222222;border:2px solid #FFFFFF;box-sizing:border-box"></div>Completed
+  </div>
+  <div class="legend-resizer" id="legend-resizer"></div>
+</div>
+<script>
+var map = L.map('map', {zoomControl: true, preferCanvas: true, scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.25});
+document.getElementById('map').addEventListener('wheel', function(e){ e.preventDefault(); var delta = e.deltaY > 0 ? -0.25 : 0.25; var mousePos = map.mouseEventToLatLng(e); map.setZoomAround(mousePos, map.getZoom() + delta); }, {passive: false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: ' OpenStreetMap contributors | CartoDB', maxZoom: 20, subdomains: 'abcd'
+}).addTo(map);
+
+var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.50806415081024, 43.816886605383246], [-88.50814998149872, 43.81715755580605], [-88.50848257541656, 43.81718078007083], [-88.50848257541656, 43.81797039969769], [-88.50858449935913, 43.818353593694496], [-88.50650310516357, 43.81917029188558], [-88.50378334522247, 43.81915093897709], [-88.50366532802582, 43.81775751308132], [-88.50503861904144, 43.81776138375384], [-88.50714683532715, 43.81651114347937], [-88.50806415081024, 43.81652275573858], [-88.50806415081024, 43.816886605383246], [-88.50806415081024, 43.816886605383246], [-88.50806415081024, 43.816886605383246]]], "type": "Polygon"}, "properties": {}}]};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507581, 43.816788], [-88.507514, 43.816788], [-88.507514, 43.816577], [-88.507581, 43.816577], [-88.507581, 43.816788]]]}, "properties": {"mapid": 6, "subid": "74", "site": "W6972 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507286, 43.816794], [-88.507286, 43.816583], [-88.507348, 43.816583], [-88.507348, 43.816794], [-88.507286, 43.816794]]]}, "properties": {"mapid": 6, "subid": "70", "site": "W6968 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507171, 43.816757], [-88.507166, 43.816686], [-88.507252, 43.816683], [-88.507258, 43.816754], [-88.507171, 43.816757]]]}, "properties": {"mapid": 6, "subid": "70", "site": "W6968 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506923, 43.816751], [-88.506856, 43.816792], [-88.506811, 43.816753], [-88.506878, 43.816712], [-88.506923, 43.816751]]]}, "properties": {"mapid": 6, "subid": "67", "site": "W6964 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507118, 43.816725], [-88.507057, 43.816761], [-88.507094, 43.816794], [-88.507008, 43.816844], [-88.506974, 43.816814], [-88.506891, 43.816863], [-88.50685, 43.816827], [-88.50708, 43.816691], [-88.507118, 43.816725]]]}, "properties": {"mapid": 6, "subid": "67", "site": "W6964 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506594, 43.816895], [-88.506745, 43.817021], [-88.506662, 43.817073], [-88.506511, 43.816947], [-88.506594, 43.816895]]]}, "properties": {"mapid": 6, "subid": "65", "site": "W6956 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507665, 43.817063], [-88.507474, 43.817063], [-88.507474, 43.81698], [-88.507665, 43.81698], [-88.507665, 43.817063]]]}, "properties": {"mapid": 6, "subid": "77", "site": "W6975 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507992, 43.816983], [-88.507992, 43.817067], [-88.507788, 43.817067], [-88.507788, 43.816983], [-88.507992, 43.816983]]]}, "properties": {"mapid": 6, "subid": "52", "site": "W6771 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50655, 43.817119], [-88.506497, 43.817058], [-88.506526, 43.817045], [-88.506499, 43.817012], [-88.506551, 43.816989], [-88.506632, 43.817083], [-88.50655, 43.817119]]]}, "properties": {"mapid": 6, "subid": "65", "site": "W6956 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507119, 43.817142], [-88.507074, 43.817067], [-88.507289, 43.816999], [-88.507335, 43.817073], [-88.507119, 43.817142]]]}, "properties": {"mapid": 6, "subid": "72", "site": "W6969 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.5064, 43.817023], [-88.506471, 43.817074], [-88.506373, 43.817145], [-88.506302, 43.817094], [-88.5064, 43.817023]]]}, "properties": {"mapid": 6, "subid": "63", "site": "W6950 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507748, 43.817158], [-88.507651, 43.817158], [-88.507651, 43.817076], [-88.507748, 43.817076], [-88.507748, 43.817158]]]}, "properties": {"mapid": 6, "subid": "77", "site": "W6975 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507898, 43.817096], [-88.507984, 43.817096], [-88.507984, 43.817142], [-88.507898, 43.817142], [-88.507898, 43.817096]]]}, "properties": {"mapid": 6, "subid": "52", "site": "W6771 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50688, 43.817286], [-88.506811, 43.81722], [-88.506966, 43.817134], [-88.507036, 43.8172], [-88.50688, 43.817286]]]}, "properties": {"mapid": 6, "subid": "66", "site": "W6961 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506329, 43.817305], [-88.506254, 43.817241], [-88.506437, 43.817129], [-88.506512, 43.817193], [-88.506329, 43.817305]]]}, "properties": {"mapid": 6, "subid": "63", "site": "W6950 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507986, 43.817181], [-88.507986, 43.817254], [-88.50789, 43.817254], [-88.50789, 43.817181], [-88.507986, 43.817181]]]}, "properties": {"mapid": 6, "subid": "54", "site": "W6773 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508477, 43.817262], [-88.508381, 43.817262], [-88.508381, 43.817183], [-88.508477, 43.817183], [-88.508477, 43.817262]]]}, "properties": {"mapid": 6, "subid": "53", "site": "W6772 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507094, 43.817274], [-88.507029, 43.817221], [-88.507105, 43.817173], [-88.50717, 43.817226], [-88.507094, 43.817274]]]}, "properties": {"mapid": 6, "subid": "66", "site": "W6961 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506145, 43.817188], [-88.506209, 43.817235], [-88.506136, 43.817287], [-88.506072, 43.81724], [-88.506145, 43.817188]]]}, "properties": {"mapid": 6, "subid": "61", "site": "W6942 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507432, 43.817297], [-88.507404, 43.817231], [-88.50748, 43.817214], [-88.507508, 43.81728], [-88.507432, 43.817297]]]}, "properties": {"mapid": 6, "subid": "75", "site": "W6972 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507595, 43.817283], [-88.50759, 43.817253], [-88.507672, 43.817247], [-88.507677, 43.817276], [-88.507727, 43.817272], [-88.507739, 43.817351], [-88.507547, 43.817366], [-88.507535, 43.817288], [-88.507595, 43.817283]]]}, "properties": {"mapid": 6, "subid": "75", "site": "W6972 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50778, 43.817268], [-88.508011, 43.817268], [-88.508011, 43.817349], [-88.50778, 43.817349], [-88.50778, 43.817268]]]}, "properties": {"mapid": 6, "subid": "54", "site": "W6773 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508343, 43.817398], [-88.508233, 43.817398], [-88.508233, 43.817249], [-88.508343, 43.817249], [-88.508343, 43.817398]]]}, "properties": {"mapid": 6, "subid": "53", "site": "W6772 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506256, 43.817353], [-88.506046, 43.817473], [-88.505981, 43.817413], [-88.506025, 43.817388], [-88.50599, 43.817356], [-88.506038, 43.817328], [-88.506068, 43.817356], [-88.506185, 43.817289], [-88.506256, 43.817353]]]}, "properties": {"mapid": 6, "subid": "61", "site": "W6942 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505846, 43.817451], [-88.505789, 43.817403], [-88.505859, 43.81736], [-88.505916, 43.817408], [-88.505846, 43.817451]]]}, "properties": {"mapid": 6, "subid": "59", "site": "W6934 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508375, 43.817429], [-88.508472, 43.817429], [-88.508472, 43.817504], [-88.508375, 43.817504], [-88.508375, 43.817429]]]}, "properties": {"mapid": 6, "subid": "55", "site": "W6780 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506468, 43.817439], [-88.506547, 43.81751], [-88.50662, 43.817468], [-88.50668, 43.817523], [-88.506601, 43.817569], [-88.506533, 43.817507], [-88.506379, 43.817596], [-88.506308, 43.817532], [-88.506468, 43.817439]]]}, "properties": {"mapid": 6, "subid": "62", "site": "W6943 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506973, 43.817608], [-88.506894, 43.817534], [-88.506836, 43.817566], [-88.506771, 43.817504], [-88.506861, 43.817454], [-88.506935, 43.817524], [-88.507095, 43.817436], [-88.507165, 43.817501], [-88.506973, 43.817608]]]}, "properties": {"mapid": 6, "subid": "68", "site": "W6964 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505971, 43.817527], [-88.505791, 43.817634], [-88.505712, 43.817564], [-88.505891, 43.817458], [-88.505971, 43.817527]]]}, "properties": {"mapid": 6, "subid": "59", "site": "W6934 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507774, 43.817533], [-88.507871, 43.817533], [-88.507871, 43.817605], [-88.507774, 43.817605], [-88.507774, 43.817533]]]}, "properties": {"mapid": 6, "subid": "79", "site": "W6977 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505604, 43.817506], [-88.50568, 43.817574], [-88.505576, 43.817634], [-88.5055, 43.817566], [-88.505604, 43.817506]]]}, "properties": {"mapid": 6, "subid": "59", "site": "W6934 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508335, 43.817481], [-88.508335, 43.817668], [-88.508225, 43.817668], [-88.508225, 43.817481], [-88.508335, 43.817481]]]}, "properties": {"mapid": 6, "subid": "55", "site": "W6780 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507558, 43.817614], [-88.507573, 43.817652], [-88.507464, 43.817675], [-88.507416, 43.817559], [-88.507632, 43.817513], [-88.507664, 43.817592], [-88.507558, 43.817614]]]}, "properties": {"mapid": 6, "subid": "76", "site": "W6973 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507901, 43.817554], [-88.508011, 43.817554], [-88.508011, 43.817705], [-88.507901, 43.817705], [-88.507901, 43.817554]]]}, "properties": {"mapid": 6, "subid": "79", "site": "W6977 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507737, 43.817707], [-88.50764, 43.817707], [-88.50764, 43.817624], [-88.507737, 43.817624], [-88.507737, 43.817707]]]}, "properties": {"mapid": 6, "subid": "76", "site": "W6973 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506302, 43.817668], [-88.506372, 43.817626], [-88.506432, 43.817678], [-88.506349, 43.817727], [-88.506284, 43.817671], [-88.506161, 43.817744], [-88.506079, 43.817672], [-88.506215, 43.817591], [-88.506302, 43.817668]]]}, "properties": {"mapid": 6, "subid": "60", "site": "W6935 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506904, 43.817648], [-88.506732, 43.817772], [-88.506644, 43.817708], [-88.506816, 43.817584], [-88.506904, 43.817648]]]}, "properties": {"mapid": 6, "subid": "68", "site": "W6964 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506577, 43.817634], [-88.506641, 43.81769], [-88.506563, 43.817736], [-88.506499, 43.817681], [-88.506577, 43.817634]]]}, "properties": {"mapid": 6, "subid": "60", "site": "W6935 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507196, 43.817785], [-88.507125, 43.81772], [-88.507285, 43.817629], [-88.507367, 43.817703], [-88.507427, 43.817669], [-88.507487, 43.817724], [-88.50741, 43.817768], [-88.50734, 43.817703], [-88.507196, 43.817785]]]}, "properties": {"mapid": 6, "subid": "73", "site": "W6969 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505527, 43.817798], [-88.505456, 43.817736], [-88.505644, 43.817624], [-88.505714, 43.817686], [-88.505527, 43.817798]]]}, "properties": {"mapid": 6, "subid": "57", "site": "W6926 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508367, 43.817688], [-88.508464, 43.817688], [-88.508464, 43.817762], [-88.508367, 43.817761], [-88.508367, 43.817688]]]}, "properties": {"mapid": 6, "subid": "56", "site": "W6788 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505896, 43.817895], [-88.505825, 43.817838], [-88.505978, 43.81774], [-88.506048, 43.817797], [-88.505896, 43.817895]]]}, "properties": {"mapid": 3, "subid": "42", "site": "W6940 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508222, 43.8179], [-88.508222, 43.81774], [-88.508332, 43.81774], [-88.508332, 43.8179], [-88.508222, 43.8179]]]}, "properties": {"mapid": 3, "subid": "8", "site": "W6796 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508011, 43.817922], [-88.507898, 43.817922], [-88.507898, 43.817732], [-88.508011, 43.817732], [-88.508011, 43.817922]]]}, "properties": {"mapid": 3, "subid": "7", "site": "W6795 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505428, 43.817752], [-88.505501, 43.817812], [-88.505339, 43.817916], [-88.505266, 43.817857], [-88.505428, 43.817752]]]}, "properties": {"mapid": 3, "subid": "41", "site": "W6918 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505213, 43.817781], [-88.505258, 43.817874], [-88.505171, 43.817896], [-88.505127, 43.817802], [-88.505213, 43.817781]]]}, "properties": {"mapid": 3, "subid": "41", "site": "W6918 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50711, 43.817838], [-88.506961, 43.817935], [-88.506885, 43.817874], [-88.507035, 43.817777], [-88.50711, 43.817838]]]}, "properties": {"mapid": 3, "subid": "50", "site": "W6960 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507238, 43.817866], [-88.50716, 43.817905], [-88.507115, 43.817857], [-88.507192, 43.817818], [-88.507238, 43.817866]]]}, "properties": {"mapid": 3, "subid": "51", "site": "W6961 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506427, 43.817922], [-88.506352, 43.817967], [-88.506227, 43.817861], [-88.506313, 43.817809], [-88.506379, 43.817866], [-88.506555, 43.817759], [-88.506635, 43.817828], [-88.50645, 43.817941], [-88.506427, 43.817922]]]}, "properties": {"mapid": 3, "subid": "48", "site": "W6956 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504311, 43.817894], [-88.504178, 43.817895], [-88.504177, 43.817817], [-88.504295, 43.817816], [-88.504296, 43.817865], [-88.504508, 43.817863], [-88.504509, 43.817983], [-88.504312, 43.817985], [-88.504311, 43.817894]]]}, "properties": {"mapid": 3, "subid": "37", "site": "W6904 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507866, 43.817899], [-88.507866, 43.817968], [-88.507769, 43.817968], [-88.507769, 43.817899], [-88.507866, 43.817899]]]}, "properties": {"mapid": 3, "subid": "7", "site": "W6795 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508365, 43.81793], [-88.508464, 43.81793], [-88.508464, 43.818011], [-88.508365, 43.818011], [-88.508365, 43.81793]]]}, "properties": {"mapid": 3, "subid": "8", "site": "W6796 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504186, 43.817949], [-88.504042, 43.818064], [-88.503955, 43.818007], [-88.504099, 43.817892], [-88.504186, 43.817949]]]}, "properties": {"mapid": 3, "subid": "36", "site": "W6900 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506046, 43.818055], [-88.505979, 43.818002], [-88.506049, 43.817956], [-88.506116, 43.818009], [-88.506046, 43.818055]]]}, "properties": {"mapid": 3, "subid": "47", "site": "W6952 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506702, 43.818095], [-88.506625, 43.818035], [-88.50678, 43.817932], [-88.506857, 43.817992], [-88.506702, 43.818095]]]}, "properties": {"mapid": 3, "subid": "51", "site": "W6961 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506273, 43.817942], [-88.506347, 43.818008], [-88.506193, 43.818098], [-88.506119, 43.818032], [-88.506273, 43.817942]]]}, "properties": {"mapid": 3, "subid": "48", "site": "W6956 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50747, 43.818088], [-88.507375, 43.818087], [-88.507376, 43.818006], [-88.507471, 43.818007], [-88.50747, 43.818088]]]}, "properties": {"mapid": 3, "subid": "14", "site": "W6815 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508217, 43.818148], [-88.508217, 43.817982], [-88.508332, 43.817982], [-88.508332, 43.818148], [-88.508217, 43.818148]]]}, "properties": {"mapid": 3, "subid": "8", "site": "W6796 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50778, 43.818046], [-88.50778, 43.818102], [-88.507699, 43.818102], [-88.507699, 43.818046], [-88.50778, 43.818046]]]}, "properties": {"mapid": 3, "subid": "9", "site": "W6797 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.503985, 43.81805], [-88.503985, 43.818125], [-88.503869, 43.818125], [-88.503869, 43.81805], [-88.503985, 43.81805]]]}, "properties": {"mapid": 3, "subid": "36", "site": "W6900 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507835, 43.818191], [-88.507776, 43.818125], [-88.507954, 43.818043], [-88.508013, 43.818109], [-88.507835, 43.818191]]]}, "properties": {"mapid": 3, "subid": "9", "site": "W6797 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506092, 43.81813], [-88.506025, 43.81817], [-88.505971, 43.818122], [-88.506038, 43.818083], [-88.506092, 43.81813]]]}, "properties": {"mapid": 3, "subid": "45", "site": "W6948 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507453, 43.818112], [-88.507549, 43.818112], [-88.507549, 43.818069], [-88.507616, 43.818069], [-88.507616, 43.81811], [-88.507662, 43.81811], [-88.507662, 43.818189], [-88.507453, 43.818189], [-88.507453, 43.818112]]]}, "properties": {"mapid": 3, "subid": "14", "site": "W6815 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505906, 43.818226], [-88.50579, 43.818132], [-88.505875, 43.818077], [-88.505991, 43.818171], [-88.505906, 43.818226]]]}, "properties": {"mapid": 3, "subid": "45", "site": "W6948 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506596, 43.818059], [-88.50669, 43.818141], [-88.506523, 43.81824], [-88.506496, 43.818217], [-88.506408, 43.81827], [-88.50634, 43.818212], [-88.506596, 43.818059]]]}, "properties": {"mapid": 3, "subid": "49", "site": "W6957 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50699, 43.818122], [-88.507051, 43.818178], [-88.506972, 43.818222], [-88.506911, 43.818166], [-88.50699, 43.818122]]]}, "properties": {"mapid": 3, "subid": "15", "site": "W6821 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507305, 43.818118], [-88.507338, 43.818196], [-88.507103, 43.818248], [-88.50707, 43.81817], [-88.507305, 43.818118]]]}, "properties": {"mapid": 3, "subid": "15", "site": "W6821 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504596, 43.818148], [-88.504837, 43.818148], [-88.504837, 43.818239], [-88.504596, 43.818239], [-88.504596, 43.818148]]]}, "properties": {"mapid": 3, "subid": "40", "site": "W6911 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508458, 43.818172], [-88.508458, 43.818243], [-88.508362, 43.818243], [-88.508362, 43.818172], [-88.508458, 43.818172]]]}, "properties": {"mapid": 3, "subid": "10", "site": "W6802 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505616, 43.818263], [-88.505516, 43.818319], [-88.505368, 43.818181], [-88.505468, 43.818124], [-88.505616, 43.818263]]]}, "properties": {"mapid": 3, "subid": "43", "site": "W6943 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504059, 43.818322], [-88.503832, 43.818323], [-88.503831, 43.818231], [-88.503943, 43.81823], [-88.503942, 43.818145], [-88.504058, 43.818144], [-88.504059, 43.818322]]]}, "properties": {"mapid": 3, "subid": "34", "site": "W6896 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504384, 43.818326], [-88.504283, 43.818285], [-88.504376, 43.818162], [-88.504478, 43.818202], [-88.504384, 43.818326]]]}, "properties": {"mapid": 3, "subid": "38", "site": "W6905 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50447, 43.818251], [-88.504561, 43.818251], [-88.504561, 43.818321], [-88.50447, 43.818321], [-88.50447, 43.818251]]]}, "properties": {"mapid": 3, "subid": "38", "site": "W6905 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504929, 43.818332], [-88.504829, 43.818332], [-88.504829, 43.818261], [-88.504929, 43.818261], [-88.504929, 43.818332]]]}, "properties": {"mapid": 3, "subid": "40", "site": "W6911 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508267, 43.81841], [-88.508165, 43.818355], [-88.508302, 43.818222], [-88.508404, 43.818277], [-88.508267, 43.81841]]]}, "properties": {"mapid": 3, "subid": "10", "site": "W6802 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506776, 43.818423], [-88.506701, 43.818355], [-88.506641, 43.81839], [-88.50657, 43.818326], [-88.506654, 43.818277], [-88.50673, 43.818345], [-88.506935, 43.818226], [-88.507006, 43.81829], [-88.506776, 43.818423]]]}, "properties": {"mapid": 3, "subid": "17", "site": "W6827 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506329, 43.818319], [-88.50615, 43.818436], [-88.506076, 43.818377], [-88.506254, 43.81826], [-88.506329, 43.818319]]]}, "properties": {"mapid": 3, "subid": "46", "site": "W6951 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50636, 43.818404], [-88.506297, 43.818356], [-88.506392, 43.818292], [-88.506455, 43.81834], [-88.50636, 43.818404]]]}, "properties": {"mapid": 3, "subid": "46", "site": "W6951 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505502, 43.818309], [-88.505553, 43.818384], [-88.50547, 43.818413], [-88.50542, 43.818338], [-88.505502, 43.818309]]]}, "properties": {"mapid": 3, "subid": "43", "site": "W6943 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504422, 43.818344], [-88.504532, 43.818344], [-88.504532, 43.818417], [-88.504422, 43.818417], [-88.504422, 43.818344]]]}, "properties": {"mapid": 3, "subid": "35", "site": "W6897 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50749, 43.818431], [-88.50749, 43.818348], [-88.507694, 43.818348], [-88.507694, 43.818431], [-88.50749, 43.818431]]]}, "properties": {"mapid": 3, "subid": "12", "site": "W6810 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508027, 43.81835], [-88.508027, 43.818437], [-88.507917, 43.818437], [-88.507917, 43.818474], [-88.507847, 43.818474], [-88.507847, 43.818437], [-88.507783, 43.818437], [-88.507783, 43.81835], [-88.508027, 43.81835]]]}, "properties": {"mapid": 3, "subid": "11", "site": "W6806 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507351, 43.818361], [-88.507387, 43.818439], [-88.507156, 43.818493], [-88.507121, 43.818414], [-88.507351, 43.818361]]]}, "properties": {"mapid": 3, "subid": "13", "site": "W6814 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505942, 43.818393], [-88.505909, 43.818503], [-88.505824, 43.81849], [-88.505834, 43.818457], [-88.505684, 43.818433], [-88.505707, 43.818356], [-88.505942, 43.818393]]]}, "properties": {"mapid": 3, "subid": "44", "site": "W6947 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.508232, 43.818474], [-88.508145, 43.818512], [-88.508054, 43.818403], [-88.50814, 43.818365], [-88.508232, 43.818474]]]}, "properties": {"mapid": 3, "subid": "11", "site": "W6806 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506428, 43.818415], [-88.50649, 43.818469], [-88.506411, 43.818516], [-88.506349, 43.818463], [-88.506428, 43.818415]]]}, "properties": {"mapid": 3, "subid": "19", "site": "W6833 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50609, 43.818491], [-88.505985, 43.818518], [-88.505948, 43.818442], [-88.506054, 43.818415], [-88.50609, 43.818491]]]}, "properties": {"mapid": 3, "subid": "44", "site": "W6947 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504282, 43.818402], [-88.504392, 43.818402], [-88.504392, 43.818539], [-88.504282, 43.818539], [-88.504282, 43.818402]]]}, "properties": {"mapid": 3, "subid": "35", "site": "W6897 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506638, 43.818404], [-88.506712, 43.818469], [-88.506554, 43.818563], [-88.50648, 43.818498], [-88.506638, 43.818404]]]}, "properties": {"mapid": 3, "subid": "17", "site": "W6827 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507656, 43.818454], [-88.507756, 43.818454], [-88.507756, 43.818592], [-88.507656, 43.818592], [-88.507656, 43.818454]]]}, "properties": {"mapid": 3, "subid": "12", "site": "W6810 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.503818, 43.818522], [-88.503917, 43.818522], [-88.503917, 43.818594], [-88.503818, 43.818594], [-88.503818, 43.818522]]]}, "properties": {"mapid": 3, "subid": "33", "site": "W6890 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506252, 43.818518], [-88.506281, 43.818587], [-88.50618, 43.81861], [-88.50615, 43.818541], [-88.506252, 43.818518]]]}, "properties": {"mapid": 3, "subid": "21", "site": "W6841 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506996, 43.818487], [-88.50708, 43.818563], [-88.50689, 43.818673], [-88.506806, 43.818597], [-88.506996, 43.818487]]]}, "properties": {"mapid": 3, "subid": "16", "site": "W6822 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504585, 43.818544], [-88.504689, 43.818543], [-88.50469, 43.818623], [-88.504585, 43.818623], [-88.504585, 43.818544]]]}, "properties": {"mapid": 3, "subid": "29", "site": "W6865 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.5072, 43.818599], [-88.507144, 43.818633], [-88.507091, 43.818587], [-88.507147, 43.818553], [-88.5072, 43.818599]]]}, "properties": {"mapid": 3, "subid": "16", "site": "W6822 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505862, 43.818559], [-88.505959, 43.818559], [-88.505959, 43.81863], [-88.505862, 43.81863], [-88.505862, 43.818559]]]}, "properties": {"mapid": 3, "subid": "24", "site": "W6849 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504888, 43.818559], [-88.504988, 43.818559], [-88.504988, 43.81863], [-88.504888, 43.81863], [-88.504888, 43.818559]]]}, "properties": {"mapid": 3, "subid": "27", "site": "W6857 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504062, 43.818508], [-88.504062, 43.818683], [-88.50395, 43.818683], [-88.50395, 43.818508], [-88.504062, 43.818508]]]}, "properties": {"mapid": 3, "subid": "33", "site": "W6890 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50629, 43.818687], [-88.506245, 43.818612], [-88.506427, 43.818556], [-88.506471, 43.818631], [-88.50629, 43.818687]]]}, "properties": {"mapid": 3, "subid": "19", "site": "W6833 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504522, 43.818674], [-88.504347, 43.818722], [-88.504279, 43.818594], [-88.504384, 43.818565], [-88.504461, 43.818604], [-88.504555, 43.818603], [-88.504556, 43.818674], [-88.504522, 43.818674]]]}, "properties": {"mapid": 3, "subid": "31", "site": "W6869 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504655, 43.818677], [-88.50469, 43.818677], [-88.50469, 43.818654], [-88.504749, 43.818654], [-88.504749, 43.818613], [-88.504854, 43.818613], [-88.504854, 43.818733], [-88.504655, 43.818733], [-88.504655, 43.818677]]]}, "properties": {"mapid": 3, "subid": "29", "site": "W6865 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506183, 43.818723], [-88.505937, 43.818733], [-88.505931, 43.81865], [-88.506177, 43.81864], [-88.506183, 43.818723]]]}, "properties": {"mapid": 3, "subid": "21", "site": "W6841 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505194, 43.818648], [-88.505194, 43.818733], [-88.504947, 43.818733], [-88.504947, 43.818648], [-88.505194, 43.818648]]]}, "properties": {"mapid": 3, "subid": "27", "site": "W6857 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505621, 43.818737], [-88.505621, 43.818652], [-88.505835, 43.818652], [-88.505835, 43.818737], [-88.505621, 43.818737]]]}, "properties": {"mapid": 3, "subid": "25", "site": "W6853 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506892, 43.818707], [-88.506946, 43.818764], [-88.50686, 43.818806], [-88.506807, 43.818748], [-88.506892, 43.818707]]]}, "properties": {"mapid": 3, "subid": "18", "site": "W6830 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504092, 43.818897], [-88.503969, 43.818751], [-88.504071, 43.818707], [-88.504193, 43.818853], [-88.504092, 43.818897]]]}, "properties": {"mapid": 3, "subid": "32", "site": "W6876 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506452, 43.818811], [-88.506493, 43.818886], [-88.50643, 43.818904], [-88.50645, 43.818941], [-88.506329, 43.818975], [-88.506268, 43.818862], [-88.506452, 43.818811]]]}, "properties": {"mapid": 3, "subid": "20", "site": "W6836 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50666, 43.818919], [-88.50658, 43.818972], [-88.506504, 43.818913], [-88.506583, 43.81886], [-88.50666, 43.818919]]]}, "properties": {"mapid": 3, "subid": "20", "site": "W6836 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504499, 43.818886], [-88.504499, 43.818969], [-88.504274, 43.818969], [-88.504274, 43.818886], [-88.504499, 43.818886]]]}, "properties": {"mapid": 3, "subid": "30", "site": "W6868 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506184, 43.818886], [-88.506184, 43.818969], [-88.505951, 43.81897], [-88.505951, 43.818886], [-88.506184, 43.818886]]]}, "properties": {"mapid": 3, "subid": "22", "site": "W6842 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504607, 43.818886], [-88.504854, 43.818886], [-88.504854, 43.818971], [-88.504607, 43.818971], [-88.504607, 43.818886]]]}, "properties": {"mapid": 3, "subid": "28", "site": "W6860 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50528, 43.818884], [-88.50528, 43.819004], [-88.505213, 43.819004], [-88.505213, 43.818967], [-88.505049, 43.818967], [-88.505049, 43.818884], [-88.50528, 43.818884]]]}, "properties": {"mapid": 3, "subid": "26", "site": "W6856 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505787, 43.818967], [-88.505787, 43.819008], [-88.505661, 43.819008], [-88.505661, 43.818886], [-88.505859, 43.818886], [-88.505859, 43.818967], [-88.505787, 43.818967]]]}, "properties": {"mapid": 3, "subid": "23", "site": "W6848 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504197, 43.81896], [-88.504125, 43.81905], [-88.504022, 43.819008], [-88.504094, 43.818917], [-88.504197, 43.81896]]]}, "properties": {"mapid": 3, "subid": "32", "site": "W6876 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506192, 43.819077], [-88.506162, 43.818986], [-88.506276, 43.818967], [-88.506305, 43.819058], [-88.506192, 43.819077]]]}, "properties": {"mapid": 3, "subid": "22", "site": "W6842 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.504475, 43.818988], [-88.504577, 43.818988], [-88.504577, 43.819062], [-88.504475, 43.819062], [-88.504475, 43.818988]]]}, "properties": {"mapid": 3, "subid": "30", "site": "W6868 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.505916, 43.819074], [-88.505825, 43.819074], [-88.505825, 43.819004], [-88.505916, 43.819004], [-88.505916, 43.819074]]]}, "properties": {"mapid": 3, "subid": "23", "site": "W6848 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50760316454128, 43.81670257412692], [-88.50770118846256, 43.81670409215362], [-88.50770067240346, 43.81672154577263], [-88.50772959795263, 43.816721993817], [-88.50773403075856, 43.816571893410895], [-88.50779348757943, 43.816572813665786], [-88.50778723334217, 43.81678458358886], [-88.50773259765539, 43.816783737704135], [-88.50773352455715, 43.81675232155009], [-88.5077078144639, 43.81675192278957], [-88.50770733305883, 43.816768213613855], [-88.50760127470434, 43.81676657102792], [-88.50760316454128, 43.81670257412692]]]}, "properties": {"mapid": 6, "subid": "78", "site": "W6976 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50806415081024, 43.816770954674055], [-88.50806050385442, 43.816770914433086], [-88.5080619253884, 43.816703419280756], [-88.50806415081024, 43.81670344384824], [-88.50806415081024, 43.816770954674055]]]}, "properties": {"mapid": 6, "subid": "80", "site": "W6980 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.507830998861, 43.81677036429288], [-88.50783213353616, 43.81670286646308], [-88.50795428020407, 43.81670394341995], [-88.50795645309596, 43.816574767123775], [-88.5080191327863, 43.8165753198393], [-88.50801561100462, 43.81678479459826], [-88.50795614407913, 43.81678427045701], [-88.50795673107906, 43.81674935784803], [-88.5079326231491, 43.81674914532531], [-88.50793225195366, 43.81677125640423], [-88.507830998861, 43.81677036429288]]]}, "properties": {"mapid": 6, "subid": "80", "site": "W6980 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50683768029592, 43.81740582738209], [-88.5067703743172, 43.81734645428978], [-88.50662128675944, 43.817435062026256], [-88.50655092302347, 43.817372989900335], [-88.50670870682237, 43.81727921307937], [-88.50678620955162, 43.81734758194301], [-88.50685826930207, 43.81730475503015], [-88.50691843636443, 43.81735783124597], [-88.50683768029592, 43.81740582738209]]]}, "properties": {"mapid": 6, "subid": "64", "site": "W6955 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50712748818111, 43.817293290634744], [-88.50717902085992, 43.817357755774815], [-88.5071915404076, 43.8173525089231], [-88.50720442421836, 43.81736862520295], [-88.50736022550166, 43.81730332521562], [-88.50741981148087, 43.81737786246012], [-88.5073683413092, 43.81739943504446], [-88.50736189937763, 43.81739137691401], [-88.50724226577229, 43.81744151781893], [-88.50717865469308, 43.81736194346957], [-88.50708406013004, 43.817401590504524], [-88.50703011087833, 43.81733410329115], [-88.50712748818111, 43.817293290634744]]]}, "properties": {"mapid": 6, "subid": "71", "site": "W6968 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.506117954587, 43.817763676948], [-88.50617812703186, 43.8178105714912], [-88.50611218540881, 43.817854933933866], [-88.5060520129709, 43.81780803845636], [-88.506117954587, 43.817763676948]]]}, "properties": {"mapid": 3, "subid": "48", "site": "W6956 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50464120378518, 43.817892293481385], [-88.50471833278438, 43.817890919632546], [-88.50471805620698, 43.81788277469968], [-88.50475662007858, 43.81788208820585], [-88.50475701501898, 43.81789372240984], [-88.50480682762696, 43.817892834731694], [-88.50480951627505, 43.81797195217692], [-88.50461347985387, 43.8179754450346], [-88.50461091105683, 43.817899818656095], [-88.50462215854556, 43.81789961750312], [-88.5046215655527, 43.81788216574646], [-88.50452997479884, 43.81788379750237], [-88.50452712831711, 43.81780002618734], [-88.50463800085237, 43.817798051655174], [-88.50464120378518, 43.817892293481385]]]}, "properties": {"mapid": 3, "subid": "39", "site": "W6910 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50570729308106, 43.818025838500326], [-88.50568894065593, 43.8180111803159], [-88.50567465001542, 43.81802055986201], [-88.50560124413562, 43.817961923485285], [-88.50567627055669, 43.81791268022077], [-88.50568166787943, 43.817916991823076], [-88.50575073955663, 43.817871656578454], [-88.5058252244418, 43.817931154099234], [-88.50575139004093, 43.81797961620672], [-88.50576866225876, 43.81799341314161], [-88.50575913559102, 43.817999665879206], [-88.50582498513839, 43.818052266280965], [-88.50575829591246, 43.81809603815975], [-88.50568704779774, 43.81803912701831], [-88.50570729308106, 43.818025838500326]]]}, "properties": {"mapid": 3, "subid": "42", "site": "W6940 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.5069827602264, 43.81799996936618], [-88.5069088633254, 43.81804877242235], [-88.50685371694648, 43.81800499464319], [-88.50692761383843, 43.81795619162229], [-88.5069827602264, 43.81799996936618]]]}, "properties": {"mapid": 3, "subid": "51", "site": "W6961 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50745473616894, 43.81853023029324], [-88.50735508356931, 43.818529573454505], [-88.50735591940118, 43.81846323756146], [-88.50745557064752, 43.818463894399564], [-88.50745473616894, 43.81853023029324]]]}, "properties": {"mapid": 3, "subid": "13", "site": "W6814 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50552847125385, 43.81855198005531], [-88.505639378893, 43.818551974636534], [-88.50563937922165, 43.81855546661225], [-88.50563294934257, 43.81855546692934], [-88.5056329553603, 43.81861947808343], [-88.50552847748216, 43.81861948318512], [-88.50552847125385, 43.81855198005531]]]}, "properties": {"mapid": 3, "subid": "25", "site": "W6853 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.5066726237626, 43.81868166657803], [-88.50671393122775, 43.81865757402693], [-88.50678350492055, 43.818720112282094], [-88.50660200033795, 43.818825975670705], [-88.50653746746316, 43.81876796848629], [-88.50667766451797, 43.81868619865199], [-88.5066726237626, 43.81868166657803]]]}, "properties": {"mapid": 3, "subid": "18", "site": "W6830 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50495782963752, 43.81905360872355], [-88.50495845611688, 43.819038802900636], [-88.50492891915013, 43.819038147182944], [-88.50492843160663, 43.81904966352286], [-88.50485345247199, 43.81904800084332], [-88.50485303563038, 43.819057871091495], [-88.5048053212909, 43.81905681291513], [-88.50480838315531, 43.81898442719575], [-88.50493107649369, 43.818987148048706], [-88.50493058895097, 43.818998664388765], [-88.50495331063571, 43.81899916830269], [-88.50495449288142, 43.81897120094811], [-88.5050590101013, 43.81897351835306], [-88.50505553048912, 43.81905577522824], [-88.50495782963752, 43.81905360872355]]]}, "properties": {"mapid": 3, "subid": "28", "site": "W6860 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.50608215116593, 43.81769441879309], [-88.50587167371829, 43.81769441879309], [-88.50587167371829, 43.81784628785342], [-88.50608215116593, 43.81784628785342], [-88.50608215116593, 43.81769441879309]]]}, "properties": {"mapid": "6", "subid": "58", "site": "W6927 SHADYBROOK CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.5071392052768, 43.81771511778358], [-88.50693228263582, 43.81771511778358], [-88.50693228263582, 43.817864421840525], [-88.5071392052768, 43.817864421840525], [-88.5071392052768, 43.81771511778358]]]}, "properties": {"mapid": "6", "subid": "69", "site": "W6965 SHOREWOOD, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "From Fond du Lac County GIS", "_county_synth": true}}]};
+var isApartment = true;
+var _TERRITORY = 'Apartment_404';
+var _BUILD_TS = '20260721_180645';
+var tableData = [{"mapid": "7", "owner": "", "owner2": "", "site": "W6795 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "8", "owner": "", "owner2": "", "site": "W6796 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "9", "owner": "", "owner2": "", "site": "W6797 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "10", "owner": "", "owner2": "", "site": "W6802 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "11", "owner": "", "owner2": "", "site": "W6806 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "12", "owner": "", "owner2": "", "site": "W6810 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "13", "owner": "", "owner2": "", "site": "W6814 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "14", "owner": "", "owner2": "", "site": "W6815 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "15", "owner": "", "owner2": "", "site": "W6821 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "16", "owner": "", "owner2": "", "site": "W6822 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "17", "owner": "", "owner2": "", "site": "W6827 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "18", "owner": "", "owner2": "", "site": "W6830 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "19", "owner": "", "owner2": "", "site": "W6833 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "20", "owner": "", "owner2": "", "site": "W6836 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "21", "owner": "", "owner2": "", "site": "W6841 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "22", "owner": "", "owner2": "", "site": "W6842 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "23", "owner": "", "owner2": "", "site": "W6848 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "24", "owner": "", "owner2": "", "site": "W6849 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "25", "owner": "", "owner2": "", "site": "W6853 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "26", "owner": "", "owner2": "", "site": "W6856 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "27", "owner": "", "owner2": "", "site": "W6857 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "28", "owner": "", "owner2": "", "site": "W6860 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "29", "owner": "", "owner2": "", "site": "W6865 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "30", "owner": "", "owner2": "", "site": "W6868 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "31", "owner": "", "owner2": "", "site": "W6869 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "32", "owner": "", "owner2": "", "site": "W6876 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "33", "owner": "", "owner2": "", "site": "W6890 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "34", "owner": "", "owner2": "", "site": "W6896 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "35", "owner": "", "owner2": "", "site": "W6897 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "36", "owner": "", "owner2": "", "site": "W6900 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "37", "owner": "", "owner2": "", "site": "W6904 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "38", "owner": "", "owner2": "", "site": "W6905 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "39", "owner": "", "owner2": "", "site": "W6910 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "40", "owner": "", "owner2": "", "site": "W6911 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "41", "owner": "", "owner2": "", "site": "W6918 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "42", "owner": "", "owner2": "", "site": "W6940 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "43", "owner": "", "owner2": "", "site": "W6943 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "44", "owner": "", "owner2": "", "site": "W6947 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "45", "owner": "", "owner2": "", "site": "W6948 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "46", "owner": "", "owner2": "", "site": "W6951 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "47", "owner": "", "owner2": "", "site": "W6952 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "48", "owner": "", "owner2": "", "site": "W6956 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "49", "owner": "", "owner2": "", "site": "W6957 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "50", "owner": "", "owner2": "", "site": "W6960 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "51", "owner": "", "owner2": "", "site": "W6961 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "52", "owner": "", "owner2": "", "site": "W6771 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "53", "owner": "", "owner2": "", "site": "W6772 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "54", "owner": "", "owner2": "", "site": "W6773 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "55", "owner": "", "owner2": "", "site": "W6780 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "56", "owner": "", "owner2": "", "site": "W6788 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "57", "owner": "", "owner2": "", "site": "W6926 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "58", "owner": "", "owner2": "", "site": "W6927 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "59", "owner": "", "owner2": "", "site": "W6934 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "60", "owner": "", "owner2": "", "site": "W6935 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "61", "owner": "", "owner2": "", "site": "W6942 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "62", "owner": "", "owner2": "", "site": "W6943 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "63", "owner": "", "owner2": "", "site": "W6950 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "64", "owner": "", "owner2": "", "site": "W6955 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "65", "owner": "", "owner2": "", "site": "W6956 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "66", "owner": "", "owner2": "", "site": "W6961 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "67", "owner": "", "owner2": "", "site": "W6964 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "68", "owner": "", "owner2": "", "site": "W6964 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "69", "owner": "", "owner2": "", "site": "W6965 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "70", "owner": "", "owner2": "", "site": "W6968 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "71", "owner": "", "owner2": "", "site": "W6968 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "72", "owner": "", "owner2": "", "site": "W6969 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "73", "owner": "", "owner2": "", "site": "W6969 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "74", "owner": "", "owner2": "", "site": "W6972 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "75", "owner": "", "owner2": "", "site": "W6972 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "76", "owner": "", "owner2": "", "site": "W6973 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "77", "owner": "", "owner2": "", "site": "W6975 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "78", "owner": "", "owner2": "", "site": "W6976 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "79", "owner": "", "owner2": "", "site": "W6977 SHOREWOOD", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "80", "owner": "", "owner2": "", "site": "W6980 SHADYBROOK CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}];
+
+if (boundaryData) {
+  var boundary = L.geoJSON(boundaryData, {
+    style: {
+      color: '#4CAF50', weight: 3, opacity: 1,
+      fillColor: '#4CAF50', fillOpacity: 0.04,
+      dashArray: '8,5'
+    }
+  }).addTo(map);
+  map.fitBounds(boundary.getBounds(), {padding: [30, 30]});
+  // Territory name label — centered on boundary, semi-transparent
+  var bounds = boundary.getBounds();
+  var center = bounds.getCenter();
+  L.marker(center, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:52px;font-weight:900;'
+           +'color:#1A3A6B;opacity:0.55;'
+           +'white-space:nowrap;pointer-events:none;'
+           +'position:relative;z-index:9999;'
+           +'text-shadow:2px 2px 0px white,-2px -2px 0px white,2px -2px 0px white,-2px 2px 0px white;'
+           +'transform:translate(-50%,-50%);">Apartment_404</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    }),
+    interactive: false
+  }).addTo(map);
+}
+
+var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.50814998149872, 43.81715755580605], [-88.50847371420458, 43.81718016131287], [-88.50847591179763, 43.81737048338156], [-88.50848105098217, 43.81781554715244], [-88.50380180584949, 43.81778299744257], [-88.50380184564675, 43.817757897861384], [-88.50503861904144, 43.81776138375384], [-88.50714683532715, 43.81651114347937], [-88.50806415081024, 43.81652275573858], [-88.50806415081024, 43.816886605383246], [-88.50814998149872, 43.81715755580605]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved1", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "city": "", "state": "", "zip": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.50848257541656, 43.81797039969769], [-88.50848285088591, 43.81797143535424], [-88.50848391255305, 43.81806338548342], [-88.50852026572231, 43.8181121004457], [-88.50858449935913, 43.818353593694496], [-88.50650310516357, 43.81917029188558], [-88.505519583563, 43.8191632934725], [-88.50551970821105, 43.819083462670065], [-88.503799755921, 43.81907169878679], [-88.50380053046595, 43.81858452939325], [-88.50380180584949, 43.81778299744257], [-88.50848105098217, 43.81781554715244], [-88.50848257541656, 43.81794757717809], [-88.50848257541656, 43.81797039969769]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved2", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "city": "", "state": "", "zip": ""}}]};
+
+var _parcelLayers={};
+
+// 2026-07-12: Google Maps sometimes can't geocode certain county-style
+// street-suffix abbreviations -- "LA" for Lane is the confirmed case
+// (Google appears to read it as the Louisiana state code instead), even
+// though the rest of the address is fine. Swap in the USPS-standard
+// abbreviation just for the directions/search links, leaving the
+// displayed/mailing address untouched. Add more replacements here if
+// other suffixes turn out to trip Google up too.
+function _mapsAddr(site) {
+  if (!site) return site;
+  return site.replace(/\bLA\b\.?/gi, 'Ln');
+}
+
+function getPopup(p) {
+  var badge = '';
+  if (p.dnc === 'YES') badge = '<span class="popup-badge badge-dnc">DO NOT CONTACT</span>';
+  else if (p.sheet === 'Institutions') badge = '<span class="popup-badge badge-inst">' + p.btype + '</span>';
+  else if (p.sheet === 'Vacant') badge = '<span class="popup-badge badge-vacant">Vacant</span>';
+  else if (p.btype === 'Commercial / Rental') badge = '<span class="popup-badge badge-biz">Business</span>';
+  else if (p.occupied === 'Yes') badge = '<span class="popup-badge badge-owner">Owner Occupied</span>';
+  if (p.research === 'Yes') badge += '<span class="popup-badge badge-research">Research Needed</span>';
+
+  var mailHtml = p.mail ? '<div class="popup-mail"> ' + p.mail + '</div>' : '';
+  var saluteHtml = p.salute && p.salute !== 'nan' ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+  // 2026-07-12: p.site is already the full "street, city state zip" address
+  // (built that way in refresh_html_map.py) -- appending ", Fond du Lac, WI"
+  // on top of that duplicated the city/state/zip and made Google Maps fail
+  // to find the address (confirmed by Steve). Use p.site as-is.
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+  var viewUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(_mapsAddr(p.site));
+  var mapsHtml = p.site ? '<div style="margin-top:6px"><a href="' + mapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>' : '';
+
+  return '<div class="popup-inner">' +
+    '<div class="popup-mapid">Parcel #' + p.mapid + '</div>' +
+    '<div class="popup-site">' + p.site + '</div>' +
+    '<div class="popup-owner">' + p.owner + '</div>' +
+    mailHtml + saluteHtml +
+    mapsHtml +
+    '<div style="margin-top:6px">' + badge + '</div>' +
+    '</div>';
+}
+
+function getParcelArea(feature) {
+  var coords = feature.geometry.coordinates;
+  var allPoints = [];
+  function collectPoints(c) {
+    if (typeof c[0] === 'number') { allPoints.push(c); }
+    else { c.forEach(collectPoints); }
+  }
+  collectPoints(coords);
+  if (allPoints.length < 2) return 0;
+  var lats = allPoints.map(function(p) { return p[1]; });
+  var lngs = allPoints.map(function(p) { return p[0]; });
+  return (Math.max.apply(null,lats)-Math.min.apply(null,lats)) * (Math.max.apply(null,lngs)-Math.min.apply(null,lngs));
+}
+var DEFAULT_FILL_OPACITY = 0.3;  // 2026-07-14: matches opacity-slider's value="30" -- getOpacity()
+                                  // previously always returned 1.0 regardless of the slider default,
+                                  // so parcels loaded fully opaque until the slider was touched by hand.
+function getOpacity(feature) {
+  return DEFAULT_FILL_OPACITY;
+}
+// Store per-parcel area for label sizing
+var parcelAreas = {};
+parcelsData.features.forEach(function(f) {
+  parcelAreas[f.properties.mapid] = getParcelArea(f);
+});
+
+L.geoJSON(parcelsData, {
+  style: function(feature) {
+    var p = feature.properties;
+    return {
+      fillColor: p.fill,
+      fillOpacity: getOpacity(feature),
+      color: 'rgba(0,0,0,0.65)',
+      weight: 2.0
+    };
+  },
+  onEachFeature: function(feature, layer) {
+    var p = feature.properties;
+    _parcelLayers[p.mapid]=layer;
+    layer._origStyle={
+      fillColor:layer.options.fillColor,
+      fillOpacity:layer.options.fillOpacity,
+      color:layer.options.color,
+      weight:layer.options.weight
+    };
+    layer.bindPopup(getPopup(p), {maxWidth: 300});
+    var area = getParcelArea(feature);
+    // Store area on tooltip element for zoom-aware sizing.
+    // 2026-07-11: skip the label entirely for placeholder mapids
+    // (prefixed "_dissolved" by refresh_html_map.py) -- these mark a
+    // parcel that was broken into individual buildings, kept only so the
+    // polygon/fill still shows; the placeholder name isn't a real MapID
+    // and showing it just confuses the map.
+    // 2026-07-14: also skip it for Multi_Occupant parcels (townhouse-style
+    // complexes with many individually-addressed units) -- each building
+    // footprint inside now gets its own real street-address label, so the
+    // parcel's plain container number (e.g. "64") just lands on top of
+    // whichever building happens to sit at the parcel's center and looks
+    // like doubled/confusing text, same reasoning as the _dissolved case.
+    // Only when isApartment is true, though -- that's the only case where
+    // buildings actually get their own labels to replace this one; for any
+    // other territory type the parcel's own number is still the only label
+    // that area would have, so it must stay.
+    if (!(p.mapid && String(p.mapid).indexOf('_dissolved') === 0) &&
+        !(isApartment && p.sheet === 'Multi_Occupant')) {
+      var tt = layer.bindTooltip(String(p.mapid), {
+        permanent: true, direction: 'center',
+        className: 'mapid-label',
+        offset: [0, 0]
+      });
+      layer.on('tooltipopen', function(e) {
+        e.tooltip.getElement().setAttribute('data-area', area);
+      });
+    }
+  }
+}).addTo(map);
+
+// 2026-07-12: building footprints used to be permanently solid black.
+// Now they default to grey and only turn black once the matching
+// mailing-list checkbox is marked done -- _buildingLayers is the
+// per-building lookup _updateParcel() (in the table-tracking script
+// below) uses to flip the color, same pattern as _parcelLayers.
+var _buildingLayers = {};
+var BUILDING_DEFAULT_FILL = '#C4C4C4';
+var BUILDING_DONE_FILL    = '#000000';
+
+if (buildingsData) {
+  L.geoJSON(buildingsData, {
+    style: function(feature) {
+      return {
+        fillColor: BUILDING_DEFAULT_FILL,
+        fillOpacity: DEFAULT_FILL_OPACITY,
+        color: '#000000',
+        weight: 1.5
+      };
+    },
+    interactive: isApartment,
+    onEachFeature: isApartment ? function(feature, layer) {
+      var p = feature.properties;
+      var bKey = p.subid ? p.subid : (p.mapid || '');
+      if (bKey !== '') {
+        _buildingLayers[bKey] = layer;
+        layer._origStyle = {
+          fillColor: layer.options.fillColor,
+          fillOpacity: layer.options.fillOpacity,
+          color: layer.options.color,
+          weight: layer.options.weight
+        };
+      }
+      // Permanent sub-ID label on each building footprint
+      var label = p.subid ? p.subid.toUpperCase() : (p.mapid ? String(p.mapid) : '');
+      if (label) {
+        layer.bindTooltip(label, {
+          permanent: true, direction: 'center',
+          className: 'mapid-label', offset: [0, 0]
+        });
+      }
+      if (p.site && p.site !== '') {
+        var subLabel = p.subid ? p.subid.toUpperCase() : ('Parcel #' + p.mapid);
+        var saluteHtml = p.salute && p.salute !== 'nan' && p.salute !== ''
+          ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+        // 2026-07-15: p.note is a short data-provenance flag ("Approximate
+        // match" / "From Fond du Lac County GIS") -- shown as its own line,
+        // kept OUT of p.site itself so the Get Directions link below still
+        // gets a clean, real address.
+        var noteHtml = p.note && p.note !== ''
+          ? '<div class="popup-mail" style="color:#888;font-style:italic">' + p.note + '</div>' : '';
+        var bMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+        var bMapsHtml = '<div style="margin-top:6px"><a href="' + bMapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>';
+        var html = '<div class="popup-inner">' +
+          '<div class="popup-mapid">Building ' + subLabel + '</div>' +
+          '<div class="popup-site">' + p.site + '</div>' +
+          '<div class="popup-owner">' + (p.owner || '') + '</div>' +
+          saluteHtml + noteHtml +
+          bMapsHtml +
+          '</div>';
+        layer.bindPopup(html, {maxWidth: 300});
+      }
+    } : function(feature, layer) {}
+  }).addTo(map);
+}
+
+if (!boundaryData) {
+  map.setView([43.77, -88.43], 14);
+}
+
+// Scale MapID labels by zoom level AND parcel area
+function updateLabelSizes() {
+  var z = map.getZoom();
+  // Base size from zoom
+  var baseSize;
+  if      (z <= 13) baseSize = 11;
+  else if (z <= 14) baseSize = 15;
+  else if (z <= 15) baseSize = 19;
+  else if (z <= 16) baseSize = 24;
+  else              baseSize = 30;
+  document.querySelectorAll('.mapid-label').forEach(function(el) {
+    var area = parseFloat(el.getAttribute('data-area') || 0);
+    var scale = 1.0;
+    // Shrink labels for small parcels
+    if      (area < 0.000003) scale = 0.45;
+    else if (area < 0.000008) scale = 0.60;
+    else if (area < 0.00002)  scale = 0.75;
+    else if (area < 0.00006)  scale = 0.88;
+    var finalSize = Math.max(7, Math.round(baseSize * scale));
+    el.style.fontSize = finalSize + 'px';
+  });
+}
+map.on('zoomend', updateLabelSizes);
+map.on('load', updateLabelSizes);
+setTimeout(updateLabelSizes, 500);
+</script>
+<style>
+.mapid-label {
+  background: transparent; border: none; box-shadow: none;
+  font-weight: bold; color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9);
+  pointer-events: none; transition: font-size 0.1s;
+}
+</style>
+<script>
+var _allRows=[];
+var _sortState={conf:{col:-1,asc:true},ver:{col:-1,asc:true},res:{col:-1,asc:true},dnc:{col:-1,asc:true}};
+
+function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
+function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
+function _setDone(mid,done){if(done)localStorage.setItem(_doneKey(mid),'1');else localStorage.removeItem(_doneKey(mid));}
+
+function _toggleDone(mid){
+  var done=!_isDone(mid);
+  _setDone(mid,done);
+  _updateParcel(mid,done);
+  _updateTableRow(mid,done);}
+
+function _updateParcel(mid,done){
+  var lyr=_parcelLayers[mid];
+  if(lyr){
+    if(done){lyr.setStyle({fillColor:'#222222',fillOpacity:0.9,color:'#FFFFFF',weight:4});}
+    else{lyr.setStyle(lyr._origStyle||{fillColor:'#AAAAAA',fillOpacity:0.4,color:'rgba(0,0,0,0.65)',weight:2.0});}}
+  var bld=_buildingLayers[mid];
+  if(bld){
+    if(done){bld.setStyle({fillColor:BUILDING_DONE_FILL,fillOpacity:0.9});}
+    else{bld.setStyle({fillColor:(bld._origStyle&&bld._origStyle.fillColor)||BUILDING_DEFAULT_FILL});}}}
+
+function _updateTableRow(mid,done){
+  document.querySelectorAll('.ml-check[data-mid="'+mid+'"]').forEach(function(el){
+    el.textContent=done?'☑':'☐';});
+  document.querySelectorAll('.ml-row[data-mid="'+mid+'"]').forEach(function(el){
+    el.style.opacity=done?'0.45':'';});}
+
+function _applyDoneState(){
+  // Clear done state if this is a freshly generated map (build timestamp changed)
+  var buildKey='build_'+_TERRITORY;
+  var lastBuild=localStorage.getItem(buildKey);
+  if(lastBuild!==_BUILD_TS){
+    // New pipeline run - clear all done state for this territory
+    var toRemove=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('done_'+_TERRITORY+'_')===0)toRemove.push(k);}
+    toRemove.forEach(function(k){localStorage.removeItem(k);});
+    localStorage.setItem(buildKey,_BUILD_TS);}
+  tableData.forEach(function(p){if(_isDone(p.mapid))_updateParcel(p.mapid,true);});
+  var m=window.location.hash.match(/done=([0-9,]+)/);
+  if(m){m[1].split(',').forEach(function(s){
+    var mid=parseInt(s);
+    if(!isNaN(mid)){_setDone(mid,true);_updateParcel(mid,true);}});}}
+setTimeout(_applyDoneState,400);
+
+function shareProgress(){
+  var done=[];
+  tableData.forEach(function(p){if(_isDone(p.mapid))done.push(p.mapid);});
+  if(!done.length){alert('No parcels checked off yet.');return;}
+  var url=window.location.href.split('#')[0]+'#done='+done.join(',');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){
+      alert('Progress link copied!\nPaste it into an email to share your progress.');});}
+  else{prompt('Copy this link to share your progress:',url);}}
+
+function _sortIndicator(sec,idx){
+  if(idx===0)return '';
+  var s=_sortState[sec];
+  if(s.col!==idx)return ' ▸';
+  return s.asc?' ▲':' ▼';}
+
+function _colHdr(sec){
+  var isConf=(sec==='conf');
+  var cols=isConf
+    ?['','MapID','Owner 1','Owner 2','Site Address']
+    :['','MapID','Owner 1','Owner 2','Site Address','Reason/Notes'];
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+'">';
+  cols.forEach(function(c,i){
+    if(i===0){h+='<span></span>';return;}
+    h+='<span data-sec="'+sec+'" data-col="'+i+'" onclick="_sortSection(this.dataset.sec,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(sec,i)+'</span>';});
+  h+='</div>';
+  return h;}
+
+function _sortSection(sec,col){
+  if(col===0)return;
+  var s=_sortState[sec];
+  if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
+  renderTable(_allRows);}
+
+function _sortRows(arr,sec){
+  var s=_sortState[sec];
+  if(s.col<=0)return arr.slice();
+  var cols=(sec==='conf')
+    ?['','mapid','owner','owner2','site_full']
+    :['','mapid','owner','owner2','site_full','notes'];
+  var key=cols[s.col]||'mapid';
+  return arr.slice().sort(function(a,b){
+    var av,bv;
+    if(key==='site_full'){
+      av=((a.site||'')+(a.site_city||'')+(a.site_state||'')+(a.site_zip||'')).toLowerCase();
+      bv=((b.site||'')+(b.site_city||'')+(b.site_state||'')+(b.site_zip||'')).toLowerCase();}
+    else if(key==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
+    else{av=String(a[key]||'').toLowerCase();bv=String(b[key]||'').toLowerCase();}
+    if(av<bv)return s.asc?-1:1;
+    if(av>bv)return s.asc?1:-1;
+    return 0;});}
+
+function _row(p,cls,sec){
+  var isConf=(sec==='conf');
+  var mid=p.mapid;
+  var done=_isDone(mid);
+  var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var rowStyle=done?'opacity:0.45;':'';
+  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" style="grid-template-columns:'+grid+';'+rowStyle+'">';
+  r+='<span class="ml-check" data-mid="'+mid+'" onclick="_toggleDone(\''+mid+'\')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'☑':'☐')+'</span>';
+  r+='<span>'+mid+'</span>';
+  r+='<span>'+(p.owner||'')+'</span>';
+  r+='<span>'+(p.owner2||'')+'</span>';
+  r+='<span>'+sf+'</span>';
+  if(!isConf){r+='<span>'+(p.notes||'')+'</span>';}
+  r+='</div>';
+  return r;}
+
+function setParcelOpacity(val){
+  document.getElementById('opacity-val').textContent=Math.round(val*100)+'%';
+  Object.keys(_parcelLayers).forEach(function(mid){
+    var lyr=_parcelLayers[mid];
+    if(lyr&&!_isDone(parseInt(mid))){
+      lyr.setStyle({fillOpacity:val});}});
+  // 2026-07-14: buildings were never wired into the slider at all, so
+  // building footprints stayed opaque no matter what the slider showed.
+  Object.keys(_buildingLayers).forEach(function(bid){
+    var bld=_buildingLayers[bid];
+    if(bld){bld.setStyle({fillOpacity:val});}});}
+
+function buildTable(){_allRows=tableData.slice();renderTable(_allRows);}
+
+function filterTable(){
+  var q=document.getElementById('search-box').value.toLowerCase();
+  renderTable(_allRows.filter(function(p){
+    var sf=(p.site||'')+(p.site_city||'')+(p.site_state||'')+(p.site_zip||'');
+    return [p.mapid,p.owner,p.owner2,sf,p.notes].join(' ').toLowerCase().indexOf(q)>=0;}));}
+
+function renderTable(rows){
+  var conf=[],res=[],dnc=[];
+  rows.forEach(function(p){
+    if(p.dnc==='YES'){dnc.push(p);}
+    else if(p.occupied==='Yes'&&p.confidence==='High'&&p.research!=='Yes'){conf.push(p);}
+    else{res.push(p);}});
+  conf=_sortRows(conf,'conf');res=_sortRows(res,'res');dnc=_sortRows(dnc,'dnc');
+  var h='';
+  h+='<div class=ml-hdr style="background:#375623">✔ CONFIDENT RESIDENTS ('+conf.length+' parcels) — Ready to write letters</div>';
+  h+=_colHdr('conf');
+  conf.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-g':'ml-odd','conf');});
+  if(!conf.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#7F6000">? NEEDS RESEARCH ('+res.length+' parcels) — Verify before writing</div>';
+  h+=_colHdr('res');
+  res.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-y':'ml-odd','res');});
+  if(!res.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#C00000">✘ DO NOT CALL ('+dnc.length+' parcels)</div>';
+  h+=_colHdr('dnc');
+  dnc.forEach(function(p){h+=_row(p,'ml-dnc','dnc');});
+  if(!dnc.length)h+='<div class=ml-none>None</div>';
+  document.getElementById('table-body').innerHTML=h;}
+
+function showTab(tab){
+  document.getElementById('map').style.display=tab==='map'?'block':'none';
+  document.getElementById('table-view').style.display=tab==='table'?'block':'none';
+  if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});
+  if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}}
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_404 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_404 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_404/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var target=String(val).trim().toUpperCase();if(!target)return;var found=null;parcelsData.features.forEach(function(f){if(String(f.properties.mapid).toUpperCase()===target){found=f;}});if(!found && typeof buildingsData!=='undefined' && buildingsData){buildingsData.features.forEach(function(f){var subid=f.properties.subid?String(f.properties.subid).toUpperCase():'';var mapid=(f.properties.mapid!==undefined&&f.properties.mapid!=='')?String(f.properties.mapid).toUpperCase():'';if(subid===target || (!subid && mapid===target)){found=f;}});}if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function printMap(){window.print();}</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script></body>
+</html>
