@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Apartment_419 Territory Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f0f0; }
+#header {
+  background: #4CAF50; color: white;
+  padding: 8px 16px; display: flex;
+  align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 4px; min-height: 56px; box-sizing: border-box;
+}
+#header h1 { font-size: 17px; font-weight: bold; margin: 0; line-height: 1.2; }
+#header .subtitle { font-size: 10px; opacity: 0.75; margin-top: 1px; }
+#header .stats { font-size: 12px; opacity: 0.9; }
+#map { height: calc(100vh - 96px); width: 100%; display: block; }
+.leaflet-popup-content-wrapper {
+  border-radius:0.7em;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  border-left: 6px solid #4CAF50;
+  padding: 0;
+}
+.leaflet-popup-content { margin: 0; width: 360px !important; }
+.popup-inner { padding: 18px 22px; }
+.popup-mapid {
+  font-size: 14px; color: #888; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+.popup-site {
+  font-size: 20px; font-weight: bold; color: #4CAF50;
+  margin-bottom: 7px; line-height: 1.3;
+}
+.popup-owner { font-size: 17px; color: #222; margin-bottom: 4px; }
+.popup-mail { font-size: 17px; color: #555; margin-bottom: 10px; }
+.popup-badge {
+  display: inline-block; padding: 5px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: bold; color: white; margin-right: 4px;
+}
+.badge-owner  { background: #4CAF50; }
+.badge-vacant { background: #808080; }
+.badge-inst   { background: #548235; }
+.badge-biz    { background: #7B2D8B; }
+.badge-dnc    { background: #cc0000; }
+.badge-research { background: #FFFF00; color: #333; }
+.legend-resizer{position:absolute;bottom:4px;right:4px;width:14px;height:14px;cursor:se-resize;opacity:0.4;z-index:10;background:linear-gradient(135deg,transparent 50%,#888 50%,#888 60%,transparent 60%,transparent 70%,#888 70%,#888 80%,transparent 80%);}.legend-resizer:hover{opacity:0.8;}#legend {
+  position: absolute; bottom: 24px; right: 10px; z-index: 1000;
+  background: white; border-radius:0.7em; padding:1em 1.3em;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2); font-size: 17px;
+  display:inline-block;width:max-content;min-width:80px;cursor:move;user-select:none;overflow:hidden;
+}
+#legend h4 {
+  font-size: 1.05em; margin-bottom: 0.7em; white-space: nowrap; color: #333;
+  border-bottom: 2px solid #eee; padding-bottom: 6px;
+}
+#legend-close {
+  float: right; cursor: pointer; font-size: 16px; color: #aaa;
+}
+#legend-close:hover { color: #333; }
+.legend-row { display: flex; align-items: center; margin-bottom: 10px; }
+.legend-swatch {
+  width: 20px; height: 20px; border-radius: 4px;
+  margin-right: 12px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.25);
+  display: inline-block !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+#notes-bar {
+  display: none; position: absolute; top: 58px; left: 10px;
+  right: 10px; z-index: 1000;
+  background: #FFF8E1; border-left: 4px solid #F5A623;
+  border-radius: 6px; padding: 8px 12px;
+  font-size: 12px; color: #555; max-width: 500px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#tab-bar {
+  display: flex; background: #4CAF50;
+  padding: 0 12px; height: 40px; box-sizing: border-box;
+}
+.tab-btn {
+  padding: 8px 20px; cursor: pointer; color: rgba(255,255,255,0.7);
+  font-size: 13px; font-weight: bold; border: none;
+  background: transparent; border-bottom: 3px solid transparent;
+}
+.tab-btn.active {
+  color: white; border-bottom: 3px solid white;
+}
+
+#table-view {
+  display: none; height: calc(100vh - 90px);
+  overflow-x: scroll; overflow-y: auto; padding: 16px; background: #f5f5f5;
+}
+#table-view::-webkit-scrollbar {
+  height: 12px; width: 12px;
+}
+#table-view::-webkit-scrollbar-track {
+  background: #ddd; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb {
+  background: #888; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+#search-box {
+  width: 100%; max-width: 400px; padding: 8px 12px;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: 14px; margin-bottom: 12px;
+}
+#data-table {
+  width: 1480px; border-collapse: collapse;
+  table-layout: fixed;
+  background: white; font-size: 13px;
+}
+#table-wrapper {
+  display: block; overflow-x: auto;
+  border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#data-table th {
+  background: #4CAF50; color: white;
+  padding: 10px 12px; text-align: left;
+  cursor: pointer; white-space: nowrap;
+  user-select: none; position: sticky;
+  top: 0; z-index: 10; min-width: 60px;
+}
+#data-table th:hover { opacity: 0.85; }
+#data-table th.sort-asc::after { content: " "; font-size: 10px; }
+#data-table th.sort-desc::after { content: " "; font-size: 10px; }
+#data-table td {
+  padding: 8px 12px; border-bottom: 1px solid #eee;
+  vertical-align: top; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  max-width: 0;
+}
+#data-table td:hover {
+  white-space: normal; overflow: visible;
+  background: #fffde7; position: relative; z-index: 5;
+}
+#data-table th {
+  position: sticky; top: 0; z-index: 10;
+  resize: horizontal; overflow: auto;
+  min-width: 40px;
+}
+#data-table tr:hover td { background: #f0f4ff; }
+.badge-res   { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-biz2  { background: #7B2D8B; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-inst2 { background: #548235; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-vac2  { background: #808080; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-dnc2  { background: #cc0000; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-res2  { background: #E65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+#btn-bar {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; gap: 8px; align-items: center;
+}
+#share-btn, #print-btn {
+  background: rgba(255,255,255,0.95); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 14px;
+  font-size: 13px; font-weight: bold; color: #333;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#share-btn:hover, #print-btn:hover { background: #f0f0f0; }
+@media print {
+  @page { margin: 0; size: auto; }
+  #header, #tab-bar, #btn-bar, #share-btn, #print-btn, #mapid-search,
+  #notes-bar, #table-view,
+  .leaflet-control-container { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important;
+                overflow: hidden !important; }
+  #map { position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          z-index: 1 !important; }
+  #legend { z-index: 2 !important;
+             max-width: 200px !important;
+             right: 10px !important;
+             bottom: 10px !important;
+             left: auto !important;
+             top: auto !important;
+             font-size: 13px !important; }
+}
+#mapid-search {
+  background: rgba(255,255,255,0.97); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex; align-items: center; gap: 8px;
+}
+#mapid-search input {
+  border: none; outline: none; font-size: 13px;
+  width: 80px; background: transparent;
+}
+#mapid-search label {
+  font-size: 12px; color: #666; white-space: nowrap;
+}
+#mapid-search-clear {
+  cursor: pointer; color: #aaa; font-size: 14px;
+  display: none;
+}
+#mapid-search-clear:hover { color: #333; }
+.ml-hdr{padding:10px 16px;font-weight:bold;font-size:13px;color:white;letter-spacing:0.5px;}
+.ml-col-header{display:grid;background:#4472C4;color:white;font-size:12px;font-weight:bold;}
+.ml-col-header span{padding:6px 8px;white-space:nowrap;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.2);cursor:pointer;user-select:none;}
+.ml-col-header span:hover{background:rgba(255,255,255,0.15);}
+.ml-row{display:grid;font-size:12px;border-bottom:1px solid #eee;}
+.ml-row span{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ml-row:hover span{white-space:normal;overflow:visible;background:#fffde7;
+  position:relative;z-index:5;}
+.check-icon{font-size:16px;cursor:pointer;background:rgba(255,255,255,0.85);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  line-height:1;border:none!important;box-shadow:none!important;}
+.check-icon:hover{background:rgba(255,255,255,1);}
+.ml-even-g{background:#E2EFDA;}
+.ml-odd{background:#FFFFFF;}
+.ml-even-y{background:#FFF2CC;}
+.ml-dnc{background:#FFB3B3;}
+.ml-gap{height:12px;background:#e8e8e8;}
+.ml-none{padding:8px 16px;color:#888;font-size:12px;font-style:italic;}
+</style>
+</head>
+<body>
+<div id="header">
+  <div>
+    <h1>Apartment_419 Territory</h1>
+    <div class="subtitle">Apartment_419_20260721_1759.xlsx</div>
+  </div>
+  <div class="stats">
+    4 parcels &nbsp;&nbsp;
+    0 owner occupied &nbsp;&nbsp;
+    1 need research &nbsp;&nbsp;
+    0 vacant
+    
+  </div>
+</div>
+<div id="notes-bar">Before working apartment territories.  Please review the following:  KM 12/08 pg. 3-4 and KM 11/85 Pg. 3-6</div>
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="showTab('map')">&#x1F5FA; Map</button>
+  <button class="tab-btn" onclick="showTab('table')">&#x1F4CB; Mailing List</button>
+</div>
+<div id="map"></div>
+<div id="table-view">
+  <div style="padding:10px 16px 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()"
+      style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:300px;">
+    <button onclick="shareProgress()" style="padding:7px 14px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:white;font-weight:bold;">&#x1F4CB; Share Progress</button>
+  </div>
+  <div id="table-body"></div>
+</div>
+<div id="btn-bar">
+<button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+<button id="print-btn" onclick="printMap()">&#x1F5A8; Print Map</button>
+<div id="mapid-search">
+  <label>&#x1F50D; MapID</label>
+  <input type="number" id="mapid-input" placeholder="e.g. 42" min="1"
+    oninput="searchMapID(this.value)"
+    onkeydown="if(event.key==='Escape'){clearMapID();}" />
+  <span id="mapid-search-clear" onclick="clearMapID()">&#x2715;</span>
+</div>
+<div id="opacity-ctrl" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.97);border:1px solid #ccc;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <label style="font-size:12px;color:#666;white-space:nowrap;">&#x1F3A8; Fill</label>
+  <input type="range" id="opacity-slider" min="0" max="100" value="30"
+    style="width:80px;cursor:pointer;"
+    oninput="setParcelOpacity(this.value/100)" />
+  <span id="opacity-val" style="font-size:12px;color:#666;width:32px;">30%</span>
+</div>
+</div>
+<div id="legend">
+  <h4>Legend <span id="legend-close" onclick="document.getElementById('legend').style.display='none'">&#x2715;</span></h4>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#2E5496"></div>Confident Resident
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#FFFF00"></div>Needs Research
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#228B22"></div>Verified
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#E65100"></div>Suspect — verify before mailing
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#8B4513"></div>Institution
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#7B2D8B"></div>Business
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#808080"></div>Vacant
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#CC0000"></div>Do Not Contact
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#222222;border:2px solid #FFFFFF;box-sizing:border-box"></div>Completed
+  </div>
+  <div class="legend-resizer" id="legend-resizer"></div>
+</div>
+<script>
+var map = L.map('map', {zoomControl: true, preferCanvas: true, scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.25});
+document.getElementById('map').addEventListener('wheel', function(e){ e.preventDefault(); var delta = e.deltaY > 0 ? -0.25 : 0.25; var mousePos = map.mouseEventToLatLng(e); map.setZoomAround(mousePos, map.getZoom() + delta); }, {passive: false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: ' OpenStreetMap contributors | CartoDB', maxZoom: 20, subdomains: 'abcd'
+}).addTo(map);
+
+var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.48344683647156, 43.8010299941675], [-88.48320543766022, 43.80075509879992], [-88.48095238208771, 43.800727996371236], [-88.48033010959625, 43.79988007132189], [-88.47959518432617, 43.7999149177939], [-88.4796005487442, 43.8004027662681], [-88.47854375839233, 43.80066217613611], [-88.47784101963043, 43.800031072553814], [-88.47872614860535, 43.79960517066344], [-88.48056614398956, 43.799535477337784], [-88.48240077495575, 43.799512246211194], [-88.4837418794632, 43.799504502500305], [-88.48402619361877, 43.799694223127936], [-88.48471283912659, 43.800224663318566], [-88.48344683647156, 43.8010299941675], [-88.48344683647156, 43.8010299941675], [-88.48344683647156, 43.8010299941675]]], "type": "Polygon"}, "properties": {}}]};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.480389, 43.7995421870034], [-88.480389, 43.799555], [-88.480301, 43.799555], [-88.480301, 43.79954552017081], [-88.480389, 43.7995421870034]]]}, "properties": {"mapid": 3, "subid": "22", "site": "1 ORIOLE PKWY, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483309, 43.799625], [-88.483354, 43.799627], [-88.483364, 43.79953], [-88.483409, 43.799532], [-88.483393, 43.799705], [-88.483302, 43.799701], [-88.483309, 43.799625]]]}, "properties": {"mapid": 2, "subid": "8", "site": "38 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.482778, 43.799547], [-88.482866, 43.799531], [-88.482928, 43.799707], [-88.48284, 43.799723], [-88.482778, 43.799547]]]}, "properties": {"mapid": 3, "subid": "58", "site": "34 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483144, 43.799723], [-88.483087, 43.799723], [-88.483087, 43.799535], [-88.483144, 43.799535], [-88.483144, 43.799723]]]}, "properties": {"mapid": 3, "subid": "59", "site": "36 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.481608, 43.79953], [-88.481716, 43.799728], [-88.481662, 43.799743], [-88.481554, 43.799546], [-88.481608, 43.79953]]]}, "properties": {"mapid": 3, "subid": "48", "site": "24 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.482103, 43.799543], [-88.482193, 43.799719], [-88.482141, 43.799733], [-88.482052, 43.799557], [-88.482103, 43.799543]]]}, "properties": {"mapid": 3, "subid": "52", "site": "28 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.47887, 43.800333], [-88.478708, 43.80019], [-88.478753, 43.800164], [-88.478915, 43.800306], [-88.47887, 43.800333]]]}, "properties": {"mapid": 3, "subid": "39", "site": "2 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.479908, 43.799666], [-88.479618, 43.799667], [-88.479618, 43.799615], [-88.479907, 43.799613], [-88.479908, 43.799666]]]}, "properties": {"mapid": 3, "subid": "63", "site": "4 ORIOLE PKWY, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.480201, 43.799604], [-88.480255, 43.799735], [-88.480203, 43.799746], [-88.480149, 43.799615], [-88.480201, 43.799604]]]}, "properties": {"mapid": 3, "subid": "27", "site": "12 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.479563, 43.799775], [-88.479492, 43.799776], [-88.479492, 43.79959], [-88.479563, 43.79959], [-88.479563, 43.799775]]]}, "properties": {"mapid": 3, "subid": "24", "site": "10 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.479317, 43.799607], [-88.479358, 43.799762], [-88.479298, 43.799771], [-88.479256, 43.799616], [-88.479317, 43.799607]]]}, "properties": {"mapid": 3, "subid": "68", "site": "8 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.479075, 43.799798], [-88.479007, 43.799618], [-88.479059, 43.799608], [-88.479127, 43.799788], [-88.479075, 43.799798]]]}, "properties": {"mapid": 3, "subid": "65", "site": "6 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.478797, 43.799756], [-88.478762, 43.799764], [-88.478723, 43.799679], [-88.478818, 43.799656], [-88.478899, 43.79983], [-88.478838, 43.799845], [-88.478797, 43.799756]]]}, "properties": {"mapid": 3, "subid": "62", "site": "4 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.482439, 43.799727], [-88.482384, 43.799742], [-88.482289, 43.79955], [-88.482343, 43.799536], [-88.482439, 43.799727]]]}, "properties": {"mapid": 3, "subid": "54", "site": "30 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.481385, 43.799565], [-88.481455, 43.799728], [-88.48139, 43.799743], [-88.48132, 43.799579], [-88.481385, 43.799565]]]}, "properties": {"mapid": 3, "subid": "45", "site": "22 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48114, 43.799559], [-88.481227, 43.799734], [-88.48116, 43.799751], [-88.481074, 43.799577], [-88.48114, 43.799559]]]}, "properties": {"mapid": 3, "subid": "41", "site": "20 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483731, 43.799572], [-88.483672, 43.799755], [-88.483618, 43.799746], [-88.483678, 43.799563], [-88.483731, 43.799572]]]}, "properties": {"mapid": 2, "subid": "10", "site": "40 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48091, 43.799587], [-88.480987, 43.799737], [-88.480932, 43.799752], [-88.480856, 43.799602], [-88.48091, 43.799587]]]}, "properties": {"mapid": 3, "subid": "37", "site": "18 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.480356, 43.79959], [-88.480407, 43.799576], [-88.480499, 43.799743], [-88.48042, 43.799766], [-88.480379, 43.799692], [-88.480407, 43.799684], [-88.480356, 43.79959]]]}, "properties": {"mapid": 3, "subid": "30", "site": "14 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.480648, 43.799763], [-88.480559, 43.799622], [-88.480655, 43.799591], [-88.480743, 43.799731], [-88.480648, 43.799763]]]}, "properties": {"mapid": 3, "subid": "34", "site": "16 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483882, 43.79964], [-88.483943, 43.799659], [-88.483843, 43.799825], [-88.483782, 43.799806], [-88.483882, 43.79964]]]}, "properties": {"mapid": 2, "subid": "12", "site": "42 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.478631, 43.799941], [-88.478418, 43.799796], [-88.478465, 43.799761], [-88.478678, 43.799906], [-88.478631, 43.799941]]]}, "properties": {"mapid": 3, "subid": "39", "site": "2 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48272, 43.799963], [-88.48279, 43.800099], [-88.482734, 43.800114], [-88.482664, 43.799978], [-88.48272, 43.799963]]]}, "properties": {"mapid": 3, "subid": "55", "site": "31 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.482235, 43.799961], [-88.482304, 43.800114], [-88.482248, 43.800127], [-88.48218, 43.799974], [-88.482235, 43.799961]]]}, "properties": {"mapid": 3, "subid": "51", "site": "27 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.482988, 43.800138], [-88.482907, 43.799964], [-88.482958, 43.799951], [-88.48304, 43.800125], [-88.482988, 43.800138]]]}, "properties": {"mapid": 3, "subid": "57", "site": "33 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.482481, 43.799953], [-88.482573, 43.800122], [-88.48251, 43.80014], [-88.482418, 43.79997], [-88.482481, 43.799953]]]}, "properties": {"mapid": 3, "subid": "53", "site": "29 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.481778, 43.800153], [-88.481695, 43.799975], [-88.481753, 43.799961], [-88.481836, 43.800139], [-88.481778, 43.800153]]]}, "properties": {"mapid": 3, "subid": "47", "site": "23 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48058, 43.800059], [-88.480556, 43.800064], [-88.480586, 43.800134], [-88.48053, 43.800147], [-88.480466, 43.799997], [-88.480546, 43.79998], [-88.48058, 43.800059]]]}, "properties": {"mapid": 3, "subid": "29", "site": "13 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483453, 43.800141], [-88.483407, 43.800133], [-88.483454, 43.799993], [-88.4835, 43.800001], [-88.483453, 43.800141]]]}, "properties": {"mapid": 2, "subid": "11", "site": "41 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.480786, 43.79998], [-88.480835, 43.800068], [-88.480798, 43.800078], [-88.480839, 43.800154], [-88.480791, 43.800168], [-88.480701, 43.800005], [-88.480786, 43.79998]]]}, "properties": {"mapid": 3, "subid": "32", "site": "15 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.481411, 43.800072], [-88.481457, 43.800072], [-88.481457, 43.80012], [-88.481207, 43.80012], [-88.481207, 43.800079], [-88.481355, 43.800079], [-88.481355, 43.800047], [-88.481411, 43.800047], [-88.481411, 43.800072]]]}, "properties": {"mapid": 3, "subid": "21", "site": "1 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.479441, 43.800176], [-88.479436, 43.800033], [-88.479507, 43.800031], [-88.479512, 43.800174], [-88.479441, 43.800176]]]}, "properties": {"mapid": 3, "subid": "70", "site": "9 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.479231, 43.800202], [-88.479185, 43.800028], [-88.479245, 43.80002], [-88.479291, 43.800194], [-88.479231, 43.800202]]]}, "properties": {"mapid": 3, "subid": "66", "site": "7 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.479006, 43.800064], [-88.479109, 43.800212], [-88.479049, 43.800234], [-88.478946, 43.800085], [-88.479006, 43.800064]]]}, "properties": {"mapid": 3, "subid": "66", "site": "7 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484305, 43.800193], [-88.484257, 43.800168], [-88.484389, 43.800038], [-88.484437, 43.800064], [-88.484305, 43.800193]]]}, "properties": {"mapid": 2, "subid": "17", "site": "48 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.484521, 43.800275], [-88.484448, 43.800218], [-88.484468, 43.800204], [-88.484396, 43.800148], [-88.484435, 43.800122], [-88.48458, 43.800235], [-88.484521, 43.800275]]]}, "properties": {"mapid": 2, "subid": "9", "site": "4 ROBIN DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483135, 43.800177], [-88.483377, 43.800235], [-88.483348, 43.800298], [-88.483222, 43.800268], [-88.483228, 43.800254], [-88.483112, 43.800226], [-88.483135, 43.800177]]]}, "properties": {"mapid": 2, "subid": "11", "site": "41 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.482627, 43.800167], [-88.482722, 43.800342], [-88.482668, 43.800357], [-88.482573, 43.800182], [-88.482627, 43.800167]]]}, "properties": {"mapid": 3, "subid": "38", "site": "19 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.481694, 43.800362], [-88.481613, 43.800192], [-88.481661, 43.80018], [-88.481742, 43.800351], [-88.481694, 43.800362]]]}, "properties": {"mapid": 3, "subid": "25", "site": "11 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48217, 43.800364], [-88.482101, 43.800198], [-88.482158, 43.800186], [-88.482227, 43.800352], [-88.48217, 43.800364]]]}, "properties": {"mapid": 3, "subid": "31", "site": "15 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.481939, 43.800364], [-88.481922, 43.80033], [-88.48191, 43.800333], [-88.481854, 43.800217], [-88.481916, 43.800201], [-88.481989, 43.800351], [-88.481939, 43.800364]]]}, "properties": {"mapid": 3, "subid": "28", "site": "13 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.480727, 43.800343], [-88.4807, 43.80029], [-88.480945, 43.800223], [-88.480972, 43.800276], [-88.480727, 43.800343]]]}, "properties": {"mapid": 3, "subid": "61", "site": "4 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.481429, 43.800196], [-88.481529, 43.800368], [-88.481467, 43.800386], [-88.481367, 43.800214], [-88.481429, 43.800196]]]}, "properties": {"mapid": 3, "subid": "69", "site": "9 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.482359, 43.800245], [-88.482442, 43.800235], [-88.482467, 43.800347], [-88.482383, 43.800356], [-88.482359, 43.800245]]]}, "properties": {"mapid": 3, "subid": "35", "site": "17 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.482317, 43.800263], [-88.48235, 43.800319], [-88.482294, 43.800335], [-88.482261, 43.800279], [-88.482317, 43.800263]]]}, "properties": {"mapid": 3, "subid": "31", "site": "15 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483829, 43.800235], [-88.483878, 43.800257], [-88.483764, 43.80039], [-88.483715, 43.800368], [-88.483829, 43.800235]]]}, "properties": {"mapid": 2, "subid": "16", "site": "47 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48066613538448, 43.80033794899924], [-88.480673, 43.800334], [-88.480724, 43.800381], [-88.48070553262703, 43.80039163272989], [-88.48066613538448, 43.80033794899924]]]}, "properties": {"mapid": 3, "subid": "64", "site": "6 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483995, 43.800334], [-88.48409, 43.800368], [-88.483982, 43.800526], [-88.483887, 43.800492], [-88.483995, 43.800334]]]}, "properties": {"mapid": 2, "subid": "18", "site": "49 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483503, 43.800555], [-88.483481, 43.800591], [-88.48339, 43.800563], [-88.483465, 43.800435], [-88.48343, 43.800424], [-88.483454, 43.800382], [-88.483493, 43.800394], [-88.483534, 43.800324], [-88.483585, 43.80034], [-88.483466, 43.800544], [-88.483503, 43.800555]]]}, "properties": {"mapid": 2, "subid": "7", "site": "10 ROBIN DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.481113, 43.800424], [-88.480857, 43.800545], [-88.480822, 43.800506], [-88.481077, 43.800385], [-88.481113, 43.800424]]]}, "properties": {"mapid": 3, "subid": "64", "site": "6 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483745, 43.800474], [-88.483889, 43.800545], [-88.483844, 43.800593], [-88.483784, 43.800563], [-88.483802, 43.800544], [-88.483718, 43.800502], [-88.483745, 43.800474]]]}, "properties": {"mapid": 2, "subid": "20", "site": "8 ROBIN DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48079769093653, 43.80051721009383], [-88.480844, 43.800566], [-88.48083631619717, 43.80056984190142], [-88.48079769093653, 43.80051721009383]]]}, "properties": {"mapid": 3, "subid": "64", "site": "6 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.482881, 43.800635], [-88.482583, 43.800635], [-88.482583, 43.800594], [-88.482881, 43.800594], [-88.482881, 43.800635]]]}, "properties": {"mapid": 3, "subid": "40", "site": "20 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.481188, 43.80053], [-88.481261, 43.800566], [-88.481124, 43.800711], [-88.481051, 43.800675], [-88.481188, 43.80053]]]}, "properties": {"mapid": 3, "subid": "67", "site": "8 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.481395, 43.800653], [-88.481395, 43.8006], [-88.481719, 43.800599], [-88.48172, 43.800651], [-88.481395, 43.800653]]]}, "properties": {"mapid": 3, "subid": "23", "site": "10 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48248, 43.800648], [-88.482187, 43.80065], [-88.482186, 43.800604], [-88.48248, 43.800603], [-88.48248, 43.800648]]]}, "properties": {"mapid": 3, "subid": "36", "site": "18 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.482024, 43.800645], [-88.482024, 43.80068], [-88.481957, 43.80068], [-88.481957, 43.800647], [-88.481818, 43.800648], [-88.481818, 43.800691], [-88.481756, 43.800691], [-88.481756, 43.800597], [-88.482115, 43.800596], [-88.482115, 43.800645], [-88.482024, 43.800645]]]}, "properties": {"mapid": 3, "subid": "26", "site": "12 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.483246, 43.80080128957957], [-88.483246, 43.800773], [-88.483535, 43.800773], [-88.483535, 43.800819], [-88.4832615523699, 43.800819], [-88.483246, 43.80080128957957]]]}, "properties": {"mapid": 2, "subid": "7", "site": "10 ROBIN DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.4839874220164, 43.79994290616573], [-88.48394263368698, 43.799926817841225], [-88.48406076095488, 43.799754296009716], [-88.48410554918713, 43.799770384288394], [-88.4839874220164, 43.79994290616573]]]}, "properties": {"mapid": 2, "subid": "13", "site": "44 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48261395949066, 43.79971771261126], [-88.48251899975696, 43.79954091446869], [-88.48256991470373, 43.79952656819678], [-88.48266487580744, 43.799703366297706], [-88.48261395949066, 43.79971771261126]]]}, "properties": {"mapid": 3, "subid": "56", "site": "32 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48179552475798, 43.79955144038361], [-88.48184673793295, 43.799537661479356], [-88.48193794153795, 43.79971549458324], [-88.48188672698946, 43.79972927352771], [-88.48179552475798, 43.79955144038361]]]}, "properties": {"mapid": 3, "subid": "50", "site": "26 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48411347316744, 43.79987805649529], [-88.48412490966759, 43.7998601265503], [-88.48417854593052, 43.799878073621905], [-88.48413947165066, 43.79993933458056], [-88.48407139408941, 43.79991655519684], [-88.48409903192044, 43.79987322420479], [-88.48411347316744, 43.79987805649529]]]}, "properties": {"mapid": 2, "subid": "15", "site": "46 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48439289543262, 43.79997750376959], [-88.48438737891041, 43.79997463328449], [-88.48438816011532, 43.799973845691895], [-88.48439289543262, 43.79997750376959]]]}, "properties": {"mapid": 2, "subid": "17", "site": "48 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48415709544427, 43.80006070157615], [-88.48410490844017, 43.80004063700444], [-88.48422850056103, 43.799871996548646], [-88.48428068745976, 43.79989206106447], [-88.48415709544427, 43.80006070157615]]]}, "properties": {"mapid": 2, "subid": "15", "site": "46 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48317510345588, 43.800083518349425], [-88.48312896154475, 43.799932378706586], [-88.48319015156198, 43.799922578658915], [-88.48325155848858, 43.800123718929534], [-88.4831982143232, 43.80013226286811], [-88.4831829482544, 43.80008226130866], [-88.48317510345588, 43.800083518349425]]]}, "properties": {"mapid": 3, "subid": "60", "site": "37 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48193144159814, 43.799971179017284], [-88.48197918954801, 43.799957357206985], [-88.48207162121817, 43.80012487012313], [-88.48202387315645, 43.800138691071616], [-88.48193144159814, 43.799971179017284]]]}, "properties": {"mapid": 3, "subid": "49", "site": "25 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48153838075916, 43.799960803139435], [-88.48155999013315, 43.8000348160543], [-88.4815379804282, 43.80003818748859], [-88.48155294154212, 43.8000894267143], [-88.48156551834947, 43.80008750005072], [-88.48157715410643, 43.80012735377878], [-88.48152055781043, 43.80013602150954], [-88.48150825800774, 43.80009389157683], [-88.48147397631772, 43.800077730185066], [-88.48149876820798, 43.80005014120338], [-88.48146639115096, 43.80003487741418], [-88.4814487713284, 43.79997452797878], [-88.48153838075916, 43.799960803139435]]]}, "properties": {"mapid": 3, "subid": "43", "site": "21 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48356392629441, 43.80023669675657], [-88.483700943416, 43.80005647404989], [-88.48374672774248, 43.80007473430232], [-88.48360971071676, 43.80025495706333], [-88.48356392629441, 43.80023669675657]]]}, "properties": {"mapid": 2, "subid": "14", "site": "45 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48323790279059, 43.80058032841088], [-88.48323889699067, 43.8006198924062], [-88.48295292087127, 43.80062366339461], [-88.48295192561724, 43.80058409939666], [-88.48323790279059, 43.80058032841088]]]}, "properties": {"mapid": 3, "subid": "40", "site": "20 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.47836291978841, 43.79988221097544], [-88.47842725047396, 43.799831144723825], [-88.47850614809211, 43.79988328559722], [-88.47844181866037, 43.79993435189305], [-88.47836291978841, 43.79988221097544]]]}, "properties": {"mapid": 3, "subid": "39", "site": "2 GASLIGHT DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48226723403765, 43.80045068499177], [-88.48206453492169, 43.80045068499177], [-88.48206453492169, 43.800596983869255], [-88.48226723403765, 43.800596983869255], [-88.48226723403765, 43.80045068499177]]]}, "properties": {"mapid": "3", "subid": "33", "site": "16 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48307487128105, 43.800207038722064], [-88.48285467945155, 43.800207038722064], [-88.48285467945155, 43.80036596366506], [-88.48307487128105, 43.80036596366506], [-88.48307487128105, 43.800207038722064]]]}, "properties": {"mapid": "3", "subid": "42", "site": "21 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48330504334407, 43.80041492744149], [-88.48316134473129, 43.80041492744149], [-88.48316134473129, 43.80051864257474], [-88.48330504334407, 43.80051864257474], [-88.48330504334407, 43.80041492744149]]]}, "properties": {"mapid": "3", "subid": "44", "site": "22 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48330314228174, 43.80028514495168], [-88.48315944398108, 43.80028514495168], [-88.48315944398108, 43.80038886008493], [-88.48330314228174, 43.80038886008493], [-88.48330314228174, 43.80028514495168]]]}, "properties": {"mapid": "3", "subid": "46", "site": "23 CHICKADEE CT, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.48413011933924, 43.800460351514694], [-88.4839842692859, 43.800460351514694], [-88.4839842692859, 43.800565619378624], [-88.48413011933924, 43.800565619378624], [-88.48413011933924, 43.800460351514694]]]}, "properties": {"mapid": "2", "subid": "19", "site": "6 ROBIN DR, North Fond du Lac WI 54937", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "From Fond du Lac County GIS", "_county_synth": true}}]};
+var isApartment = true;
+var _TERRITORY = 'Apartment_419';
+var _BUILD_TS = '20260721_175922';
+var tableData = [{"mapid": "7", "owner": "", "owner2": "", "site": "10 ROBIN DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "8", "owner": "", "owner2": "", "site": "38 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "9", "owner": "", "owner2": "", "site": "4 ROBIN DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "10", "owner": "", "owner2": "", "site": "40 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "11", "owner": "", "owner2": "", "site": "41 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "12", "owner": "", "owner2": "", "site": "42 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "13", "owner": "", "owner2": "", "site": "44 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "14", "owner": "", "owner2": "", "site": "45 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "15", "owner": "", "owner2": "", "site": "46 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "16", "owner": "", "owner2": "", "site": "47 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "17", "owner": "", "owner2": "", "site": "48 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "18", "owner": "", "owner2": "", "site": "49 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "19", "owner": "", "owner2": "", "site": "6 ROBIN DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "20", "owner": "", "owner2": "", "site": "8 ROBIN DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "21", "owner": "", "owner2": "", "site": "1 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "22", "owner": "", "owner2": "", "site": "1 ORIOLE PKWY", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "23", "owner": "", "owner2": "", "site": "10 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "24", "owner": "", "owner2": "", "site": "10 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "25", "owner": "", "owner2": "", "site": "11 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "26", "owner": "", "owner2": "", "site": "12 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "27", "owner": "", "owner2": "", "site": "12 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "28", "owner": "", "owner2": "", "site": "13 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "29", "owner": "", "owner2": "", "site": "13 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "30", "owner": "", "owner2": "", "site": "14 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "31", "owner": "", "owner2": "", "site": "15 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "32", "owner": "", "owner2": "", "site": "15 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "33", "owner": "", "owner2": "", "site": "16 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "34", "owner": "", "owner2": "", "site": "16 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "35", "owner": "", "owner2": "", "site": "17 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "36", "owner": "", "owner2": "", "site": "18 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "37", "owner": "", "owner2": "", "site": "18 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "38", "owner": "", "owner2": "", "site": "19 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "39", "owner": "", "owner2": "", "site": "2 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "40", "owner": "", "owner2": "", "site": "20 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "41", "owner": "", "owner2": "", "site": "20 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "42", "owner": "", "owner2": "", "site": "21 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "43", "owner": "", "owner2": "", "site": "21 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "44", "owner": "", "owner2": "", "site": "22 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "45", "owner": "", "owner2": "", "site": "22 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "46", "owner": "", "owner2": "", "site": "23 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "47", "owner": "", "owner2": "", "site": "23 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "48", "owner": "", "owner2": "", "site": "24 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "49", "owner": "", "owner2": "", "site": "25 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "50", "owner": "", "owner2": "", "site": "26 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "51", "owner": "", "owner2": "", "site": "27 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "52", "owner": "", "owner2": "", "site": "28 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "53", "owner": "", "owner2": "", "site": "29 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "54", "owner": "", "owner2": "", "site": "30 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "55", "owner": "", "owner2": "", "site": "31 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "56", "owner": "", "owner2": "", "site": "32 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "57", "owner": "", "owner2": "", "site": "33 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "58", "owner": "", "owner2": "", "site": "34 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "59", "owner": "", "owner2": "", "site": "36 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "60", "owner": "", "owner2": "", "site": "37 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "61", "owner": "", "owner2": "", "site": "4 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "62", "owner": "", "owner2": "", "site": "4 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "63", "owner": "", "owner2": "", "site": "4 ORIOLE PKWY", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "64", "owner": "", "owner2": "", "site": "6 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "65", "owner": "", "owner2": "", "site": "6 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "66", "owner": "", "owner2": "", "site": "7 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "67", "owner": "", "owner2": "", "site": "8 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "68", "owner": "", "owner2": "", "site": "8 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "69", "owner": "", "owner2": "", "site": "9 CHICKADEE CT", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "70", "owner": "", "owner2": "", "site": "9 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "71", "owner": "", "owner2": "", "site": "1 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "72", "owner": "", "owner2": "", "site": "5 GASLIGHT DR", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}];
+
+if (boundaryData) {
+  var boundary = L.geoJSON(boundaryData, {
+    style: {
+      color: '#4CAF50', weight: 3, opacity: 1,
+      fillColor: '#4CAF50', fillOpacity: 0.04,
+      dashArray: '8,5'
+    }
+  }).addTo(map);
+  map.fitBounds(boundary.getBounds(), {padding: [30, 30]});
+  // Territory name label — centered on boundary, semi-transparent
+  var bounds = boundary.getBounds();
+  var center = bounds.getCenter();
+  L.marker(center, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:52px;font-weight:900;'
+           +'color:#1A3A6B;opacity:0.55;'
+           +'white-space:nowrap;pointer-events:none;'
+           +'position:relative;z-index:9999;'
+           +'text-shadow:2px 2px 0px white,-2px -2px 0px white,2px -2px 0px white,-2px 2px 0px white;'
+           +'transform:translate(-50%,-50%);">Apartment_419</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    }),
+    interactive: false
+  }).addTo(map);
+}
+
+var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.48327552860476, 43.80083491558054], [-88.48322027676234, 43.799866666783494], [-88.483215599024, 43.79978468628387], [-88.48319978995114, 43.799507632595265], [-88.4837418794632, 43.799504502500305], [-88.48402619361877, 43.799694223127936], [-88.48471283912659, 43.800224663318566], [-88.48344683647156, 43.8010299941675], [-88.48327552860476, 43.80083491558054]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved1", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "city": "", "state": "", "zip": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.47959518432617, 43.7999149177939], [-88.4795952906612, 43.7999245880657], [-88.47934248568784, 43.79992862557887], [-88.47925157877576, 43.799929922224834], [-88.47916126267647, 43.799937528183996], [-88.47907237015917, 43.79995137332477], [-88.47898572086814, 43.79997132998653], [-88.47890211376577, 43.79999721415649], [-88.47882231976624, 43.80002878716631], [-88.47874707462783, 43.80006575789264], [-88.47867707216898, 43.80010778544101], [-88.47830544854861, 43.800312352275135], [-88.4782116932808, 43.80036396079236], [-88.47813772293094, 43.80029753076842], [-88.4782335121393, 43.8002448028401], [-88.47860513682883, 43.80004023623764], [-88.47868347534609, 43.799994773888265], [-88.47876733964202, 43.79995481614774], [-88.4788559948781, 43.79992071313035], [-88.47894866424124, 43.79989276365011], [-88.47904453574998, 43.79987121260266], [-88.4791427693684, 43.799856248819935], [-88.47924250436597, 43.79984800341555], [-88.4793428668585, 43.799846548636275], [-88.47994950205023, 43.79983686740152], [-88.48000782161071, 43.799877093976356], [-88.47998241983723, 43.79989655702724], [-88.47959518432617, 43.7999149177939]]], [[[-88.47823634355454, 43.79984085258434], [-88.4782430858959, 43.799982217996536], [-88.47814441390051, 43.79988508683104], [-88.47823634355454, 43.79984085258434]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved2", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "city": "", "state": "", "zip": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.47785464934661, 43.8000433128957], [-88.47797379058076, 43.80001600359694], [-88.47796888047166, 43.79996954911991], [-88.47814441390051, 43.79988508683104], [-88.4782430858959, 43.799982217996536], [-88.47837532818782, 43.80011239163228], [-88.47809683574076, 43.80026081150147], [-88.47785464934661, 43.8000433128957]]]], "type": "MultiPolygon"}, "properties": {"mapid": 4, "owner": "Unknown Owner", "site": "North Fond du Lac WI 54937", "mail": "31200 NORTHWESTERN HWY", "sheet": "Main", "occupied": "Unknown", "btype": "Residential", "research": "Yes", "salute": "Dear Neighbor", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "Person", "confidence": "Low", "addressas": "Current Resident", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "city": "Farmington Hills", "state": "MI", "zip": "48334", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.48320543766022, 43.80075509879992], [-88.48095238208771, 43.800727996371236], [-88.48033010959625, 43.79988007132189], [-88.47998241983723, 43.79989655702724], [-88.48000782161071, 43.799877093976356], [-88.47994950205023, 43.79983686740152], [-88.4793428668585, 43.799846548636275], [-88.47924250436597, 43.79984800341555], [-88.4791427693684, 43.799856248819935], [-88.47904453574998, 43.79987121260266], [-88.47894866424124, 43.79989276365011], [-88.4788559948781, 43.79992071313035], [-88.47876733964202, 43.79995481614774], [-88.47868347534609, 43.799994773888265], [-88.47860513682883, 43.80004023623764], [-88.4782335121393, 43.8002448028401], [-88.47813772293094, 43.80029753076842], [-88.47809683574076, 43.80026081150147], [-88.47837532818782, 43.80011239163228], [-88.4782430858959, 43.799982217996536], [-88.47823634355454, 43.79984085258434], [-88.47872614860535, 43.79960517066344], [-88.48056614398956, 43.799535477337784], [-88.48240077495575, 43.799512246211194], [-88.48319978995114, 43.799507632595265], [-88.483215599024, 43.79978468628387], [-88.48322027676234, 43.799866666783494], [-88.48327552860476, 43.80083491558054], [-88.48320543766022, 43.80075509879992]]], [[[-88.4796005487442, 43.8004027662681], [-88.47950685090782, 43.80042576623524], [-88.47942001941384, 43.80031882327816], [-88.4790819868862, 43.80038084368848], [-88.47880088059401, 43.800530759252894], [-88.4785504887801, 43.800284457224556], [-88.47828237779596, 43.8004274399302], [-88.4782116932808, 43.80036396079236], [-88.47830544854861, 43.800312352275135], [-88.47867707216898, 43.80010778544101], [-88.47874707462783, 43.80006575789264], [-88.47882231976624, 43.80002878716631], [-88.47890211376577, 43.79999721415649], [-88.47898572086814, 43.79997132998653], [-88.47907237015917, 43.79995137332477], [-88.47916126267647, 43.799937528183996], [-88.47925157877576, 43.799929922224834], [-88.47934248568784, 43.79992862557887], [-88.4795952906612, 43.7999245880657], [-88.4796005487442, 43.8004027662681]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved3", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "city": "", "state": "", "zip": ""}}]};
+
+var _parcelLayers={};
+
+// 2026-07-12: Google Maps sometimes can't geocode certain county-style
+// street-suffix abbreviations -- "LA" for Lane is the confirmed case
+// (Google appears to read it as the Louisiana state code instead), even
+// though the rest of the address is fine. Swap in the USPS-standard
+// abbreviation just for the directions/search links, leaving the
+// displayed/mailing address untouched. Add more replacements here if
+// other suffixes turn out to trip Google up too.
+function _mapsAddr(site) {
+  if (!site) return site;
+  return site.replace(/\bLA\b\.?/gi, 'Ln');
+}
+
+function getPopup(p) {
+  var badge = '';
+  if (p.dnc === 'YES') badge = '<span class="popup-badge badge-dnc">DO NOT CONTACT</span>';
+  else if (p.sheet === 'Institutions') badge = '<span class="popup-badge badge-inst">' + p.btype + '</span>';
+  else if (p.sheet === 'Vacant') badge = '<span class="popup-badge badge-vacant">Vacant</span>';
+  else if (p.btype === 'Commercial / Rental') badge = '<span class="popup-badge badge-biz">Business</span>';
+  else if (p.occupied === 'Yes') badge = '<span class="popup-badge badge-owner">Owner Occupied</span>';
+  if (p.research === 'Yes') badge += '<span class="popup-badge badge-research">Research Needed</span>';
+
+  var mailHtml = p.mail ? '<div class="popup-mail"> ' + p.mail + '</div>' : '';
+  var saluteHtml = p.salute && p.salute !== 'nan' ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+  // 2026-07-12: p.site is already the full "street, city state zip" address
+  // (built that way in refresh_html_map.py) -- appending ", Fond du Lac, WI"
+  // on top of that duplicated the city/state/zip and made Google Maps fail
+  // to find the address (confirmed by Steve). Use p.site as-is.
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+  var viewUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(_mapsAddr(p.site));
+  var mapsHtml = p.site ? '<div style="margin-top:6px"><a href="' + mapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>' : '';
+
+  return '<div class="popup-inner">' +
+    '<div class="popup-mapid">Parcel #' + p.mapid + '</div>' +
+    '<div class="popup-site">' + p.site + '</div>' +
+    '<div class="popup-owner">' + p.owner + '</div>' +
+    mailHtml + saluteHtml +
+    mapsHtml +
+    '<div style="margin-top:6px">' + badge + '</div>' +
+    '</div>';
+}
+
+function getParcelArea(feature) {
+  var coords = feature.geometry.coordinates;
+  var allPoints = [];
+  function collectPoints(c) {
+    if (typeof c[0] === 'number') { allPoints.push(c); }
+    else { c.forEach(collectPoints); }
+  }
+  collectPoints(coords);
+  if (allPoints.length < 2) return 0;
+  var lats = allPoints.map(function(p) { return p[1]; });
+  var lngs = allPoints.map(function(p) { return p[0]; });
+  return (Math.max.apply(null,lats)-Math.min.apply(null,lats)) * (Math.max.apply(null,lngs)-Math.min.apply(null,lngs));
+}
+var DEFAULT_FILL_OPACITY = 0.3;  // 2026-07-14: matches opacity-slider's value="30" -- getOpacity()
+                                  // previously always returned 1.0 regardless of the slider default,
+                                  // so parcels loaded fully opaque until the slider was touched by hand.
+function getOpacity(feature) {
+  return DEFAULT_FILL_OPACITY;
+}
+// Store per-parcel area for label sizing
+var parcelAreas = {};
+parcelsData.features.forEach(function(f) {
+  parcelAreas[f.properties.mapid] = getParcelArea(f);
+});
+
+L.geoJSON(parcelsData, {
+  style: function(feature) {
+    var p = feature.properties;
+    return {
+      fillColor: p.fill,
+      fillOpacity: getOpacity(feature),
+      color: 'rgba(0,0,0,0.65)',
+      weight: 2.0
+    };
+  },
+  onEachFeature: function(feature, layer) {
+    var p = feature.properties;
+    _parcelLayers[p.mapid]=layer;
+    layer._origStyle={
+      fillColor:layer.options.fillColor,
+      fillOpacity:layer.options.fillOpacity,
+      color:layer.options.color,
+      weight:layer.options.weight
+    };
+    layer.bindPopup(getPopup(p), {maxWidth: 300});
+    var area = getParcelArea(feature);
+    // Store area on tooltip element for zoom-aware sizing.
+    // 2026-07-11: skip the label entirely for placeholder mapids
+    // (prefixed "_dissolved" by refresh_html_map.py) -- these mark a
+    // parcel that was broken into individual buildings, kept only so the
+    // polygon/fill still shows; the placeholder name isn't a real MapID
+    // and showing it just confuses the map.
+    // 2026-07-14: also skip it for Multi_Occupant parcels (townhouse-style
+    // complexes with many individually-addressed units) -- each building
+    // footprint inside now gets its own real street-address label, so the
+    // parcel's plain container number (e.g. "64") just lands on top of
+    // whichever building happens to sit at the parcel's center and looks
+    // like doubled/confusing text, same reasoning as the _dissolved case.
+    // Only when isApartment is true, though -- that's the only case where
+    // buildings actually get their own labels to replace this one; for any
+    // other territory type the parcel's own number is still the only label
+    // that area would have, so it must stay.
+    if (!(p.mapid && String(p.mapid).indexOf('_dissolved') === 0) &&
+        !(isApartment && p.sheet === 'Multi_Occupant')) {
+      var tt = layer.bindTooltip(String(p.mapid), {
+        permanent: true, direction: 'center',
+        className: 'mapid-label',
+        offset: [0, 0]
+      });
+      layer.on('tooltipopen', function(e) {
+        e.tooltip.getElement().setAttribute('data-area', area);
+      });
+    }
+  }
+}).addTo(map);
+
+// 2026-07-12: building footprints used to be permanently solid black.
+// Now they default to grey and only turn black once the matching
+// mailing-list checkbox is marked done -- _buildingLayers is the
+// per-building lookup _updateParcel() (in the table-tracking script
+// below) uses to flip the color, same pattern as _parcelLayers.
+var _buildingLayers = {};
+var BUILDING_DEFAULT_FILL = '#C4C4C4';
+var BUILDING_DONE_FILL    = '#000000';
+
+if (buildingsData) {
+  L.geoJSON(buildingsData, {
+    style: function(feature) {
+      return {
+        fillColor: BUILDING_DEFAULT_FILL,
+        fillOpacity: DEFAULT_FILL_OPACITY,
+        color: '#000000',
+        weight: 1.5
+      };
+    },
+    interactive: isApartment,
+    onEachFeature: isApartment ? function(feature, layer) {
+      var p = feature.properties;
+      var bKey = p.subid ? p.subid : (p.mapid || '');
+      if (bKey !== '') {
+        _buildingLayers[bKey] = layer;
+        layer._origStyle = {
+          fillColor: layer.options.fillColor,
+          fillOpacity: layer.options.fillOpacity,
+          color: layer.options.color,
+          weight: layer.options.weight
+        };
+      }
+      // Permanent sub-ID label on each building footprint
+      var label = p.subid ? p.subid.toUpperCase() : (p.mapid ? String(p.mapid) : '');
+      if (label) {
+        layer.bindTooltip(label, {
+          permanent: true, direction: 'center',
+          className: 'mapid-label', offset: [0, 0]
+        });
+      }
+      if (p.site && p.site !== '') {
+        var subLabel = p.subid ? p.subid.toUpperCase() : ('Parcel #' + p.mapid);
+        var saluteHtml = p.salute && p.salute !== 'nan' && p.salute !== ''
+          ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+        // 2026-07-15: p.note is a short data-provenance flag ("Approximate
+        // match" / "From Fond du Lac County GIS") -- shown as its own line,
+        // kept OUT of p.site itself so the Get Directions link below still
+        // gets a clean, real address.
+        var noteHtml = p.note && p.note !== ''
+          ? '<div class="popup-mail" style="color:#888;font-style:italic">' + p.note + '</div>' : '';
+        var bMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+        var bMapsHtml = '<div style="margin-top:6px"><a href="' + bMapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>';
+        var html = '<div class="popup-inner">' +
+          '<div class="popup-mapid">Building ' + subLabel + '</div>' +
+          '<div class="popup-site">' + p.site + '</div>' +
+          '<div class="popup-owner">' + (p.owner || '') + '</div>' +
+          saluteHtml + noteHtml +
+          bMapsHtml +
+          '</div>';
+        layer.bindPopup(html, {maxWidth: 300});
+      }
+    } : function(feature, layer) {}
+  }).addTo(map);
+}
+
+if (!boundaryData) {
+  map.setView([43.77, -88.43], 14);
+}
+
+// Scale MapID labels by zoom level AND parcel area
+function updateLabelSizes() {
+  var z = map.getZoom();
+  // Base size from zoom
+  var baseSize;
+  if      (z <= 13) baseSize = 11;
+  else if (z <= 14) baseSize = 15;
+  else if (z <= 15) baseSize = 19;
+  else if (z <= 16) baseSize = 24;
+  else              baseSize = 30;
+  document.querySelectorAll('.mapid-label').forEach(function(el) {
+    var area = parseFloat(el.getAttribute('data-area') || 0);
+    var scale = 1.0;
+    // Shrink labels for small parcels
+    if      (area < 0.000003) scale = 0.45;
+    else if (area < 0.000008) scale = 0.60;
+    else if (area < 0.00002)  scale = 0.75;
+    else if (area < 0.00006)  scale = 0.88;
+    var finalSize = Math.max(7, Math.round(baseSize * scale));
+    el.style.fontSize = finalSize + 'px';
+  });
+}
+map.on('zoomend', updateLabelSizes);
+map.on('load', updateLabelSizes);
+setTimeout(updateLabelSizes, 500);
+</script>
+<style>
+.mapid-label {
+  background: transparent; border: none; box-shadow: none;
+  font-weight: bold; color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9);
+  pointer-events: none; transition: font-size 0.1s;
+}
+</style>
+<script>
+var _allRows=[];
+var _sortState={conf:{col:-1,asc:true},ver:{col:-1,asc:true},res:{col:-1,asc:true},dnc:{col:-1,asc:true}};
+
+function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
+function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
+function _setDone(mid,done){if(done)localStorage.setItem(_doneKey(mid),'1');else localStorage.removeItem(_doneKey(mid));}
+
+function _toggleDone(mid){
+  var done=!_isDone(mid);
+  _setDone(mid,done);
+  _updateParcel(mid,done);
+  _updateTableRow(mid,done);}
+
+function _updateParcel(mid,done){
+  var lyr=_parcelLayers[mid];
+  if(lyr){
+    if(done){lyr.setStyle({fillColor:'#222222',fillOpacity:0.9,color:'#FFFFFF',weight:4});}
+    else{lyr.setStyle(lyr._origStyle||{fillColor:'#AAAAAA',fillOpacity:0.4,color:'rgba(0,0,0,0.65)',weight:2.0});}}
+  var bld=_buildingLayers[mid];
+  if(bld){
+    if(done){bld.setStyle({fillColor:BUILDING_DONE_FILL,fillOpacity:0.9});}
+    else{bld.setStyle({fillColor:(bld._origStyle&&bld._origStyle.fillColor)||BUILDING_DEFAULT_FILL});}}}
+
+function _updateTableRow(mid,done){
+  document.querySelectorAll('.ml-check[data-mid="'+mid+'"]').forEach(function(el){
+    el.textContent=done?'☑':'☐';});
+  document.querySelectorAll('.ml-row[data-mid="'+mid+'"]').forEach(function(el){
+    el.style.opacity=done?'0.45':'';});}
+
+function _applyDoneState(){
+  // Clear done state if this is a freshly generated map (build timestamp changed)
+  var buildKey='build_'+_TERRITORY;
+  var lastBuild=localStorage.getItem(buildKey);
+  if(lastBuild!==_BUILD_TS){
+    // New pipeline run - clear all done state for this territory
+    var toRemove=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('done_'+_TERRITORY+'_')===0)toRemove.push(k);}
+    toRemove.forEach(function(k){localStorage.removeItem(k);});
+    localStorage.setItem(buildKey,_BUILD_TS);}
+  tableData.forEach(function(p){if(_isDone(p.mapid))_updateParcel(p.mapid,true);});
+  var m=window.location.hash.match(/done=([0-9,]+)/);
+  if(m){m[1].split(',').forEach(function(s){
+    var mid=parseInt(s);
+    if(!isNaN(mid)){_setDone(mid,true);_updateParcel(mid,true);}});}}
+setTimeout(_applyDoneState,400);
+
+function shareProgress(){
+  var done=[];
+  tableData.forEach(function(p){if(_isDone(p.mapid))done.push(p.mapid);});
+  if(!done.length){alert('No parcels checked off yet.');return;}
+  var url=window.location.href.split('#')[0]+'#done='+done.join(',');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){
+      alert('Progress link copied!\nPaste it into an email to share your progress.');});}
+  else{prompt('Copy this link to share your progress:',url);}}
+
+function _sortIndicator(sec,idx){
+  if(idx===0)return '';
+  var s=_sortState[sec];
+  if(s.col!==idx)return ' ▸';
+  return s.asc?' ▲':' ▼';}
+
+function _colHdr(sec){
+  var isConf=(sec==='conf');
+  var cols=isConf
+    ?['','MapID','Owner 1','Owner 2','Site Address']
+    :['','MapID','Owner 1','Owner 2','Site Address','Reason/Notes'];
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+'">';
+  cols.forEach(function(c,i){
+    if(i===0){h+='<span></span>';return;}
+    h+='<span data-sec="'+sec+'" data-col="'+i+'" onclick="_sortSection(this.dataset.sec,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(sec,i)+'</span>';});
+  h+='</div>';
+  return h;}
+
+function _sortSection(sec,col){
+  if(col===0)return;
+  var s=_sortState[sec];
+  if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
+  renderTable(_allRows);}
+
+function _sortRows(arr,sec){
+  var s=_sortState[sec];
+  if(s.col<=0)return arr.slice();
+  var cols=(sec==='conf')
+    ?['','mapid','owner','owner2','site_full']
+    :['','mapid','owner','owner2','site_full','notes'];
+  var key=cols[s.col]||'mapid';
+  return arr.slice().sort(function(a,b){
+    var av,bv;
+    if(key==='site_full'){
+      av=((a.site||'')+(a.site_city||'')+(a.site_state||'')+(a.site_zip||'')).toLowerCase();
+      bv=((b.site||'')+(b.site_city||'')+(b.site_state||'')+(b.site_zip||'')).toLowerCase();}
+    else if(key==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
+    else{av=String(a[key]||'').toLowerCase();bv=String(b[key]||'').toLowerCase();}
+    if(av<bv)return s.asc?-1:1;
+    if(av>bv)return s.asc?1:-1;
+    return 0;});}
+
+function _row(p,cls,sec){
+  var isConf=(sec==='conf');
+  var mid=p.mapid;
+  var done=_isDone(mid);
+  var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var rowStyle=done?'opacity:0.45;':'';
+  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" style="grid-template-columns:'+grid+';'+rowStyle+'">';
+  r+='<span class="ml-check" data-mid="'+mid+'" onclick="_toggleDone(\''+mid+'\')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'☑':'☐')+'</span>';
+  r+='<span>'+mid+'</span>';
+  r+='<span>'+(p.owner||'')+'</span>';
+  r+='<span>'+(p.owner2||'')+'</span>';
+  r+='<span>'+sf+'</span>';
+  if(!isConf){r+='<span>'+(p.notes||'')+'</span>';}
+  r+='</div>';
+  return r;}
+
+function setParcelOpacity(val){
+  document.getElementById('opacity-val').textContent=Math.round(val*100)+'%';
+  Object.keys(_parcelLayers).forEach(function(mid){
+    var lyr=_parcelLayers[mid];
+    if(lyr&&!_isDone(parseInt(mid))){
+      lyr.setStyle({fillOpacity:val});}});
+  // 2026-07-14: buildings were never wired into the slider at all, so
+  // building footprints stayed opaque no matter what the slider showed.
+  Object.keys(_buildingLayers).forEach(function(bid){
+    var bld=_buildingLayers[bid];
+    if(bld){bld.setStyle({fillOpacity:val});}});}
+
+function buildTable(){_allRows=tableData.slice();renderTable(_allRows);}
+
+function filterTable(){
+  var q=document.getElementById('search-box').value.toLowerCase();
+  renderTable(_allRows.filter(function(p){
+    var sf=(p.site||'')+(p.site_city||'')+(p.site_state||'')+(p.site_zip||'');
+    return [p.mapid,p.owner,p.owner2,sf,p.notes].join(' ').toLowerCase().indexOf(q)>=0;}));}
+
+function renderTable(rows){
+  var conf=[],res=[],dnc=[];
+  rows.forEach(function(p){
+    if(p.dnc==='YES'){dnc.push(p);}
+    else if(p.occupied==='Yes'&&p.confidence==='High'&&p.research!=='Yes'){conf.push(p);}
+    else{res.push(p);}});
+  conf=_sortRows(conf,'conf');res=_sortRows(res,'res');dnc=_sortRows(dnc,'dnc');
+  var h='';
+  h+='<div class=ml-hdr style="background:#375623">✔ CONFIDENT RESIDENTS ('+conf.length+' parcels) — Ready to write letters</div>';
+  h+=_colHdr('conf');
+  conf.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-g':'ml-odd','conf');});
+  if(!conf.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#7F6000">? NEEDS RESEARCH ('+res.length+' parcels) — Verify before writing</div>';
+  h+=_colHdr('res');
+  res.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-y':'ml-odd','res');});
+  if(!res.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#C00000">✘ DO NOT CALL ('+dnc.length+' parcels)</div>';
+  h+=_colHdr('dnc');
+  dnc.forEach(function(p){h+=_row(p,'ml-dnc','dnc');});
+  if(!dnc.length)h+='<div class=ml-none>None</div>';
+  document.getElementById('table-body').innerHTML=h;}
+
+function showTab(tab){
+  document.getElementById('map').style.display=tab==='map'?'block':'none';
+  document.getElementById('table-view').style.display=tab==='table'?'block':'none';
+  if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});
+  if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}}
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_419 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_419 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_419/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var target=String(val).trim().toUpperCase();if(!target)return;var found=null;parcelsData.features.forEach(function(f){if(String(f.properties.mapid).toUpperCase()===target){found=f;}});if(!found && typeof buildingsData!=='undefined' && buildingsData){buildingsData.features.forEach(function(f){var subid=f.properties.subid?String(f.properties.subid).toUpperCase():'';var mapid=(f.properties.mapid!==undefined&&f.properties.mapid!=='')?String(f.properties.mapid).toUpperCase():'';if(subid===target || (!subid && mapid===target)){found=f;}});}if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function printMap(){window.print();}</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script></body>
+</html>
