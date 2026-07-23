@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Apartment_400 Territory Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f0f0; }
+#header {
+  background: #4CAF50; color: white;
+  padding: 8px 16px; display: flex;
+  align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 4px; min-height: 56px; box-sizing: border-box;
+}
+#header h1 { font-size: 17px; font-weight: bold; margin: 0; line-height: 1.2; }
+#header .subtitle { font-size: 10px; opacity: 0.75; margin-top: 1px; }
+#header .stats { font-size: 12px; opacity: 0.9; }
+#map { height: calc(100vh - 96px); width: 100%; display: block; }
+.leaflet-popup-content-wrapper {
+  border-radius:0.7em;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  border-left: 6px solid #4CAF50;
+  padding: 0;
+}
+.leaflet-popup-content { margin: 0; width: 360px !important; }
+.popup-inner { padding: 18px 22px; }
+.popup-mapid {
+  font-size: 14px; color: #888; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+.popup-site {
+  font-size: 20px; font-weight: bold; color: #4CAF50;
+  margin-bottom: 7px; line-height: 1.3;
+}
+.popup-owner { font-size: 17px; color: #222; margin-bottom: 4px; }
+.popup-mail { font-size: 17px; color: #555; margin-bottom: 10px; }
+.popup-badge {
+  display: inline-block; padding: 5px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: bold; color: white; margin-right: 4px;
+}
+.badge-owner  { background: #4CAF50; }
+.badge-vacant { background: #808080; }
+.badge-inst   { background: #548235; }
+.badge-biz    { background: #7B2D8B; }
+.badge-dnc    { background: #cc0000; }
+.badge-research { background: #FFFF00; color: #333; }
+.legend-resizer{position:absolute;bottom:4px;right:4px;width:14px;height:14px;cursor:se-resize;opacity:0.4;z-index:10;background:linear-gradient(135deg,transparent 50%,#888 50%,#888 60%,transparent 60%,transparent 70%,#888 70%,#888 80%,transparent 80%);}.legend-resizer:hover{opacity:0.8;}#legend {
+  position: absolute; bottom: 24px; right: 10px; z-index: 1000;
+  background: white; border-radius:0.7em; padding:1em 1.3em;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2); font-size: 17px;
+  display:inline-block;width:max-content;min-width:80px;cursor:move;user-select:none;overflow:hidden;
+}
+#legend h4 {
+  font-size: 1.05em; margin-bottom: 0.7em; white-space: nowrap; color: #333;
+  border-bottom: 2px solid #eee; padding-bottom: 6px;
+}
+#legend-close {
+  float: right; cursor: pointer; font-size: 16px; color: #aaa;
+}
+#legend-close:hover { color: #333; }
+.legend-row { display: flex; align-items: center; margin-bottom: 10px; }
+.legend-swatch {
+  width: 20px; height: 20px; border-radius: 4px;
+  margin-right: 12px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.25);
+  display: inline-block !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+#notes-bar {
+  display: none; position: absolute; top: 58px; left: 10px;
+  right: 10px; z-index: 1000;
+  background: #FFF8E1; border-left: 4px solid #F5A623;
+  border-radius: 6px; padding: 8px 12px;
+  font-size: 12px; color: #555; max-width: 500px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#tab-bar {
+  display: flex; background: #4CAF50;
+  padding: 0 12px; height: 40px; box-sizing: border-box;
+}
+.tab-btn {
+  padding: 8px 20px; cursor: pointer; color: rgba(255,255,255,0.7);
+  font-size: 13px; font-weight: bold; border: none;
+  background: transparent; border-bottom: 3px solid transparent;
+}
+.tab-btn.active {
+  color: white; border-bottom: 3px solid white;
+}
+
+#table-view {
+  display: none; height: calc(100vh - 90px);
+  overflow-x: scroll; overflow-y: auto; padding: 16px; background: #f5f5f5;
+}
+#table-view::-webkit-scrollbar {
+  height: 12px; width: 12px;
+}
+#table-view::-webkit-scrollbar-track {
+  background: #ddd; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb {
+  background: #888; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+#search-box {
+  width: 100%; max-width: 400px; padding: 8px 12px;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: 14px; margin-bottom: 12px;
+}
+#data-table {
+  width: 1480px; border-collapse: collapse;
+  table-layout: fixed;
+  background: white; font-size: 13px;
+}
+#table-wrapper {
+  display: block; overflow-x: auto;
+  border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#data-table th {
+  background: #4CAF50; color: white;
+  padding: 10px 12px; text-align: left;
+  cursor: pointer; white-space: nowrap;
+  user-select: none; position: sticky;
+  top: 0; z-index: 10; min-width: 60px;
+}
+#data-table th:hover { opacity: 0.85; }
+#data-table th.sort-asc::after { content: " "; font-size: 10px; }
+#data-table th.sort-desc::after { content: " "; font-size: 10px; }
+#data-table td {
+  padding: 8px 12px; border-bottom: 1px solid #eee;
+  vertical-align: top; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  max-width: 0;
+}
+#data-table td:hover {
+  white-space: normal; overflow: visible;
+  background: #fffde7; position: relative; z-index: 5;
+}
+#data-table th {
+  position: sticky; top: 0; z-index: 10;
+  resize: horizontal; overflow: auto;
+  min-width: 40px;
+}
+#data-table tr:hover td { background: #f0f4ff; }
+.badge-res   { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-biz2  { background: #7B2D8B; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-inst2 { background: #548235; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-vac2  { background: #808080; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-dnc2  { background: #cc0000; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-res2  { background: #E65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+#btn-bar {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; gap: 8px; align-items: center;
+}
+#share-btn, #print-btn {
+  background: rgba(255,255,255,0.95); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 14px;
+  font-size: 13px; font-weight: bold; color: #333;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#share-btn:hover, #print-btn:hover { background: #f0f0f0; }
+@media print {
+  @page { margin: 0; size: auto; }
+  #header, #tab-bar, #btn-bar, #share-btn, #print-btn, #mapid-search,
+  #notes-bar, #table-view,
+  .leaflet-control-container { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important;
+                overflow: hidden !important; }
+  #map { position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          z-index: 1 !important; }
+  #legend { z-index: 2 !important;
+             max-width: 200px !important;
+             right: 10px !important;
+             bottom: 10px !important;
+             left: auto !important;
+             top: auto !important;
+             font-size: 13px !important; }
+}
+#mapid-search {
+  background: rgba(255,255,255,0.97); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex; align-items: center; gap: 8px;
+}
+#mapid-search input {
+  border: none; outline: none; font-size: 13px;
+  width: 80px; background: transparent;
+}
+#mapid-search label {
+  font-size: 12px; color: #666; white-space: nowrap;
+}
+#mapid-search-clear {
+  cursor: pointer; color: #aaa; font-size: 14px;
+  display: none;
+}
+#mapid-search-clear:hover { color: #333; }
+.ml-hdr{padding:10px 16px;font-weight:bold;font-size:13px;color:white;letter-spacing:0.5px;}
+.ml-col-header{display:grid;background:#4472C4;color:white;font-size:12px;font-weight:bold;}
+.ml-col-header span{padding:6px 8px;white-space:nowrap;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.2);cursor:pointer;user-select:none;}
+.ml-col-header span:hover{background:rgba(255,255,255,0.15);}
+.ml-row{display:grid;font-size:12px;border-bottom:1px solid #eee;}
+.ml-row span{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ml-row:hover span{white-space:normal;overflow:visible;background:#fffde7;
+  position:relative;z-index:5;}
+.check-icon{font-size:16px;cursor:pointer;background:rgba(255,255,255,0.85);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  line-height:1;border:none!important;box-shadow:none!important;}
+.check-icon:hover{background:rgba(255,255,255,1);}
+.ml-even-g{background:#E2EFDA;}
+.ml-odd{background:#FFFFFF;}
+.ml-even-y{background:#FFF2CC;}
+.ml-dnc{background:#FFB3B3;}
+.ml-gap{height:12px;background:#e8e8e8;}
+.ml-none{padding:8px 16px;color:#888;font-size:12px;font-style:italic;}
+</style>
+</head>
+<body>
+<div id="header">
+  <div>
+    <h1>Apartment_400 Territory</h1>
+    <div class="subtitle">Apartment_400_20260723_1601.xlsx</div>
+  </div>
+  <div class="stats">
+    1 parcels &nbsp;&nbsp;
+    0 owner occupied &nbsp;&nbsp;
+    0 need research &nbsp;&nbsp;
+    0 vacant
+    
+  </div>
+</div>
+<div id="notes-bar">Before working apartment territories.  Please review the following:  KM 12/08 pg. 3-4 and KM 11/85 Pg. 3-6. | Please work Columbia Dr. Explorer Dr. Vangaurd Ave. Mariner Circle and the portion of Viking Dr. within the boundary. | Ashwood Grove Trailer Park in North Fond du Lac.</div>
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="showTab('map')">&#x1F5FA; Map</button>
+  <button class="tab-btn" onclick="showTab('table')">&#x1F4CB; Mailing List</button>
+</div>
+<div id="map"></div>
+<div id="table-view">
+  <div style="padding:10px 16px 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()"
+      style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:300px;">
+    <button onclick="shareProgress()" style="padding:7px 14px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:white;font-weight:bold;">&#x1F4CB; Share Progress</button>
+  </div>
+  <div id="table-body"></div>
+</div>
+<div id="btn-bar">
+<button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+<button id="print-btn" onclick="printMap()">&#x1F5A8; Print Map</button>
+<div id="mapid-search">
+  <label>&#x1F50D; MapID</label>
+  <input type="number" id="mapid-input" placeholder="e.g. 42" min="1"
+    oninput="searchMapID(this.value)"
+    onkeydown="if(event.key==='Escape'){clearMapID();}" />
+  <span id="mapid-search-clear" onclick="clearMapID()">&#x2715;</span>
+</div>
+<div id="opacity-ctrl" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.97);border:1px solid #ccc;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <label style="font-size:12px;color:#666;white-space:nowrap;">&#x1F3A8; Fill</label>
+  <input type="range" id="opacity-slider" min="0" max="100" value="30"
+    style="width:80px;cursor:pointer;"
+    oninput="setParcelOpacity(this.value/100)" />
+  <span id="opacity-val" style="font-size:12px;color:#666;width:32px;">30%</span>
+</div>
+</div>
+<div id="legend">
+  <h4>Legend <span id="legend-close" onclick="document.getElementById('legend').style.display='none'">&#x2715;</span></h4>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#2E5496"></div>Confident Resident
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#FFFF00"></div>Needs Research
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#228B22"></div>Verified
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#E65100"></div>Suspect — verify before mailing
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#8B4513"></div>Institution
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#7B2D8B"></div>Business
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#808080"></div>Vacant
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#CC0000"></div>Do Not Contact
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#222222;border:2px solid #FFFFFF;box-sizing:border-box"></div>Completed
+  </div>
+  <div class="legend-resizer" id="legend-resizer"></div>
+</div>
+<script>
+var map = L.map('map', {zoomControl: true, preferCanvas: true, scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.25});
+document.getElementById('map').addEventListener('wheel', function(e){ e.preventDefault(); var delta = e.deltaY > 0 ? -0.25 : 0.25; var mousePos = map.mouseEventToLatLng(e); map.setZoomAround(mousePos, map.getZoom() + delta); }, {passive: false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: ' OpenStreetMap contributors | CartoDB', maxZoom: 20, subdomains: 'abcd'
+}).addTo(map);
+
+var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.51635217666626, 43.821047494193635], [-88.51631462574005, 43.82040886498102], [-88.51577818393707, 43.82039725347753], [-88.5157835483551, 43.820540461862386], [-88.51395964622498, 43.82058690775127], [-88.51386845111847, 43.819061915517274], [-88.51597666740417, 43.819073527280416], [-88.51663112640381, 43.81920512710502], [-88.51778447628021, 43.81973539404746], [-88.51785957813263, 43.82099717820054], [-88.51635217666626, 43.821047494193635], [-88.51635217666626, 43.821047494193635], [-88.51635217666626, 43.821047494193635], [-88.51635217666626, 43.821047494193635]]], "type": "Polygon"}, "properties": {}}]};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516237, 43.819182], [-88.516237, 43.819341], [-88.516175, 43.819341], [-88.516175, 43.819182], [-88.516237, 43.819182]]]}, "properties": {"mapid": 4, "subid": "77", "site": "W7142 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.51639, 43.819391], [-88.516341, 43.819391], [-88.516341, 43.819215], [-88.51639, 43.819215], [-88.51639, 43.819391]]]}, "properties": {"mapid": 4, "subid": "80", "site": "W7148 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516822, 43.819393], [-88.516899, 43.819434], [-88.516813, 43.81952], [-88.516735, 43.819479], [-88.516822, 43.819393]]]}, "properties": {"mapid": 4, "subid": "8", "site": "N7656 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.51703, 43.819442], [-88.517085, 43.819459], [-88.516986, 43.819628], [-88.516931, 43.819611], [-88.51703, 43.819442]]]}, "properties": {"mapid": 4, "subid": "9", "site": "N7660 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516329, 43.819646], [-88.516282, 43.819671], [-88.516129, 43.819522], [-88.516176, 43.819497], [-88.516329, 43.819646]]]}, "properties": {"mapid": 4, "subid": "79", "site": "W7146 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517226, 43.819522], [-88.517276, 43.819544], [-88.517139, 43.819701], [-88.51709, 43.819679], [-88.517226, 43.819522]]]}, "properties": {"mapid": 4, "subid": "10", "site": "N7664 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517251, 43.819792], [-88.517217, 43.819761], [-88.517423, 43.819645], [-88.517457, 43.819677], [-88.517251, 43.819792]]]}, "properties": {"mapid": 4, "subid": "11", "site": "N7666 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516663, 43.819789], [-88.516937, 43.819784], [-88.516938, 43.819825], [-88.516665, 43.81983], [-88.516663, 43.819789]]]}, "properties": {"mapid": 4, "subid": "12", "site": "N7668 VIKING DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514636, 43.819493], [-88.514898, 43.819493], [-88.514898, 43.819534], [-88.514636, 43.819534], [-88.514636, 43.819493]]]}, "properties": {"mapid": 4, "subid": "54", "site": "W7116 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515003, 43.819492], [-88.515258, 43.819492], [-88.515258, 43.819538], [-88.515003, 43.819538], [-88.515003, 43.819492]]]}, "properties": {"mapid": 4, "subid": "62", "site": "W7124 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515623, 43.819538], [-88.515373, 43.819538], [-88.515373, 43.819499], [-88.515623, 43.819499], [-88.515623, 43.819538]]]}, "properties": {"mapid": 4, "subid": "69", "site": "W7132 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514284, 43.819524], [-88.514284, 43.819565], [-88.514035, 43.819565], [-88.514035, 43.819524], [-88.514284, 43.819524]]]}, "properties": {"mapid": 4, "subid": "35", "site": "W7089 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515979, 43.819464], [-88.516036, 43.819464], [-88.516036, 43.819658], [-88.515979, 43.819658], [-88.515979, 43.819464]]]}, "properties": {"mapid": 4, "subid": "76", "site": "W7140 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516006, 43.819128], [-88.516058, 43.819126], [-88.516073, 43.819309], [-88.516021, 43.819311], [-88.516006, 43.819128]]]}, "properties": {"mapid": 4, "subid": "73", "site": "W7138 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515839, 43.819321], [-88.515747, 43.81915], [-88.515805, 43.819133], [-88.515897, 43.819305], [-88.515839, 43.819321]]]}, "properties": {"mapid": 4, "subid": "70", "site": "W7134 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514766, 43.819312], [-88.514712, 43.819333], [-88.514641, 43.819239], [-88.514629, 43.819244], [-88.514561, 43.819155], [-88.514627, 43.819128], [-88.514766, 43.819312]]]}, "properties": {"mapid": 4, "subid": "51", "site": "W7114 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515573, 43.819137], [-88.515693, 43.819306], [-88.515638, 43.819326], [-88.515518, 43.819157], [-88.515573, 43.819137]]]}, "properties": {"mapid": 4, "subid": "68", "site": "W7132 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.51447, 43.81934], [-88.514353, 43.819144], [-88.514415, 43.819125], [-88.514533, 43.81932], [-88.51447, 43.81934]]]}, "properties": {"mapid": 4, "subid": "45", "site": "W7108 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514881, 43.819134], [-88.51499, 43.819326], [-88.514936, 43.819342], [-88.514827, 43.81915], [-88.514881, 43.819134]]]}, "properties": {"mapid": 4, "subid": "56", "site": "W7118 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514156, 43.819156], [-88.514306, 43.819306], [-88.51426, 43.81933], [-88.51411, 43.81918], [-88.514156, 43.819156]]]}, "properties": {"mapid": 4, "subid": "41", "site": "W7104 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515023, 43.819193], [-88.515121, 43.819165], [-88.515216, 43.819335], [-88.51517, 43.819349], [-88.515096, 43.819216], [-88.515044, 43.819231], [-88.515023, 43.819193]]]}, "properties": {"mapid": 4, "subid": "60", "site": "W7122 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514004, 43.819351], [-88.514261, 43.819356], [-88.51426, 43.819396], [-88.514002, 43.819391], [-88.514004, 43.819351]]]}, "properties": {"mapid": 4, "subid": "39", "site": "W7102 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514273, 43.819695], [-88.514273, 43.819739], [-88.514021, 43.819739], [-88.514021, 43.819695], [-88.514273, 43.819695]]]}, "properties": {"mapid": 4, "subid": "36", "site": "W7093 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515262, 43.819698], [-88.515366, 43.819834], [-88.515315, 43.819855], [-88.515211, 43.819719], [-88.515262, 43.819698]]]}, "properties": {"mapid": 4, "subid": "64", "site": "W7127 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.51506, 43.819696], [-88.515176, 43.819855], [-88.515103, 43.819883], [-88.514987, 43.819724], [-88.51506, 43.819696]]]}, "properties": {"mapid": 4, "subid": "59", "site": "W7121 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515424, 43.819701], [-88.515478, 43.819701], [-88.515478, 43.81989], [-88.515424, 43.81989], [-88.515424, 43.819701]]]}, "properties": {"mapid": 4, "subid": "74", "site": "W7138 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514598, 43.819717], [-88.514685, 43.819902], [-88.514634, 43.819915], [-88.514547, 43.819729], [-88.514598, 43.819717]]]}, "properties": {"mapid": 4, "subid": "49", "site": "W7111 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514922, 43.819885], [-88.514873, 43.819903], [-88.514761, 43.819748], [-88.514809, 43.81973], [-88.514922, 43.819885]]]}, "properties": {"mapid": 4, "subid": "53", "site": "W7115 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514019, 43.819853], [-88.514279, 43.819853], [-88.514279, 43.819894], [-88.514019, 43.819894], [-88.514019, 43.819853]]]}, "properties": {"mapid": 4, "subid": "37", "site": "W7097 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516087, 43.819857], [-88.516087, 43.819904], [-88.515792, 43.819904], [-88.515792, 43.819857], [-88.516087, 43.819857]]]}, "properties": {"mapid": 4, "subid": "75", "site": "W7139 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515341, 43.819884], [-88.515341, 43.819931], [-88.515252, 43.819931], [-88.515252, 43.819884], [-88.515341, 43.819884]]]}, "properties": {"mapid": 4, "subid": "74", "site": "W7138 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516087, 43.820033], [-88.515794, 43.820033], [-88.515794, 43.819989], [-88.516087, 43.819989], [-88.516087, 43.820033]]]}, "properties": {"mapid": 4, "subid": "71", "site": "W7135 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514027, 43.820002], [-88.514282, 43.820002], [-88.514282, 43.820041], [-88.514027, 43.820041], [-88.514027, 43.820002]]]}, "properties": {"mapid": 4, "subid": "38", "site": "W7101 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514542, 43.819935], [-88.514603, 43.819935], [-88.514603, 43.82015], [-88.514542, 43.82015], [-88.514542, 43.819935]]]}, "properties": {"mapid": 4, "subid": "43", "site": "W7106 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514697, 43.820074], [-88.514735, 43.820074], [-88.514735, 43.819941], [-88.514796, 43.819941], [-88.514796, 43.820153], [-88.514697, 43.820153], [-88.514697, 43.820074]]]}, "properties": {"mapid": 4, "subid": "47", "site": "W7110 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515228, 43.819944], [-88.515287, 43.819944], [-88.515287, 43.820157], [-88.515228, 43.820157], [-88.515228, 43.819944]]]}, "properties": {"mapid": 4, "subid": "57", "site": "W7120 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515389, 43.81995], [-88.515448, 43.81995], [-88.515448, 43.820153], [-88.515389, 43.820153], [-88.515389, 43.81995]]]}, "properties": {"mapid": 4, "subid": "61", "site": "W7124 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515035, 43.819968], [-88.515035, 43.820155], [-88.514982, 43.820155], [-88.514982, 43.820008], [-88.514939, 43.820008], [-88.514939, 43.819968], [-88.515035, 43.819968]]]}, "properties": {"mapid": 4, "subid": "52", "site": "W7114 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514284, 43.820128], [-88.514289, 43.820169], [-88.514027, 43.820184], [-88.514022, 43.820144], [-88.514284, 43.820128]]]}, "properties": {"mapid": 4, "subid": "40", "site": "W7103 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516089, 43.820206], [-88.5158, 43.820206], [-88.5158, 43.820148], [-88.515896, 43.820148], [-88.515896, 43.820159], [-88.516089, 43.820159], [-88.516089, 43.820206]]]}, "properties": {"mapid": 4, "subid": "67", "site": "W7131 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517329, 43.819905], [-88.51731, 43.819863], [-88.517558, 43.819805], [-88.517577, 43.819847], [-88.517329, 43.819905]]]}, "properties": {"mapid": 4, "subid": "14", "site": "N7670 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516452, 43.819803], [-88.516453, 43.819988], [-88.516392, 43.819988], [-88.516392, 43.819803], [-88.516452, 43.819803]]]}, "properties": {"mapid": 4, "subid": "15", "site": "N7671 VIKING DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516966, 43.820041], [-88.516902, 43.820009], [-88.517048, 43.819856], [-88.517103, 43.819883], [-88.517053, 43.819936], [-88.517089, 43.819954], [-88.517055, 43.81999], [-88.517028, 43.819976], [-88.516966, 43.820041]]]}, "properties": {"mapid": 4, "subid": "13", "site": "N7669 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517363, 43.819993], [-88.517559, 43.819993], [-88.517559, 43.820033], [-88.517363, 43.820033], [-88.517363, 43.819993]]]}, "properties": {"mapid": 4, "subid": "16", "site": "N7674 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516847, 43.820031], [-88.516846, 43.820031], [-88.516848, 43.820098], [-88.516754, 43.8201], [-88.516752, 43.820044], [-88.516743, 43.820044], [-88.51674, 43.819947], [-88.516845, 43.819945], [-88.516847, 43.820031]]]}, "properties": {"mapid": 4, "subid": "17", "site": "N7674 VIKING DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517151, 43.820047], [-88.517184, 43.820083], [-88.516967, 43.820187], [-88.516934, 43.820151], [-88.517151, 43.820047]]]}, "properties": {"mapid": 4, "subid": "18", "site": "N7675 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517632, 43.820198], [-88.517371, 43.820198], [-88.517371, 43.820157], [-88.517632, 43.820157], [-88.517632, 43.820198]]]}, "properties": {"mapid": 4, "subid": "20", "site": "N7678 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516808, 43.820355], [-88.516808, 43.820171], [-88.516864, 43.820171], [-88.516864, 43.820355], [-88.516808, 43.820355]]]}, "properties": {"mapid": 4, "subid": "23", "site": "N7682 VIKING DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517181, 43.820268], [-88.517181, 43.820308], [-88.516921, 43.820308], [-88.516921, 43.820268], [-88.517181, 43.820268]]]}, "properties": {"mapid": 4, "subid": "21", "site": "N7681 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517505, 43.820257], [-88.517506, 43.820309], [-88.517675, 43.820307], [-88.517676, 43.82036], [-88.517389, 43.820363], [-88.517387, 43.820259], [-88.517505, 43.820257]]]}, "properties": {"mapid": 4, "subid": "22", "site": "N7682 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514098, 43.820344], [-88.514067, 43.82031], [-88.514233, 43.820233], [-88.514264, 43.820267], [-88.514098, 43.820344]]]}, "properties": {"mapid": 4, "subid": "42", "site": "W7105 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.51588, 43.820399457328094], [-88.51588, 43.820279], [-88.515977, 43.820279], [-88.515977, 43.820401], [-88.51595127015875, 43.820401], [-88.51588, 43.820399457328094]]]}, "properties": {"mapid": 4, "subid": "66", "site": "W7129 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514253, 43.82033], [-88.514286, 43.820365], [-88.514107, 43.820453], [-88.514073, 43.820418], [-88.514253, 43.82033]]]}, "properties": {"mapid": 4, "subid": "44", "site": "W7107 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "Approximate match"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515108, 43.820306], [-88.515108, 43.82049], [-88.515049, 43.82049], [-88.515049, 43.820306], [-88.515108, 43.820306]]]}, "properties": {"mapid": 4, "subid": "55", "site": "W7117 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514871, 43.820461], [-88.514925, 43.82046], [-88.514926, 43.820493], [-88.514818, 43.820494], [-88.514815, 43.820309], [-88.514869, 43.820308], [-88.514871, 43.820461]]]}, "properties": {"mapid": 4, "subid": "50", "site": "W7113 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514649, 43.8205], [-88.514595, 43.8205], [-88.514595, 43.820312], [-88.514649, 43.820312], [-88.514649, 43.8205]]]}, "properties": {"mapid": 4, "subid": "48", "site": "W7111 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.515322, 43.820463], [-88.515244, 43.820463], [-88.515244, 43.82037], [-88.515322, 43.82037], [-88.515322, 43.820463]]]}, "properties": {"mapid": 4, "subid": "58", "site": "W7121 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.514432, 43.820417], [-88.514375, 43.820509], [-88.514326, 43.820493], [-88.51443, 43.820325], [-88.514501, 43.820347], [-88.514453, 43.820424], [-88.514432, 43.820417]]]}, "properties": {"mapid": 4, "subid": "44", "site": "W7107 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516527, 43.820395], [-88.51647, 43.820395], [-88.51647, 43.820256], [-88.516527, 43.820256], [-88.516527, 43.820395]]]}, "properties": {"mapid": 4, "subid": "24", "site": "N7683 VIKING DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517691, 43.820484], [-88.517691, 43.820529], [-88.51739, 43.820529], [-88.51739, 43.820484], [-88.517691, 43.820484]]]}, "properties": {"mapid": 4, "subid": "26", "site": "N7686 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516822, 43.82043], [-88.516883, 43.82043], [-88.516883, 43.820618], [-88.516822, 43.820618], [-88.516822, 43.82043]]]}, "properties": {"mapid": 4, "subid": "27", "site": "N7688 VIKING DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516529, 43.820651], [-88.516465, 43.820651], [-88.516465, 43.820492], [-88.516529, 43.820492], [-88.516529, 43.820651]]]}, "properties": {"mapid": 4, "subid": "29", "site": "N7689 VIKING DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517077, 43.820702], [-88.517077, 43.820651], [-88.516948, 43.820651], [-88.516948, 43.820596], [-88.517211, 43.820596], [-88.517211, 43.820702], [-88.517077, 43.820702]]]}, "properties": {"mapid": 4, "subid": "28", "site": "N7689 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517393, 43.820637], [-88.517599, 43.820637], [-88.517599, 43.820682], [-88.517393, 43.820682], [-88.517393, 43.820637]]]}, "properties": {"mapid": 4, "subid": "30", "site": "N7690 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516926, 43.820719], [-88.516926, 43.820798], [-88.516738, 43.820798], [-88.516738, 43.820719], [-88.516926, 43.820719]]]}, "properties": {"mapid": 4, "subid": "32", "site": "N7694 VIKING DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.517539, 43.820785], [-88.517699, 43.820784], [-88.5177, 43.820835], [-88.517405, 43.820836], [-88.517404, 43.820775], [-88.517478, 43.820774], [-88.517478, 43.820714], [-88.517538, 43.820714], [-88.517539, 43.820785]]]}, "properties": {"mapid": 4, "subid": "34", "site": "N7696 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516591, 43.820744], [-88.516591, 43.820823], [-88.516379, 43.820823], [-88.516379, 43.820744], [-88.516591, 43.820744]]]}, "properties": {"mapid": 4, "subid": "31", "site": "N7693 VIKING DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.516969, 43.820759], [-88.5172, 43.820759], [-88.5172, 43.820844], [-88.516969, 43.820844], [-88.516969, 43.820759]]]}, "properties": {"mapid": 4, "subid": "33", "site": "N7695 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.51549067483656, 43.820309912455194], [-88.51553384096006, 43.82031096138861], [-88.51552552696751, 43.82049026461278], [-88.51548236071498, 43.82048921567627], [-88.51549067483656, 43.820309912455194]]]}, "properties": {"mapid": 4, "subid": "63", "site": "W7125 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.51693077344744, 43.820471563911525], [-88.51692926188633, 43.82042735195777], [-88.51718315365054, 43.82042280150005], [-88.517184546312, 43.820463523293824], [-88.51696600536532, 43.820467440316826], [-88.51696612568249, 43.820470930473505], [-88.51693077344744, 43.820471563911525]]]}, "properties": {"mapid": 4, "subid": "25", "site": "N7685 COLUMBIA DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.5153164114235, 43.81925375391777], [-88.51533698235394, 43.81924714880584], [-88.51531221925003, 43.819206720812325], [-88.51528283257623, 43.81921615667903], [-88.51526328351325, 43.819184240117195], [-88.51534556713509, 43.81915781698512], [-88.51542962927593, 43.81929506099599], [-88.51537673346054, 43.819312046504706], [-88.51535457668793, 43.81927587423998], [-88.51533400574958, 43.81928247935506], [-88.5153164114235, 43.81925375391777]]]}, "properties": {"mapid": 4, "subid": "65", "site": "W7128 EXPLORER DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.51574568780187, 43.81946496548199], [-88.51579390694725, 43.81946463753086], [-88.51579593062587, 43.81962058453916], [-88.51574771135502, 43.81962091249116], [-88.51574568780187, 43.81946496548199]]]}, "properties": {"mapid": 4, "subid": "72", "site": "W7136 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.51614815558138, 43.81985961410167], [-88.51615297214805, 43.81985945322217], [-88.51614955689598, 43.81980597428889], [-88.51619451561928, 43.81980446853786], [-88.51620780732435, 43.82001257215634], [-88.51615803186638, 43.820014239692455], [-88.51614815558138, 43.81985961410167]]]}, "properties": {"mapid": 4, "subid": "78", "site": "W7145 VANGUARD AV, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.51618324471244, 43.820096509030996], [-88.51647191289666, 43.820082338792915], [-88.51647582741414, 43.82012414112646], [-88.5161871590292, 43.82013831047437], [-88.51618324471244, 43.820096509030996]]]}, "properties": {"mapid": 4, "subid": "19", "site": "N7677 VIKING DR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.51457060346053, 43.82025213486757], [-88.51447100070231, 43.82025213486757], [-88.51447100070231, 43.82032399976157], [-88.51457060346053, 43.82032399976157], [-88.51457060346053, 43.82025213486757]]]}, "properties": {"mapid": "4", "subid": "46", "site": "W7109 MARINER CIR, Van Dyne WI 54979", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "note": "From Fond du Lac County GIS", "_county_synth": true}}]};
+var isApartment = true;
+var _TERRITORY = 'Apartment_400';
+var _BUILD_TS = '20260723_160133';
+var tableData = [{"mapid": "8", "owner": "", "owner2": "", "site": "N7656 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "9", "owner": "", "owner2": "", "site": "N7660 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "10", "owner": "", "owner2": "", "site": "N7664 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "11", "owner": "", "owner2": "", "site": "N7666 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "12", "owner": "", "owner2": "", "site": "N7668 VIKING DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "13", "owner": "", "owner2": "", "site": "N7669 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "14", "owner": "", "owner2": "", "site": "N7670 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "15", "owner": "", "owner2": "", "site": "N7671 VIKING DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "16", "owner": "", "owner2": "", "site": "N7674 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "17", "owner": "", "owner2": "", "site": "N7674 VIKING DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "18", "owner": "", "owner2": "", "site": "N7675 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "19", "owner": "", "owner2": "", "site": "N7677 VIKING DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "20", "owner": "", "owner2": "", "site": "N7678 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "21", "owner": "", "owner2": "", "site": "N7681 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "22", "owner": "", "owner2": "", "site": "N7682 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "23", "owner": "", "owner2": "", "site": "N7682 VIKING DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "24", "owner": "", "owner2": "", "site": "N7683 VIKING DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "25", "owner": "", "owner2": "", "site": "N7685 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "26", "owner": "", "owner2": "", "site": "N7686 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "27", "owner": "", "owner2": "", "site": "N7688 VIKING DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "28", "owner": "", "owner2": "", "site": "N7689 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "29", "owner": "", "owner2": "", "site": "N7689 VIKING DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "30", "owner": "", "owner2": "", "site": "N7690 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "31", "owner": "", "owner2": "", "site": "N7693 VIKING DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "32", "owner": "", "owner2": "", "site": "N7694 VIKING DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "33", "owner": "", "owner2": "", "site": "N7695 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "34", "owner": "", "owner2": "", "site": "N7696 COLUMBIA DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "35", "owner": "", "owner2": "", "site": "W7089 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "36", "owner": "", "owner2": "", "site": "W7093 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "37", "owner": "", "owner2": "", "site": "W7097 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "38", "owner": "", "owner2": "", "site": "W7101 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "39", "owner": "", "owner2": "", "site": "W7102 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "40", "owner": "", "owner2": "", "site": "W7103 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "41", "owner": "", "owner2": "", "site": "W7104 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "42", "owner": "", "owner2": "", "site": "W7105 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "43", "owner": "", "owner2": "", "site": "W7106 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "44", "owner": "", "owner2": "", "site": "W7107 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "45", "owner": "", "owner2": "", "site": "W7108 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "46", "owner": "", "owner2": "", "site": "W7109 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "47", "owner": "", "owner2": "", "site": "W7110 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "48", "owner": "", "owner2": "", "site": "W7111 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "49", "owner": "", "owner2": "", "site": "W7111 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "50", "owner": "", "owner2": "", "site": "W7113 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "51", "owner": "", "owner2": "", "site": "W7114 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "52", "owner": "", "owner2": "", "site": "W7114 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "53", "owner": "", "owner2": "", "site": "W7115 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "54", "owner": "", "owner2": "", "site": "W7116 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "55", "owner": "", "owner2": "", "site": "W7117 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "56", "owner": "", "owner2": "", "site": "W7118 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "57", "owner": "", "owner2": "", "site": "W7120 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "58", "owner": "", "owner2": "", "site": "W7121 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "59", "owner": "", "owner2": "", "site": "W7121 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "60", "owner": "", "owner2": "", "site": "W7122 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "61", "owner": "", "owner2": "", "site": "W7124 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "62", "owner": "", "owner2": "", "site": "W7124 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "63", "owner": "", "owner2": "", "site": "W7125 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "64", "owner": "", "owner2": "", "site": "W7127 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "65", "owner": "", "owner2": "", "site": "W7128 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "66", "owner": "", "owner2": "", "site": "W7129 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "67", "owner": "", "owner2": "", "site": "W7131 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "68", "owner": "", "owner2": "", "site": "W7132 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "69", "owner": "", "owner2": "", "site": "W7132 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "70", "owner": "", "owner2": "", "site": "W7134 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "71", "owner": "", "owner2": "", "site": "W7135 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "72", "owner": "", "owner2": "", "site": "W7136 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "73", "owner": "", "owner2": "", "site": "W7138 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "74", "owner": "", "owner2": "", "site": "W7138 MARINER CIR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "75", "owner": "", "owner2": "", "site": "W7139 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "76", "owner": "", "owner2": "", "site": "W7140 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "77", "owner": "", "owner2": "", "site": "W7142 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "78", "owner": "", "owner2": "", "site": "W7145 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "79", "owner": "", "owner2": "", "site": "W7146 VANGUARD AV", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}, {"mapid": "80", "owner": "", "owner2": "", "site": "W7148 EXPLORER DR", "site_city": "Van Dyne", "site_state": "WI", "site_zip": "54979", "mail": "N7559 N PIONEER RD", "city": "Fond du Lac", "state": "WI", "zip": "54937", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "sheet": "Main", "verified_name": ""}];
+
+if (boundaryData) {
+  var boundary = L.geoJSON(boundaryData, {
+    style: {
+      color: '#4CAF50', weight: 3, opacity: 1,
+      fillColor: '#4CAF50', fillOpacity: 0.04,
+      dashArray: '8,5'
+    }
+  }).addTo(map);
+  map.fitBounds(boundary.getBounds(), {padding: [30, 30]});
+  // Territory name label — centered on boundary, semi-transparent
+  var bounds = boundary.getBounds();
+  var center = bounds.getCenter();
+  L.marker(center, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:52px;font-weight:900;'
+           +'color:#1A3A6B;opacity:0.55;'
+           +'white-space:nowrap;pointer-events:none;'
+           +'position:relative;z-index:9999;'
+           +'text-shadow:2px 2px 0px white,-2px -2px 0px white,2px -2px 0px white,-2px 2px 0px white;'
+           +'transform:translate(-50%,-50%);">Apartment_400</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    }),
+    interactive: false
+  }).addTo(map);
+}
+
+var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.51631462574005, 43.82040886498102], [-88.51577818393707, 43.82039725347753], [-88.5157835483551, 43.820540461862386], [-88.51573901427615, 43.820541595928105], [-88.51494706761368, 43.82053565559702], [-88.51398625371539, 43.82052844047557], [-88.51396863848228, 43.81906246733539], [-88.51597666740417, 43.819073527280416], [-88.51663112640381, 43.81920512710502], [-88.51778193399107, 43.81973422519843], [-88.5177851596596, 43.819746875485635], [-88.51785957813263, 43.82099717820054], [-88.51686596279232, 43.821030344376716], [-88.51665589519132, 43.82102859868068], [-88.51637263749964, 43.821026243829586], [-88.51636037507413, 43.82102614208643], [-88.516359263951, 43.8209356010992], [-88.51635328000914, 43.82044815375016], [-88.51631691986688, 43.8204478812333], [-88.51631462574005, 43.82040886498102]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved1", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "city": "", "state": "", "zip": ""}}]};
+
+var _parcelLayers={};
+
+// 2026-07-12: Google Maps sometimes can't geocode certain county-style
+// street-suffix abbreviations -- "LA" for Lane is the confirmed case
+// (Google appears to read it as the Louisiana state code instead), even
+// though the rest of the address is fine. Swap in the USPS-standard
+// abbreviation just for the directions/search links, leaving the
+// displayed/mailing address untouched. Add more replacements here if
+// other suffixes turn out to trip Google up too.
+function _mapsAddr(site) {
+  if (!site) return site;
+  return site.replace(/\bLA\b\.?/gi, 'Ln');
+}
+
+function getPopup(p) {
+  var badge = '';
+  if (p.dnc === 'YES') badge = '<span class="popup-badge badge-dnc">DO NOT CONTACT</span>';
+  else if (p.sheet === 'Institutions') badge = '<span class="popup-badge badge-inst">' + p.btype + '</span>';
+  else if (p.sheet === 'Vacant') badge = '<span class="popup-badge badge-vacant">Vacant</span>';
+  else if (p.btype === 'Commercial / Rental') badge = '<span class="popup-badge badge-biz">Business</span>';
+  else if (p.occupied === 'Yes') badge = '<span class="popup-badge badge-owner">Owner Occupied</span>';
+  if (p.research === 'Yes') badge += '<span class="popup-badge badge-research">Research Needed</span>';
+
+  var mailHtml = p.mail ? '<div class="popup-mail"> ' + p.mail + '</div>' : '';
+  var saluteHtml = p.salute && p.salute !== 'nan' ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+  // 2026-07-12: p.site is already the full "street, city state zip" address
+  // (built that way in refresh_html_map.py) -- appending ", Fond du Lac, WI"
+  // on top of that duplicated the city/state/zip and made Google Maps fail
+  // to find the address (confirmed by Steve). Use p.site as-is.
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+  var viewUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(_mapsAddr(p.site));
+  var mapsHtml = p.site ? '<div style="margin-top:6px"><a href="' + mapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>' : '';
+
+  return '<div class="popup-inner">' +
+    '<div class="popup-mapid">Parcel #' + p.mapid + '</div>' +
+    '<div class="popup-site">' + p.site + '</div>' +
+    '<div class="popup-owner">' + p.owner + '</div>' +
+    mailHtml + saluteHtml +
+    mapsHtml +
+    '<div style="margin-top:6px">' + badge + '</div>' +
+    '</div>';
+}
+
+function getParcelArea(feature) {
+  var coords = feature.geometry.coordinates;
+  var allPoints = [];
+  function collectPoints(c) {
+    if (typeof c[0] === 'number') { allPoints.push(c); }
+    else { c.forEach(collectPoints); }
+  }
+  collectPoints(coords);
+  if (allPoints.length < 2) return 0;
+  var lats = allPoints.map(function(p) { return p[1]; });
+  var lngs = allPoints.map(function(p) { return p[0]; });
+  return (Math.max.apply(null,lats)-Math.min.apply(null,lats)) * (Math.max.apply(null,lngs)-Math.min.apply(null,lngs));
+}
+var DEFAULT_FILL_OPACITY = 0.3;  // 2026-07-14: matches opacity-slider's value="30" -- getOpacity()
+                                  // previously always returned 1.0 regardless of the slider default,
+                                  // so parcels loaded fully opaque until the slider was touched by hand.
+function getOpacity(feature) {
+  return DEFAULT_FILL_OPACITY;
+}
+// Store per-parcel area for label sizing
+var parcelAreas = {};
+parcelsData.features.forEach(function(f) {
+  parcelAreas[f.properties.mapid] = getParcelArea(f);
+});
+
+L.geoJSON(parcelsData, {
+  style: function(feature) {
+    var p = feature.properties;
+    return {
+      fillColor: p.fill,
+      fillOpacity: getOpacity(feature),
+      color: 'rgba(0,0,0,0.65)',
+      weight: 2.0
+    };
+  },
+  onEachFeature: function(feature, layer) {
+    var p = feature.properties;
+    _parcelLayers[p.mapid]=layer;
+    layer._origStyle={
+      fillColor:layer.options.fillColor,
+      fillOpacity:layer.options.fillOpacity,
+      color:layer.options.color,
+      weight:layer.options.weight
+    };
+    layer.bindPopup(getPopup(p), {maxWidth: 300});
+    var area = getParcelArea(feature);
+    // Store area on tooltip element for zoom-aware sizing.
+    // 2026-07-11: skip the label entirely for placeholder mapids
+    // (prefixed "_dissolved" by refresh_html_map.py) -- these mark a
+    // parcel that was broken into individual buildings, kept only so the
+    // polygon/fill still shows; the placeholder name isn't a real MapID
+    // and showing it just confuses the map.
+    // 2026-07-14: also skip it for Multi_Occupant parcels (townhouse-style
+    // complexes with many individually-addressed units) -- each building
+    // footprint inside now gets its own real street-address label, so the
+    // parcel's plain container number (e.g. "64") just lands on top of
+    // whichever building happens to sit at the parcel's center and looks
+    // like doubled/confusing text, same reasoning as the _dissolved case.
+    // Only when isApartment is true, though -- that's the only case where
+    // buildings actually get their own labels to replace this one; for any
+    // other territory type the parcel's own number is still the only label
+    // that area would have, so it must stay.
+    if (!(p.mapid && String(p.mapid).indexOf('_dissolved') === 0) &&
+        !(isApartment && p.sheet === 'Multi_Occupant')) {
+      var tt = layer.bindTooltip(String(p.mapid), {
+        permanent: true, direction: 'center',
+        className: 'mapid-label',
+        offset: [0, 0]
+      });
+      layer.on('tooltipopen', function(e) {
+        e.tooltip.getElement().setAttribute('data-area', area);
+      });
+    }
+  }
+}).addTo(map);
+
+// 2026-07-12: building footprints used to be permanently solid black.
+// Now they default to grey and only turn black once the matching
+// mailing-list checkbox is marked done -- _buildingLayers is the
+// per-building lookup _updateParcel() (in the table-tracking script
+// below) uses to flip the color, same pattern as _parcelLayers.
+var _buildingLayers = {};
+var BUILDING_DEFAULT_FILL = '#C4C4C4';
+var BUILDING_DONE_FILL    = '#000000';
+
+if (buildingsData) {
+  L.geoJSON(buildingsData, {
+    style: function(feature) {
+      return {
+        fillColor: BUILDING_DEFAULT_FILL,
+        fillOpacity: DEFAULT_FILL_OPACITY,
+        color: '#000000',
+        weight: 1.5
+      };
+    },
+    interactive: isApartment,
+    onEachFeature: isApartment ? function(feature, layer) {
+      var p = feature.properties;
+      var bKey = p.subid ? p.subid : (p.mapid || '');
+      if (bKey !== '') {
+        _buildingLayers[bKey] = layer;
+        layer._origStyle = {
+          fillColor: layer.options.fillColor,
+          fillOpacity: layer.options.fillOpacity,
+          color: layer.options.color,
+          weight: layer.options.weight
+        };
+      }
+      // Permanent sub-ID label on each building footprint
+      var label = p.subid ? p.subid.toUpperCase() : (p.mapid ? String(p.mapid) : '');
+      if (label) {
+        layer.bindTooltip(label, {
+          permanent: true, direction: 'center',
+          className: 'mapid-label', offset: [0, 0]
+        });
+      }
+      if (p.site && p.site !== '') {
+        var subLabel = p.subid ? p.subid.toUpperCase() : ('Parcel #' + p.mapid);
+        var saluteHtml = p.salute && p.salute !== 'nan' && p.salute !== ''
+          ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+        // 2026-07-15: p.note is a short data-provenance flag ("Approximate
+        // match" / "From Fond du Lac County GIS") -- shown as its own line,
+        // kept OUT of p.site itself so the Get Directions link below still
+        // gets a clean, real address.
+        var noteHtml = p.note && p.note !== ''
+          ? '<div class="popup-mail" style="color:#888;font-style:italic">' + p.note + '</div>' : '';
+        var bMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+        var bMapsHtml = '<div style="margin-top:6px"><a href="' + bMapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>';
+        var html = '<div class="popup-inner">' +
+          '<div class="popup-mapid">Building ' + subLabel + '</div>' +
+          '<div class="popup-site">' + p.site + '</div>' +
+          '<div class="popup-owner">' + (p.owner || '') + '</div>' +
+          saluteHtml + noteHtml +
+          bMapsHtml +
+          '</div>';
+        layer.bindPopup(html, {maxWidth: 300});
+      }
+    } : function(feature, layer) {}
+  }).addTo(map);
+}
+
+if (!boundaryData) {
+  map.setView([43.77, -88.43], 14);
+}
+
+// Scale MapID labels by zoom level AND parcel area
+function updateLabelSizes() {
+  var z = map.getZoom();
+  // Base size from zoom
+  var baseSize;
+  if      (z <= 13) baseSize = 11;
+  else if (z <= 14) baseSize = 15;
+  else if (z <= 15) baseSize = 19;
+  else if (z <= 16) baseSize = 24;
+  else              baseSize = 30;
+  document.querySelectorAll('.mapid-label').forEach(function(el) {
+    var area = parseFloat(el.getAttribute('data-area') || 0);
+    var scale = 1.0;
+    // Shrink labels for small parcels
+    if      (area < 0.000003) scale = 0.45;
+    else if (area < 0.000008) scale = 0.60;
+    else if (area < 0.00002)  scale = 0.75;
+    else if (area < 0.00006)  scale = 0.88;
+    var finalSize = Math.max(7, Math.round(baseSize * scale));
+    el.style.fontSize = finalSize + 'px';
+  });
+}
+map.on('zoomend', updateLabelSizes);
+map.on('load', updateLabelSizes);
+setTimeout(updateLabelSizes, 500);
+</script>
+<style>
+.mapid-label {
+  background: transparent; border: none; box-shadow: none;
+  font-weight: bold; color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9);
+  pointer-events: none; transition: font-size 0.1s;
+}
+</style>
+<script>
+var _allRows=[];
+var _sortState={conf:{col:-1,asc:true},ver:{col:-1,asc:true},res:{col:-1,asc:true},dnc:{col:-1,asc:true}};
+
+function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
+function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
+function _setDone(mid,done){if(done)localStorage.setItem(_doneKey(mid),'1');else localStorage.removeItem(_doneKey(mid));}
+
+function _toggleDone(mid){
+  var done=!_isDone(mid);
+  _setDone(mid,done);
+  _updateParcel(mid,done);
+  _updateTableRow(mid,done);}
+
+function _updateParcel(mid,done){
+  var lyr=_parcelLayers[mid];
+  if(lyr){
+    if(done){lyr.setStyle({fillColor:'#222222',fillOpacity:0.9,color:'#FFFFFF',weight:4});}
+    else{lyr.setStyle(lyr._origStyle||{fillColor:'#AAAAAA',fillOpacity:0.4,color:'rgba(0,0,0,0.65)',weight:2.0});}}
+  var bld=_buildingLayers[mid];
+  if(bld){
+    if(done){bld.setStyle({fillColor:BUILDING_DONE_FILL,fillOpacity:0.9});}
+    else{bld.setStyle({fillColor:(bld._origStyle&&bld._origStyle.fillColor)||BUILDING_DEFAULT_FILL});}}}
+
+function _updateTableRow(mid,done){
+  document.querySelectorAll('.ml-check[data-mid="'+mid+'"]').forEach(function(el){
+    el.textContent=done?'☑':'☐';});
+  document.querySelectorAll('.ml-row[data-mid="'+mid+'"]').forEach(function(el){
+    el.style.opacity=done?'0.45':'';});}
+
+function _applyDoneState(){
+  // Clear done state if this is a freshly generated map (build timestamp changed)
+  var buildKey='build_'+_TERRITORY;
+  var lastBuild=localStorage.getItem(buildKey);
+  if(lastBuild!==_BUILD_TS){
+    // New pipeline run - clear all done state for this territory
+    var toRemove=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('done_'+_TERRITORY+'_')===0)toRemove.push(k);}
+    toRemove.forEach(function(k){localStorage.removeItem(k);});
+    localStorage.setItem(buildKey,_BUILD_TS);}
+  tableData.forEach(function(p){if(_isDone(p.mapid))_updateParcel(p.mapid,true);});
+  var m=window.location.hash.match(/done=([0-9,]+)/);
+  if(m){m[1].split(',').forEach(function(s){
+    var mid=parseInt(s);
+    if(!isNaN(mid)){_setDone(mid,true);_updateParcel(mid,true);}});}}
+setTimeout(_applyDoneState,400);
+
+function shareProgress(){
+  var done=[];
+  tableData.forEach(function(p){if(_isDone(p.mapid))done.push(p.mapid);});
+  if(!done.length){alert('No parcels checked off yet.');return;}
+  var url=window.location.href.split('#')[0]+'#done='+done.join(',');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){
+      alert('Progress link copied!\nPaste it into an email to share your progress.');});}
+  else{prompt('Copy this link to share your progress:',url);}}
+
+function _sortIndicator(sec,idx){
+  if(idx===0)return '';
+  var s=_sortState[sec];
+  if(s.col!==idx)return ' ▸';
+  return s.asc?' ▲':' ▼';}
+
+function _colHdr(sec){
+  var isConf=(sec==='conf');
+  var cols=isConf
+    ?['','MapID','Owner 1','Owner 2','Site Address']
+    :['','MapID','Owner 1','Owner 2','Site Address','Reason/Notes'];
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+'">';
+  cols.forEach(function(c,i){
+    if(i===0){h+='<span></span>';return;}
+    h+='<span data-sec="'+sec+'" data-col="'+i+'" onclick="_sortSection(this.dataset.sec,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(sec,i)+'</span>';});
+  h+='</div>';
+  return h;}
+
+function _sortSection(sec,col){
+  if(col===0)return;
+  var s=_sortState[sec];
+  if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
+  renderTable(_allRows);}
+
+function _sortRows(arr,sec){
+  var s=_sortState[sec];
+  if(s.col<=0)return arr.slice();
+  var cols=(sec==='conf')
+    ?['','mapid','owner','owner2','site_full']
+    :['','mapid','owner','owner2','site_full','notes'];
+  var key=cols[s.col]||'mapid';
+  return arr.slice().sort(function(a,b){
+    var av,bv;
+    if(key==='site_full'){
+      av=((a.site||'')+(a.site_city||'')+(a.site_state||'')+(a.site_zip||'')).toLowerCase();
+      bv=((b.site||'')+(b.site_city||'')+(b.site_state||'')+(b.site_zip||'')).toLowerCase();}
+    else if(key==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
+    else{av=String(a[key]||'').toLowerCase();bv=String(b[key]||'').toLowerCase();}
+    if(av<bv)return s.asc?-1:1;
+    if(av>bv)return s.asc?1:-1;
+    return 0;});}
+
+function _row(p,cls,sec){
+  var isConf=(sec==='conf');
+  var mid=p.mapid;
+  var done=_isDone(mid);
+  var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var rowStyle=done?'opacity:0.45;':'';
+  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" style="grid-template-columns:'+grid+';'+rowStyle+'">';
+  r+='<span class="ml-check" data-mid="'+mid+'" onclick="_toggleDone(\''+mid+'\')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'☑':'☐')+'</span>';
+  r+='<span>'+mid+'</span>';
+  r+='<span>'+(p.owner||'')+'</span>';
+  r+='<span>'+(p.owner2||'')+'</span>';
+  r+='<span>'+sf+'</span>';
+  if(!isConf){r+='<span>'+(p.notes||'')+'</span>';}
+  r+='</div>';
+  return r;}
+
+function setParcelOpacity(val){
+  document.getElementById('opacity-val').textContent=Math.round(val*100)+'%';
+  Object.keys(_parcelLayers).forEach(function(mid){
+    var lyr=_parcelLayers[mid];
+    if(lyr&&!_isDone(parseInt(mid))){
+      lyr.setStyle({fillOpacity:val});}});
+  // 2026-07-14: buildings were never wired into the slider at all, so
+  // building footprints stayed opaque no matter what the slider showed.
+  Object.keys(_buildingLayers).forEach(function(bid){
+    var bld=_buildingLayers[bid];
+    if(bld){bld.setStyle({fillOpacity:val});}});}
+
+function buildTable(){_allRows=tableData.slice();renderTable(_allRows);}
+
+function filterTable(){
+  var q=document.getElementById('search-box').value.toLowerCase();
+  renderTable(_allRows.filter(function(p){
+    var sf=(p.site||'')+(p.site_city||'')+(p.site_state||'')+(p.site_zip||'');
+    return [p.mapid,p.owner,p.owner2,sf,p.notes].join(' ').toLowerCase().indexOf(q)>=0;}));}
+
+function renderTable(rows){
+  var conf=[],res=[],dnc=[];
+  rows.forEach(function(p){
+    if(p.dnc==='YES'){dnc.push(p);}
+    else if(p.occupied==='Yes'&&p.confidence==='High'&&p.research!=='Yes'){conf.push(p);}
+    else{res.push(p);}});
+  conf=_sortRows(conf,'conf');res=_sortRows(res,'res');dnc=_sortRows(dnc,'dnc');
+  var h='';
+  h+='<div class=ml-hdr style="background:#375623">✔ CONFIDENT RESIDENTS ('+conf.length+' parcels) — Ready to write letters</div>';
+  h+=_colHdr('conf');
+  conf.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-g':'ml-odd','conf');});
+  if(!conf.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#7F6000">? NEEDS RESEARCH ('+res.length+' parcels) — Verify before writing</div>';
+  h+=_colHdr('res');
+  res.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-y':'ml-odd','res');});
+  if(!res.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#C00000">✘ DO NOT CALL ('+dnc.length+' parcels)</div>';
+  h+=_colHdr('dnc');
+  dnc.forEach(function(p){h+=_row(p,'ml-dnc','dnc');});
+  if(!dnc.length)h+='<div class=ml-none>None</div>';
+  document.getElementById('table-body').innerHTML=h;}
+
+function showTab(tab){
+  document.getElementById('map').style.display=tab==='map'?'block':'none';
+  document.getElementById('table-view').style.display=tab==='table'?'block':'none';
+  if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});
+  if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}}
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_400 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_400 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_400/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var target=String(val).trim().toUpperCase();if(!target)return;var found=null;parcelsData.features.forEach(function(f){if(String(f.properties.mapid).toUpperCase()===target){found=f;}});if(!found && typeof buildingsData!=='undefined' && buildingsData){buildingsData.features.forEach(function(f){var subid=f.properties.subid?String(f.properties.subid).toUpperCase():'';var mapid=(f.properties.mapid!==undefined&&f.properties.mapid!=='')?String(f.properties.mapid).toUpperCase():'';if(subid===target || (!subid && mapid===target)){found=f;}});}if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function printMap(){window.print();}</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script></body>
+</html>
