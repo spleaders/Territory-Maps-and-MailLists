@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Apartment_470 Territory Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f0f0; }
+#header {
+  background: #4CAF50; color: white;
+  padding: 8px 16px; display: flex;
+  align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 4px; min-height: 56px; box-sizing: border-box;
+}
+#header h1 { font-size: 17px; font-weight: bold; margin: 0; line-height: 1.2; }
+#header .subtitle { font-size: 10px; opacity: 0.75; margin-top: 1px; }
+#header .stats { font-size: 12px; opacity: 0.9; }
+#map { height: calc(100vh - 96px); width: 100%; display: block; }
+.leaflet-popup-content-wrapper {
+  border-radius:0.7em;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  border-left: 6px solid #4CAF50;
+  padding: 0;
+}
+.leaflet-popup-content { margin: 0; width: 360px !important; }
+.popup-inner { padding: 18px 22px; }
+.popup-mapid {
+  font-size: 14px; color: #888; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+.popup-site {
+  font-size: 20px; font-weight: bold; color: #4CAF50;
+  margin-bottom: 7px; line-height: 1.3;
+}
+.popup-owner { font-size: 17px; color: #222; margin-bottom: 4px; }
+.popup-mail { font-size: 17px; color: #555; margin-bottom: 10px; }
+.popup-badge {
+  display: inline-block; padding: 5px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: bold; color: white; margin-right: 4px;
+}
+.badge-owner  { background: #4CAF50; }
+.badge-vacant { background: #808080; }
+.badge-inst   { background: #548235; }
+.badge-biz    { background: #7B2D8B; }
+.badge-dnc    { background: #cc0000; }
+.badge-research { background: #FFFF00; color: #333; }
+.legend-resizer{position:absolute;bottom:4px;right:4px;width:14px;height:14px;cursor:se-resize;opacity:0.4;z-index:10;background:linear-gradient(135deg,transparent 50%,#888 50%,#888 60%,transparent 60%,transparent 70%,#888 70%,#888 80%,transparent 80%);}.legend-resizer:hover{opacity:0.8;}#legend {
+  position: absolute; bottom: 24px; right: 10px; z-index: 1000;
+  background: white; border-radius:0.7em; padding:1em 1.3em;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2); font-size: 17px;
+  display:inline-block;width:max-content;min-width:80px;cursor:move;user-select:none;overflow:hidden;
+}
+#legend h4 {
+  font-size: 1.05em; margin-bottom: 0.7em; white-space: nowrap; color: #333;
+  border-bottom: 2px solid #eee; padding-bottom: 6px;
+}
+#legend-close {
+  float: right; cursor: pointer; font-size: 16px; color: #aaa;
+}
+#legend-close:hover { color: #333; }
+.legend-row { display: flex; align-items: center; margin-bottom: 10px; }
+.legend-swatch {
+  width: 20px; height: 20px; border-radius: 4px;
+  margin-right: 12px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.25);
+  display: inline-block !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+#notes-bar {
+  display: none; position: absolute; top: 58px; left: 10px;
+  right: 10px; z-index: 1000;
+  background: #FFF8E1; border-left: 4px solid #F5A623;
+  border-radius: 6px; padding: 8px 12px;
+  font-size: 12px; color: #555; max-width: 500px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#tab-bar {
+  display: flex; background: #4CAF50;
+  padding: 0 12px; height: 40px; box-sizing: border-box;
+}
+.tab-btn {
+  padding: 8px 20px; cursor: pointer; color: rgba(255,255,255,0.7);
+  font-size: 13px; font-weight: bold; border: none;
+  background: transparent; border-bottom: 3px solid transparent;
+}
+.tab-btn.active {
+  color: white; border-bottom: 3px solid white;
+}
+
+#table-view {
+  display: none; height: calc(100vh - 90px);
+  overflow-x: scroll; overflow-y: auto; padding: 16px; background: #f5f5f5;
+}
+#table-view::-webkit-scrollbar {
+  height: 12px; width: 12px;
+}
+#table-view::-webkit-scrollbar-track {
+  background: #ddd; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb {
+  background: #888; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+#search-box {
+  width: 100%; max-width: 400px; padding: 8px 12px;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: 14px; margin-bottom: 12px;
+}
+#data-table {
+  width: 1480px; border-collapse: collapse;
+  table-layout: fixed;
+  background: white; font-size: 13px;
+}
+#table-wrapper {
+  display: block; overflow-x: auto;
+  border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#data-table th {
+  background: #4CAF50; color: white;
+  padding: 10px 12px; text-align: left;
+  cursor: pointer; white-space: nowrap;
+  user-select: none; position: sticky;
+  top: 0; z-index: 10; min-width: 60px;
+}
+#data-table th:hover { opacity: 0.85; }
+#data-table th.sort-asc::after { content: " "; font-size: 10px; }
+#data-table th.sort-desc::after { content: " "; font-size: 10px; }
+#data-table td {
+  padding: 8px 12px; border-bottom: 1px solid #eee;
+  vertical-align: top; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  max-width: 0;
+}
+#data-table td:hover {
+  white-space: normal; overflow: visible;
+  background: #fffde7; position: relative; z-index: 5;
+}
+#data-table th {
+  position: sticky; top: 0; z-index: 10;
+  resize: horizontal; overflow: auto;
+  min-width: 40px;
+}
+#data-table tr:hover td { background: #f0f4ff; }
+.badge-res   { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-biz2  { background: #7B2D8B; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-inst2 { background: #548235; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-vac2  { background: #808080; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-dnc2  { background: #cc0000; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-res2  { background: #E65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+#btn-bar {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; gap: 8px; align-items: center;
+}
+#share-btn, #print-btn {
+  background: rgba(255,255,255,0.95); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 14px;
+  font-size: 13px; font-weight: bold; color: #333;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#share-btn:hover, #print-btn:hover { background: #f0f0f0; }
+@media print {
+  @page { margin: 0; size: auto; }
+  #header, #tab-bar, #btn-bar, #share-btn, #print-btn, #mapid-search,
+  #notes-bar, #table-view,
+  .leaflet-control-container { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important;
+                overflow: hidden !important; }
+  #map { position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          z-index: 1 !important; }
+  #legend { z-index: 2 !important;
+             max-width: 200px !important;
+             right: 10px !important;
+             bottom: 10px !important;
+             left: auto !important;
+             top: auto !important;
+             font-size: 13px !important; }
+}
+#mapid-search {
+  background: rgba(255,255,255,0.97); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex; align-items: center; gap: 8px;
+}
+#mapid-search input {
+  border: none; outline: none; font-size: 13px;
+  width: 80px; background: transparent;
+}
+#mapid-search label {
+  font-size: 12px; color: #666; white-space: nowrap;
+}
+#mapid-search-clear {
+  cursor: pointer; color: #aaa; font-size: 14px;
+  display: none;
+}
+#mapid-search-clear:hover { color: #333; }
+.ml-hdr{padding:10px 16px;font-weight:bold;font-size:13px;color:white;letter-spacing:0.5px;}
+.ml-col-header{display:grid;background:#4472C4;color:white;font-size:12px;font-weight:bold;}
+.ml-col-header span{padding:6px 8px;white-space:nowrap;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.2);cursor:pointer;user-select:none;}
+.ml-col-header span:hover{background:rgba(255,255,255,0.15);}
+.ml-row{display:grid;font-size:12px;border-bottom:1px solid #eee;}
+.ml-row span{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ml-row:hover span{white-space:normal;overflow:visible;background:#fffde7;
+  position:relative;z-index:5;}
+.check-icon{font-size:16px;cursor:pointer;background:rgba(255,255,255,0.85);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  line-height:1;border:none!important;box-shadow:none!important;}
+.check-icon:hover{background:rgba(255,255,255,1);}
+.ml-even-g{background:#E2EFDA;}
+.ml-odd{background:#FFFFFF;}
+.ml-even-y{background:#FFF2CC;}
+.ml-dnc{background:#FFB3B3;}
+.ml-gap{height:12px;background:#e8e8e8;}
+.ml-none{padding:8px 16px;color:#888;font-size:12px;font-style:italic;}
+</style>
+</head>
+<body>
+<div id="header">
+  <div>
+    <h1>Apartment_470 Territory</h1>
+    <div class="subtitle">Apartment_470_20260724_1528.xlsx</div>
+  </div>
+  <div class="stats">
+    6 parcels &nbsp;&nbsp;
+    0 owner occupied &nbsp;&nbsp;
+    4 need research &nbsp;&nbsp;
+    0 vacant
+    
+  </div>
+</div>
+<div id="notes-bar">Before working apartment territories.  Please review the following:  KM 12/08 pg. 3-4 and KM 11/85 Pg. 3-6 | Condo's located south of East Pioneer Rd.  120, 122, 124, 126, 140, 142, 144, 146, 160, 162, 164, 166, 180, 182, 280, 282, 284, 286, 320, 322, 324, 326, 340, 342, 344, 346, 360, 362, 364, 366, 380, 382, 384, 386 South Lake Cir. and 30, 32, 34, 36 Southlake Ln.</div>
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="showTab('map')">&#x1F5FA; Map</button>
+  <button class="tab-btn" onclick="showTab('table')">&#x1F4CB; Mailing List</button>
+</div>
+<div id="map"></div>
+<div id="table-view">
+  <div style="padding:10px 16px 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()"
+      style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:300px;">
+    <button onclick="shareProgress()" style="padding:7px 14px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:white;font-weight:bold;">&#x1F4CB; Share Progress</button>
+  </div>
+  <div id="table-body"></div>
+</div>
+<div id="btn-bar">
+<button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+<button id="print-btn" onclick="printMap()">&#x1F5A8; Print Map</button>
+<div id="mapid-search">
+  <label>&#x1F50D; MapID</label>
+  <input type="number" id="mapid-input" placeholder="e.g. 42" min="1"
+    oninput="searchMapID(this.value)"
+    onkeydown="if(event.key==='Escape'){clearMapID();}" />
+  <span id="mapid-search-clear" onclick="clearMapID()">&#x2715;</span>
+</div>
+<div id="opacity-ctrl" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.97);border:1px solid #ccc;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <label style="font-size:12px;color:#666;white-space:nowrap;">&#x1F3A8; Fill</label>
+  <input type="range" id="opacity-slider" min="0" max="100" value="30"
+    style="width:80px;cursor:pointer;"
+    oninput="setParcelOpacity(this.value/100)" />
+  <span id="opacity-val" style="font-size:12px;color:#666;width:32px;">30%</span>
+</div>
+</div>
+<div id="legend">
+  <h4>Legend <span id="legend-close" onclick="document.getElementById('legend').style.display='none'">&#x2715;</span></h4>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#2E5496"></div>Confident Resident
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#FFFF00"></div>Needs Research
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#228B22"></div>Verified
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#E65100"></div>Suspect — verify before mailing
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#8B4513"></div>Institution
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#7B2D8B"></div>Business
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#808080"></div>Vacant
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#CC0000"></div>Do Not Contact
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#222222;border:2px solid #FFFFFF;box-sizing:border-box"></div>Completed
+  </div>
+  <div class="legend-resizer" id="legend-resizer"></div>
+</div>
+<script>
+var map = L.map('map', {zoomControl: true, preferCanvas: true, scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.25});
+document.getElementById('map').addEventListener('wheel', function(e){ e.preventDefault(); var delta = e.deltaY > 0 ? -0.25 : 0.25; var mousePos = map.mouseEventToLatLng(e); map.setZoomAround(mousePos, map.getZoom() + delta); }, {passive: false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: ' OpenStreetMap contributors | CartoDB', maxZoom: 20, subdomains: 'abcd'
+}).addTo(map);
+
+var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.44693124294281, 43.751412203235624], [-88.44753205776215, 43.751412203235624], [-88.44770908355713, 43.747649488287024], [-88.44246804714203, 43.749156927722254], [-88.44390571117401, 43.750272950968984], [-88.44484984874725, 43.74968394129304], [-88.44561696052551, 43.74954443815235], [-88.44636261463165, 43.74914142725283], [-88.44699561595917, 43.74907555021314], [-88.44693124294281, 43.751412203235624], [-88.44693124294281, 43.751412203235624]]], "type": "Polygon"}, "properties": {}}]};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447444, 43.748766], [-88.447453, 43.748801], [-88.447289, 43.748822], [-88.447282, 43.748794], [-88.447219, 43.748802], [-88.447187, 43.748672], [-88.44747, 43.748635], [-88.447501, 43.748758], [-88.447444, 43.748766]]]}, "properties": {"mapid": 8, "subid": "120", "site": "120 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444875, 43.749423], [-88.444917, 43.749548], [-88.444866, 43.749557], [-88.444878, 43.749594], [-88.444602, 43.749641], [-88.444608, 43.749658], [-88.444421, 43.74969], [-88.44441, 43.749657], [-88.444348, 43.749668], [-88.4443, 43.749521], [-88.444875, 43.749423]]]}, "properties": {"mapid": 42, "subid": "322", "site": "322 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444282, 43.749715], [-88.444258, 43.749754], [-88.4443, 43.749767], [-88.444221, 43.749897], [-88.444203, 43.749891], [-88.444088, 43.750081], [-88.444046, 43.750068], [-88.444025, 43.750102], [-88.443854, 43.750048], [-88.444093, 43.749655], [-88.444282, 43.749715]]]}, "properties": {"mapid": 18, "subid": "284", "site": "284 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446674, 43.74874], [-88.446743, 43.74886], [-88.446685, 43.748877], [-88.446704, 43.748909], [-88.44645, 43.748985], [-88.446457, 43.748997], [-88.446282, 43.749049], [-88.446267, 43.749022], [-88.446205, 43.749041], [-88.446126, 43.748903], [-88.446674, 43.74874]]]}, "properties": {"mapid": 13, "subid": "382", "site": "382 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447554, 43.749126], [-88.447271, 43.749159], [-88.447244, 43.749035], [-88.447297, 43.749029], [-88.44729, 43.748996], [-88.447454, 43.748977], [-88.447461, 43.749008], [-88.447526, 43.749], [-88.447554, 43.749126]]]}, "properties": {"mapid": 8, "subid": "124", "site": "124 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.446001, 43.748952], [-88.446118, 43.749056], [-88.446076, 43.749081], [-88.44611, 43.749111], [-88.445737, 43.749329], [-88.445715, 43.749309], [-88.445666, 43.749338], [-88.445538, 43.749223], [-88.446001, 43.748952]]]}, "properties": {"mapid": 35, "subid": "362", "site": "362 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447523, 43.749293], [-88.447519, 43.749451], [-88.447283, 43.749448], [-88.447284, 43.749426], [-88.447236, 43.749425], [-88.447238, 43.74929], [-88.447523, 43.749293]]]}, "properties": {"mapid": 49, "subid": "140", "site": "140 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.445564, 43.749435], [-88.445514, 43.749445], [-88.445528, 43.749482], [-88.445065, 43.749572], [-88.445054, 43.749542], [-88.444995, 43.749554], [-88.444943, 43.749414], [-88.445514, 43.749302], [-88.445564, 43.749435]]]}, "properties": {"mapid": 25, "subid": "342", "site": "342 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447222, 43.749624], [-88.447271, 43.749625], [-88.447272, 43.74961], [-88.447508, 43.749616], [-88.447499, 43.749775], [-88.447214, 43.749767], [-88.447222, 43.749624]]]}, "properties": {"mapid": 39, "subid": "144", "site": "144 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447483, 43.750057], [-88.447243, 43.750053], [-88.447244, 43.750028], [-88.447199, 43.750028], [-88.447203, 43.749894], [-88.447487, 43.749898], [-88.447483, 43.750057]]]}, "properties": {"mapid": 15, "subid": "32", "site": "32 SOUTHLAKE LA, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447181, 43.750288], [-88.447465, 43.750288], [-88.447465, 43.750445], [-88.447181, 43.750445], [-88.447181, 43.750288]]]}, "properties": {"mapid": 10, "subid": "36", "site": "36 SOUTHLAKE LA, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447229, 43.750695], [-88.447178, 43.750695], [-88.447178, 43.750562], [-88.447462, 43.750562], [-88.447462, 43.750719], [-88.447229, 43.750719], [-88.447229, 43.750695]]]}, "properties": {"mapid": 8, "subid": "160", "site": "160 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447179, 43.750894], [-88.447462, 43.750898], [-88.447459, 43.751055], [-88.447176, 43.751052], [-88.447179, 43.750894]]]}, "properties": {"mapid": 39, "subid": "164", "site": "164 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.447448, 43.751212], [-88.447446, 43.751365], [-88.447164, 43.751363], [-88.447167, 43.75121], [-88.447448, 43.751212]]]}, "properties": {"mapid": 49, "subid": "180", "site": "180 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant"}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44747892884303, 43.74861727391132], [-88.44737944536831, 43.74861727391132], [-88.44737944536831, 43.74868913880532], [-88.44747892884303, 43.74868913880532], [-88.44747892884303, 43.74861727391132]]]}, "properties": {"mapid": "8", "subid": "122", "site": "122 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44751264660592, 43.74900596996288], [-88.44741316248515, 43.74900596996288], [-88.44741316248515, 43.74907783485688], [-88.44751264660592, 43.74907783485688], [-88.44751264660592, 43.74900596996288]]]}, "properties": {"mapid": "8", "subid": "126", "site": "126 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44752471931353, 43.74926452345928], [-88.44742523476303, 43.74926452345928], [-88.44742523476303, 43.74933638835328], [-88.44752471931353, 43.74933638835328], [-88.44752471931353, 43.74926452345928]]]}, "properties": {"mapid": "8", "subid": "142", "site": "142 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44751184890228, 43.74964745421879], [-88.4474123637153, 43.74964745421879], [-88.4474123637153, 43.749719319112785], [-88.44751184890228, 43.749719319112785], [-88.44751184890228, 43.74964745421879]]]}, "properties": {"mapid": "8", "subid": "146", "site": "146 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44746967641757, 43.75054292404356], [-88.44737018974212, 43.75054292404356], [-88.44737018974212, 43.750614788937554], [-88.44746967641757, 43.750614788937554], [-88.44746967641757, 43.75054292404356]]]}, "properties": {"mapid": "8", "subid": "162", "site": "162 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44745396534731, 43.75092791081382], [-88.44735447803191, 43.75092791081382], [-88.44735447803191, 43.75099977570782], [-88.44745396534731, 43.75099977570782], [-88.44745396534731, 43.75092791081382]]]}, "properties": {"mapid": "8", "subid": "166", "site": "166 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44744186078941, 43.75124628989376], [-88.44734237294477, 43.75124628989376], [-88.44734237294477, 43.751318154787754], [-88.44744186078941, 43.751318154787754], [-88.44744186078941, 43.75124628989376]]]}, "properties": {"mapid": "8", "subid": "182", "site": "182 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44403313948612, 43.74996118638475], [-88.44393365377766, 43.74996118638475], [-88.44393365377766, 43.75003305127875], [-88.44403313948612, 43.75003305127875], [-88.44403313948612, 43.74996118638475]]]}, "properties": {"mapid": "8", "subid": "280", "site": "280 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44409352222145, 43.74988517727607], [-88.44399403663932, 43.74988517727607], [-88.44399403663932, 43.74995704217007], [-88.44409352222145, 43.74995704217007], [-88.44409352222145, 43.74988517727607]]]}, "properties": {"mapid": "8", "subid": "282", "site": "282 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44422839882915, 43.74969211054017], [-88.44411778568724, 43.74969211054017], [-88.44411778568724, 43.749772013845316], [-88.44422839882915, 43.749772013845316], [-88.44422839882915, 43.74969211054017]]]}, "properties": {"mapid": "8", "subid": "286", "site": "286 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44743908458194, 43.75005460622072], [-88.44733959871819, 43.75005460622072], [-88.44733959871819, 43.75012647111472], [-88.44743908458194, 43.75012647111472], [-88.44743908458194, 43.75005460622072]]]}, "properties": {"mapid": "8", "subid": "30", "site": "30 SOUTHLAKE LA, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44448183653888, 43.74950290261881], [-88.44436657920794, 43.74950290261881], [-88.44436657920794, 43.74958616099462], [-88.44448183653888, 43.74958616099462], [-88.44448183653888, 43.74950290261881]]]}, "properties": {"mapid": "8", "subid": "320", "site": "320 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.4447599144524, 43.749443971149056], [-88.4446439427358, 43.749443971149056], [-88.4446439427358, 43.74952774565738], [-88.4447599144524, 43.74952774565738], [-88.4447599144524, 43.749443971149056]]]}, "properties": {"mapid": "8", "subid": "324", "site": "324 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44490214299901, 43.74941005654787], [-88.44478370098969, 43.74941005654787], [-88.44478370098969, 43.74949561556916], [-88.44490214299901, 43.74949561556916], [-88.44490214299901, 43.74941005654787]]]}, "properties": {"mapid": "8", "subid": "326", "site": "326 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44743669661491, 43.750256588638294], [-88.44733721041541, 43.750256588638294], [-88.44733721041541, 43.75032845353229], [-88.44743669661491, 43.75032845353229], [-88.44743669661491, 43.750256588638294]]]}, "properties": {"mapid": "8", "subid": "34", "site": "34 SOUTHLAKE LA, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44512991492232, 43.74938804837668], [-88.44502285476557, 43.74938804837668], [-88.44502285476557, 43.74946538551645], [-88.44512991492232, 43.74946538551645], [-88.44512991492232, 43.74938804837668]]]}, "properties": {"mapid": "8", "subid": "340", "site": "340 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.4453969822372, 43.749338964263], [-88.44529749756298, 43.749338964263], [-88.44529749756298, 43.749410829157], [-88.4453969822372, 43.749410829157], [-88.4453969822372, 43.749338964263]]]}, "properties": {"mapid": "8", "subid": "344", "site": "344 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44551573310466, 43.74931527525989], [-88.4454162484698, 43.74931527525989], [-88.4454162484698, 43.749387140153885], [-88.44551573310466, 43.749387140153885], [-88.44551573310466, 43.74931527525989]]]}, "properties": {"mapid": "8", "subid": "346", "site": "346 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44572943154736, 43.74915946654416], [-88.44561198822223, 43.74915946654416], [-88.44561198822223, 43.749244304501104], [-88.44572943154736, 43.749244304501104], [-88.44572943154736, 43.74915946654416]]]}, "properties": {"mapid": "8", "subid": "360", "site": "360 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.4459409275477, 43.7490262202989], [-88.44583024255411, 43.7490262202989], [-88.44583024255411, 43.749106176396836], [-88.4459409275477, 43.749106176396836], [-88.4459409275477, 43.7490262202989]]]}, "properties": {"mapid": "8", "subid": "364", "site": "364 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44605389252818, 43.7489549791467], [-88.44593735881064, 43.7489549791467], [-88.44593735881064, 43.74903916031519], [-88.44605389252818, 43.74903916031519], [-88.44605389252818, 43.7489549791467]]]}, "properties": {"mapid": "8", "subid": "366", "site": "366 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44631065045739, 43.74886537945467], [-88.44620061584472, 43.74886537945467], [-88.44620061584472, 43.748944865947465], [-88.44631065045739, 43.748944865947465], [-88.44631065045739, 43.74886537945467]]]}, "properties": {"mapid": "8", "subid": "380", "site": "380 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44655834511524, 43.748783288725384], [-88.44644974361906, 43.748783288725384], [-88.44644974361906, 43.74886174007579], [-88.44655834511524, 43.74886174007579], [-88.44655834511524, 43.748783288725384]]]}, "properties": {"mapid": "8", "subid": "384", "site": "384 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44669920088612, 43.74873452075509], [-88.44658001001292, 43.74873452075509], [-88.44658001001292, 43.74882062170498], [-88.44669920088612, 43.74882062170498], [-88.44669920088612, 43.74873452075509]]]}, "properties": {"mapid": "8", "subid": "386", "site": "386 SOUTHLAKE CIR, Fond du Lac WI 54935", "owner": "JOAN N QUEEN DECL OF TR", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "From Fond du Lac County GIS", "_county_synth": true}}]};
+var isApartment = true;
+var _TERRITORY = 'Apartment_470';
+var _BUILD_TS = '20260724_152819';
+var tableData = [{"mapid": "30", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "30 SOUTHLAKE LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "32", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "32 SOUTHLAKE LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "34", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "34 SOUTHLAKE LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "36", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "36 SOUTHLAKE LA", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "120", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "120 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "122", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "122 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "124", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "124 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "126", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "126 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "140", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "140 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "142", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "142 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "144", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "144 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "146", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "146 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "160", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "160 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "162", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "162 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "164", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "164 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "166", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "166 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "180", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "180 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "182", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "182 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "280", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "280 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "282", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "282 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "284", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "284 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "286", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "286 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "320", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "320 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "322", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "322 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "324", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "324 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "326", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "326 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "340", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "340 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "342", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "342 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "344", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "344 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "346", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "346 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "360", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "360 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "362", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "362 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "364", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "364 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "366", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "366 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "380", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "380 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "382", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "382 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "384", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "384 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}, {"mapid": "386", "owner": "JOAN N QUEEN DECL OF TR", "owner2": "", "site": "386 SOUTHLAKE CIR", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "360 SOUTHLAKE CIR", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Townhouse", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": ""}];
+
+if (boundaryData) {
+  var boundary = L.geoJSON(boundaryData, {
+    style: {
+      color: '#4CAF50', weight: 3, opacity: 1,
+      fillColor: '#4CAF50', fillOpacity: 0.04,
+      dashArray: '8,5'
+    }
+  }).addTo(map);
+  map.fitBounds(boundary.getBounds(), {padding: [30, 30]});
+  // Territory name label — centered on boundary, semi-transparent
+  var bounds = boundary.getBounds();
+  var center = bounds.getCenter();
+  L.marker(center, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:52px;font-weight:900;'
+           +'color:#1A3A6B;opacity:0.55;'
+           +'white-space:nowrap;pointer-events:none;'
+           +'position:relative;z-index:9999;'
+           +'text-shadow:2px 2px 0px white,-2px -2px 0px white,2px -2px 0px white,-2px 2px 0px white;'
+           +'transform:translate(-50%,-50%);">Apartment_470</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    }),
+    interactive: false
+  }).addTo(map);
+}
+
+var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.44766831687022, 43.74851599151201], [-88.44689023990145, 43.74849644229335], [-88.44679923489143, 43.74849415535923], [-88.44678106194793, 43.748493698696784], [-88.44677224472927, 43.748462824421324], [-88.44690620647903, 43.7478931484636], [-88.44690944782765, 43.747879481429024], [-88.44716184648158, 43.747806885924206], [-88.44725414072792, 43.74784368263787], [-88.44739691951686, 43.747892802048476], [-88.4475187486473, 43.74792227371483], [-88.44764285348279, 43.74794624171539], [-88.44769476569623, 43.747953816982466], [-88.44766831687022, 43.74851599151201]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved1", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "city": "", "state": "", "zip": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.44753205776215, 43.751412203235624], [-88.44693124294281, 43.751412203235624], [-88.44697764680583, 43.7497278060625], [-88.4469995244164, 43.74924797100055], [-88.44699162202197, 43.74922052470626], [-88.44699561595917, 43.74907555021314], [-88.44636261463165, 43.74914142725283], [-88.44561696052551, 43.74954443815235], [-88.44484984874725, 43.74968394129304], [-88.4447359914234, 43.74975497232425], [-88.44472543638737, 43.74975638660356], [-88.4446345325989, 43.749778344123094], [-88.44462500069608, 43.749780299715894], [-88.44461562365622, 43.74978261268484], [-88.44460642507187, 43.74978527944133], [-88.44459743350671, 43.749788290999255], [-88.44458867007356, 43.74979164016885], [-88.44458016085464, 43.74979531616275], [-88.44457192820522, 43.74979931089178], [-88.44456399696772, 43.749803611768044], [-88.44455638577521, 43.74980820800056], [-88.44454911698712, 43.74981308700015], [-88.44454221048146, 43.74981823437647], [-88.44453568489303, 43.74982363753856], [-88.44452955886, 43.7498292802954], [-88.44452384729507, 43.74983514735428], [-88.44451856883482, 43.749841224324186], [-88.4445137346707, 43.749847492310536], [-88.44450936095784, 43.749853935121145], [-88.44450545764536, 43.749860534760785], [-88.44450203716467, 43.749867274135454], [-88.44449910698344, 43.74987413344871], [-88.44449667705001, 43.74988109560534], [-88.44449475235074, 43.749888139007695], [-88.44449333786771, 43.74989524655809], [-88.44449243982719, 43.74990239845952], [-88.44449219227438, 43.749907068863806], [-88.44391924131187, 43.750264510057036], [-88.44334027226161, 43.74983401464115], [-88.44324490936508, 43.74975998676884], [-88.44675182673123, 43.74854964918826], [-88.44677224472927, 43.748462824421324], [-88.44678106194793, 43.748493698696784], [-88.44679923489143, 43.74849415535923], [-88.44689023990145, 43.74849644229335], [-88.44766831687022, 43.74851599151201], [-88.44753205776215, 43.751412203235624]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved2", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "city": "", "state": "", "zip": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.44753205776215, 43.751412203235624], [-88.44693124294281, 43.751412203235624], [-88.44697764680583, 43.7497278060625], [-88.4469995244164, 43.74924797100055], [-88.44699162202197, 43.74922052470626], [-88.44699561595917, 43.74907555021314], [-88.44636261463165, 43.74914142725283], [-88.44561696052551, 43.74954443815235], [-88.44484984874725, 43.74968394129304], [-88.4447359914234, 43.74975497232425], [-88.44472543638737, 43.74975638660356], [-88.4446345325989, 43.749778344123094], [-88.44462500069608, 43.749780299715894], [-88.44461562365622, 43.74978261268484], [-88.44460642507187, 43.74978527944133], [-88.44459743350671, 43.749788290999255], [-88.44458867007356, 43.74979164016885], [-88.44458016085464, 43.74979531616275], [-88.44457192820522, 43.74979931089178], [-88.44456399696772, 43.749803611768044], [-88.44455638577521, 43.74980820800056], [-88.44454911698712, 43.74981308700015], [-88.44454221048146, 43.74981823437647], [-88.44453568489303, 43.74982363753856], [-88.44452955886, 43.7498292802954], [-88.44452384729507, 43.74983514735428], [-88.44451856883482, 43.749841224324186], [-88.4445137346707, 43.749847492310536], [-88.44450936095784, 43.749853935121145], [-88.44450545764536, 43.749860534760785], [-88.44450203716467, 43.749867274135454], [-88.44449910698344, 43.74987413344871], [-88.44449667705001, 43.74988109560534], [-88.44449475235074, 43.749888139007695], [-88.44449333786771, 43.74989524655809], [-88.44449243982719, 43.74990239845952], [-88.44449219227438, 43.749907068863806], [-88.44391924131187, 43.750264510057036], [-88.44334027226161, 43.74983401464115], [-88.44324490936508, 43.74975998676884], [-88.44675182673123, 43.74854964918826], [-88.44677224472927, 43.748462824421324], [-88.44678106194793, 43.748493698696784], [-88.44679923489143, 43.74849415535923], [-88.44689023990145, 43.74849644229335], [-88.44766831687022, 43.74851599151201], [-88.44753205776215, 43.751412203235624]]]], "type": "MultiPolygon"}, "properties": {"mapid": 30, "owner": "JOAN N QUEEN DECL OF TR", "site": "30 SOUTHLAKE LA, Fond du Lac WI 54935", "mail": "360 SOUTHLAKE CIR", "sheet": "Multi_Occupant", "occupied": "No", "btype": "Townhouse", "research": "Yes", "salute": "Dear Resident", "dnc": "", "fill": "#2E5496", "owner2": "", "ownertype": "Business / Rental", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "city": "Fond du Lac", "state": "WI", "zip": "54935", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.44753205776215, 43.751412203235624], [-88.44693124294281, 43.751412203235624], [-88.44697764680583, 43.7497278060625], [-88.4469995244164, 43.74924797100055], [-88.44699162202197, 43.74922052470626], [-88.44699561595917, 43.74907555021314], [-88.44636261463165, 43.74914142725283], [-88.44561696052551, 43.74954443815235], [-88.44484984874725, 43.74968394129304], [-88.4447359914234, 43.74975497232425], [-88.44472543638737, 43.74975638660356], [-88.4446345325989, 43.749778344123094], [-88.44462500069608, 43.749780299715894], [-88.44461562365622, 43.74978261268484], [-88.44460642507187, 43.74978527944133], [-88.44459743350671, 43.749788290999255], [-88.44458867007356, 43.74979164016885], [-88.44458016085464, 43.74979531616275], [-88.44457192820522, 43.74979931089178], [-88.44456399696772, 43.749803611768044], [-88.44455638577521, 43.74980820800056], [-88.44454911698712, 43.74981308700015], [-88.44454221048146, 43.74981823437647], [-88.44453568489303, 43.74982363753856], [-88.44452955886, 43.7498292802954], [-88.44452384729507, 43.74983514735428], [-88.44451856883482, 43.749841224324186], [-88.4445137346707, 43.749847492310536], [-88.44450936095784, 43.749853935121145], [-88.44450545764536, 43.749860534760785], [-88.44450203716467, 43.749867274135454], [-88.44449910698344, 43.74987413344871], [-88.44449667705001, 43.74988109560534], [-88.44449475235074, 43.749888139007695], [-88.44449333786771, 43.74989524655809], [-88.44449243982719, 43.74990239845952], [-88.44449219227438, 43.749907068863806], [-88.44391924131187, 43.750264510057036], [-88.44334027226161, 43.74983401464115], [-88.44324490936508, 43.74975998676884], [-88.44675182673123, 43.74854964918826], [-88.44677224472927, 43.748462824421324], [-88.44678106194793, 43.748493698696784], [-88.44679923489143, 43.74849415535923], [-88.44689023990145, 43.74849644229335], [-88.44766831687022, 43.74851599151201], [-88.44753205776215, 43.751412203235624]]]], "type": "MultiPolygon"}, "properties": {"mapid": 32, "owner": "JOAN N QUEEN DECL OF TR", "site": "32 SOUTHLAKE LA, Fond du Lac WI 54935", "mail": "360 SOUTHLAKE CIR", "sheet": "Multi_Occupant", "occupied": "No", "btype": "Townhouse", "research": "Yes", "salute": "Dear Resident", "dnc": "", "fill": "#2E5496", "owner2": "", "ownertype": "Business / Rental", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "city": "Fond du Lac", "state": "WI", "zip": "54935", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.44753205776215, 43.751412203235624], [-88.44693124294281, 43.751412203235624], [-88.44697764680583, 43.7497278060625], [-88.4469995244164, 43.74924797100055], [-88.44699162202197, 43.74922052470626], [-88.44699561595917, 43.74907555021314], [-88.44636261463165, 43.74914142725283], [-88.44561696052551, 43.74954443815235], [-88.44484984874725, 43.74968394129304], [-88.4447359914234, 43.74975497232425], [-88.44472543638737, 43.74975638660356], [-88.4446345325989, 43.749778344123094], [-88.44462500069608, 43.749780299715894], [-88.44461562365622, 43.74978261268484], [-88.44460642507187, 43.74978527944133], [-88.44459743350671, 43.749788290999255], [-88.44458867007356, 43.74979164016885], [-88.44458016085464, 43.74979531616275], [-88.44457192820522, 43.74979931089178], [-88.44456399696772, 43.749803611768044], [-88.44455638577521, 43.74980820800056], [-88.44454911698712, 43.74981308700015], [-88.44454221048146, 43.74981823437647], [-88.44453568489303, 43.74982363753856], [-88.44452955886, 43.7498292802954], [-88.44452384729507, 43.74983514735428], [-88.44451856883482, 43.749841224324186], [-88.4445137346707, 43.749847492310536], [-88.44450936095784, 43.749853935121145], [-88.44450545764536, 43.749860534760785], [-88.44450203716467, 43.749867274135454], [-88.44449910698344, 43.74987413344871], [-88.44449667705001, 43.74988109560534], [-88.44449475235074, 43.749888139007695], [-88.44449333786771, 43.74989524655809], [-88.44449243982719, 43.74990239845952], [-88.44449219227438, 43.749907068863806], [-88.44391924131187, 43.750264510057036], [-88.44334027226161, 43.74983401464115], [-88.44324490936508, 43.74975998676884], [-88.44675182673123, 43.74854964918826], [-88.44677224472927, 43.748462824421324], [-88.44678106194793, 43.748493698696784], [-88.44679923489143, 43.74849415535923], [-88.44689023990145, 43.74849644229335], [-88.44766831687022, 43.74851599151201], [-88.44753205776215, 43.751412203235624]]]], "type": "MultiPolygon"}, "properties": {"mapid": 34, "owner": "JOAN N QUEEN DECL OF TR", "site": "34 SOUTHLAKE LA, Fond du Lac WI 54935", "mail": "360 SOUTHLAKE CIR", "sheet": "Multi_Occupant", "occupied": "No", "btype": "Townhouse", "research": "Yes", "salute": "Dear Resident", "dnc": "", "fill": "#2E5496", "owner2": "", "ownertype": "Business / Rental", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "city": "Fond du Lac", "state": "WI", "zip": "54935", "verified_name": ""}}, {"type": "Feature", "geometry": {"coordinates": [[[[-88.44753205776215, 43.751412203235624], [-88.44693124294281, 43.751412203235624], [-88.44697764680583, 43.7497278060625], [-88.4469995244164, 43.74924797100055], [-88.44699162202197, 43.74922052470626], [-88.44699561595917, 43.74907555021314], [-88.44636261463165, 43.74914142725283], [-88.44561696052551, 43.74954443815235], [-88.44484984874725, 43.74968394129304], [-88.4447359914234, 43.74975497232425], [-88.44472543638737, 43.74975638660356], [-88.4446345325989, 43.749778344123094], [-88.44462500069608, 43.749780299715894], [-88.44461562365622, 43.74978261268484], [-88.44460642507187, 43.74978527944133], [-88.44459743350671, 43.749788290999255], [-88.44458867007356, 43.74979164016885], [-88.44458016085464, 43.74979531616275], [-88.44457192820522, 43.74979931089178], [-88.44456399696772, 43.749803611768044], [-88.44455638577521, 43.74980820800056], [-88.44454911698712, 43.74981308700015], [-88.44454221048146, 43.74981823437647], [-88.44453568489303, 43.74982363753856], [-88.44452955886, 43.7498292802954], [-88.44452384729507, 43.74983514735428], [-88.44451856883482, 43.749841224324186], [-88.4445137346707, 43.749847492310536], [-88.44450936095784, 43.749853935121145], [-88.44450545764536, 43.749860534760785], [-88.44450203716467, 43.749867274135454], [-88.44449910698344, 43.74987413344871], [-88.44449667705001, 43.74988109560534], [-88.44449475235074, 43.749888139007695], [-88.44449333786771, 43.74989524655809], [-88.44449243982719, 43.74990239845952], [-88.44449219227438, 43.749907068863806], [-88.44391924131187, 43.750264510057036], [-88.44334027226161, 43.74983401464115], [-88.44324490936508, 43.74975998676884], [-88.44675182673123, 43.74854964918826], [-88.44677224472927, 43.748462824421324], [-88.44678106194793, 43.748493698696784], [-88.44679923489143, 43.74849415535923], [-88.44689023990145, 43.74849644229335], [-88.44766831687022, 43.74851599151201], [-88.44753205776215, 43.751412203235624]]]], "type": "MultiPolygon"}, "properties": {"mapid": 36, "owner": "JOAN N QUEEN DECL OF TR", "site": "36 SOUTHLAKE LA, Fond du Lac WI 54935", "mail": "360 SOUTHLAKE CIR", "sheet": "Multi_Occupant", "occupied": "No", "btype": "Townhouse", "research": "Yes", "salute": "Dear Resident", "dnc": "", "fill": "#2E5496", "owner2": "", "ownertype": "Business / Rental", "confidence": "High", "addressas": "Joan N Queen Decl Of Tr", "notes": "Known townhouse complex \u2014 individual unit addresses, look up via Melissa Lookup Helper \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "city": "Fond du Lac", "state": "WI", "zip": "54935", "verified_name": ""}}]};
+
+var _parcelLayers={};
+
+// 2026-07-12: Google Maps sometimes can't geocode certain county-style
+// street-suffix abbreviations -- "LA" for Lane is the confirmed case
+// (Google appears to read it as the Louisiana state code instead), even
+// though the rest of the address is fine. Swap in the USPS-standard
+// abbreviation just for the directions/search links, leaving the
+// displayed/mailing address untouched. Add more replacements here if
+// other suffixes turn out to trip Google up too.
+function _mapsAddr(site) {
+  if (!site) return site;
+  return site.replace(/\bLA\b\.?/gi, 'Ln');
+}
+
+function getPopup(p) {
+  var badge = '';
+  if (p.dnc === 'YES') badge = '<span class="popup-badge badge-dnc">DO NOT CONTACT</span>';
+  else if (p.sheet === 'Institutions') badge = '<span class="popup-badge badge-inst">' + p.btype + '</span>';
+  else if (p.sheet === 'Vacant') badge = '<span class="popup-badge badge-vacant">Vacant</span>';
+  else if (p.btype === 'Commercial / Rental') badge = '<span class="popup-badge badge-biz">Business</span>';
+  else if (p.occupied === 'Yes') badge = '<span class="popup-badge badge-owner">Owner Occupied</span>';
+  if (p.research === 'Yes') badge += '<span class="popup-badge badge-research">Research Needed</span>';
+
+  var mailHtml = p.mail ? '<div class="popup-mail"> ' + p.mail + '</div>' : '';
+  var saluteHtml = p.salute && p.salute !== 'nan' ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+  // 2026-07-12: p.site is already the full "street, city state zip" address
+  // (built that way in refresh_html_map.py) -- appending ", Fond du Lac, WI"
+  // on top of that duplicated the city/state/zip and made Google Maps fail
+  // to find the address (confirmed by Steve). Use p.site as-is.
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+  var viewUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(_mapsAddr(p.site));
+  var mapsHtml = p.site ? '<div style="margin-top:6px"><a href="' + mapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>' : '';
+
+  return '<div class="popup-inner">' +
+    '<div class="popup-mapid">Parcel #' + p.mapid + '</div>' +
+    '<div class="popup-site">' + p.site + '</div>' +
+    '<div class="popup-owner">' + p.owner + '</div>' +
+    mailHtml + saluteHtml +
+    mapsHtml +
+    '<div style="margin-top:6px">' + badge + '</div>' +
+    '</div>';
+}
+
+function getParcelArea(feature) {
+  var coords = feature.geometry.coordinates;
+  var allPoints = [];
+  function collectPoints(c) {
+    if (typeof c[0] === 'number') { allPoints.push(c); }
+    else { c.forEach(collectPoints); }
+  }
+  collectPoints(coords);
+  if (allPoints.length < 2) return 0;
+  var lats = allPoints.map(function(p) { return p[1]; });
+  var lngs = allPoints.map(function(p) { return p[0]; });
+  return (Math.max.apply(null,lats)-Math.min.apply(null,lats)) * (Math.max.apply(null,lngs)-Math.min.apply(null,lngs));
+}
+var DEFAULT_FILL_OPACITY = 0.3;  // 2026-07-14: matches opacity-slider's value="30" -- getOpacity()
+                                  // previously always returned 1.0 regardless of the slider default,
+                                  // so parcels loaded fully opaque until the slider was touched by hand.
+function getOpacity(feature) {
+  return DEFAULT_FILL_OPACITY;
+}
+// Store per-parcel area for label sizing
+var parcelAreas = {};
+parcelsData.features.forEach(function(f) {
+  parcelAreas[f.properties.mapid] = getParcelArea(f);
+});
+
+L.geoJSON(parcelsData, {
+  style: function(feature) {
+    var p = feature.properties;
+    return {
+      fillColor: p.fill,
+      fillOpacity: getOpacity(feature),
+      color: 'rgba(0,0,0,0.65)',
+      weight: 2.0
+    };
+  },
+  onEachFeature: function(feature, layer) {
+    var p = feature.properties;
+    _parcelLayers[p.mapid]=layer;
+    layer._origStyle={
+      fillColor:layer.options.fillColor,
+      fillOpacity:layer.options.fillOpacity,
+      color:layer.options.color,
+      weight:layer.options.weight
+    };
+    layer.bindPopup(getPopup(p), {maxWidth: 300});
+    var area = getParcelArea(feature);
+    // Store area on tooltip element for zoom-aware sizing.
+    // 2026-07-11: skip the label entirely for placeholder mapids
+    // (prefixed "_dissolved" by refresh_html_map.py) -- these mark a
+    // parcel that was broken into individual buildings, kept only so the
+    // polygon/fill still shows; the placeholder name isn't a real MapID
+    // and showing it just confuses the map.
+    // 2026-07-14: also skip it for Multi_Occupant parcels (townhouse-style
+    // complexes with many individually-addressed units) -- each building
+    // footprint inside now gets its own real street-address label, so the
+    // parcel's plain container number (e.g. "64") just lands on top of
+    // whichever building happens to sit at the parcel's center and looks
+    // like doubled/confusing text, same reasoning as the _dissolved case.
+    // Only when isApartment is true, though -- that's the only case where
+    // buildings actually get their own labels to replace this one; for any
+    // other territory type the parcel's own number is still the only label
+    // that area would have, so it must stay.
+    if (!(p.mapid && String(p.mapid).indexOf('_dissolved') === 0) &&
+        !(isApartment && p.sheet === 'Multi_Occupant')) {
+      var tt = layer.bindTooltip(String(p.mapid), {
+        permanent: true, direction: 'center',
+        className: 'mapid-label',
+        offset: [0, 0]
+      });
+      layer.on('tooltipopen', function(e) {
+        e.tooltip.getElement().setAttribute('data-area', area);
+      });
+    }
+  }
+}).addTo(map);
+
+// 2026-07-12: building footprints used to be permanently solid black.
+// Now they default to grey and only turn black once the matching
+// mailing-list checkbox is marked done -- _buildingLayers is the
+// per-building lookup _updateParcel() (in the table-tracking script
+// below) uses to flip the color, same pattern as _parcelLayers.
+var _buildingLayers = {};
+var BUILDING_DEFAULT_FILL = '#C4C4C4';
+var BUILDING_DONE_FILL    = '#000000';
+
+if (buildingsData) {
+  L.geoJSON(buildingsData, {
+    style: function(feature) {
+      return {
+        fillColor: BUILDING_DEFAULT_FILL,
+        fillOpacity: DEFAULT_FILL_OPACITY,
+        color: '#000000',
+        weight: 1.5
+      };
+    },
+    interactive: isApartment,
+    onEachFeature: isApartment ? function(feature, layer) {
+      var p = feature.properties;
+      var bKey = p.subid ? p.subid : (p.mapid || '');
+      if (bKey !== '') {
+        _buildingLayers[bKey] = layer;
+        layer._origStyle = {
+          fillColor: layer.options.fillColor,
+          fillOpacity: layer.options.fillOpacity,
+          color: layer.options.color,
+          weight: layer.options.weight
+        };
+      }
+      // Permanent sub-ID label on each building footprint
+      var label = p.subid ? p.subid.toUpperCase() : (p.mapid ? String(p.mapid) : '');
+      if (label) {
+        layer.bindTooltip(label, {
+          permanent: true, direction: 'center',
+          className: 'mapid-label', offset: [0, 0]
+        });
+      }
+      if (p.site && p.site !== '') {
+        var subLabel = p.subid ? p.subid.toUpperCase() : ('Parcel #' + p.mapid);
+        var saluteHtml = p.salute && p.salute !== 'nan' && p.salute !== ''
+          ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+        // 2026-07-15: p.note is a short data-provenance flag ("Approximate
+        // match" / "From Fond du Lac County GIS") -- shown as its own line,
+        // kept OUT of p.site itself so the Get Directions link below still
+        // gets a clean, real address.
+        var noteHtml = p.note && p.note !== ''
+          ? '<div class="popup-mail" style="color:#888;font-style:italic">' + p.note + '</div>' : '';
+        var bMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+        var bMapsHtml = '<div style="margin-top:6px"><a href="' + bMapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>';
+        var html = '<div class="popup-inner">' +
+          '<div class="popup-mapid">Building ' + subLabel + '</div>' +
+          '<div class="popup-site">' + p.site + '</div>' +
+          '<div class="popup-owner">' + (p.owner || '') + '</div>' +
+          saluteHtml + noteHtml +
+          bMapsHtml +
+          '</div>';
+        layer.bindPopup(html, {maxWidth: 300});
+      }
+    } : function(feature, layer) {}
+  }).addTo(map);
+}
+
+if (!boundaryData) {
+  map.setView([43.77, -88.43], 14);
+}
+
+// Scale MapID labels by zoom level AND parcel area
+function updateLabelSizes() {
+  var z = map.getZoom();
+  // Base size from zoom
+  var baseSize;
+  if      (z <= 13) baseSize = 11;
+  else if (z <= 14) baseSize = 15;
+  else if (z <= 15) baseSize = 19;
+  else if (z <= 16) baseSize = 24;
+  else              baseSize = 30;
+  document.querySelectorAll('.mapid-label').forEach(function(el) {
+    var area = parseFloat(el.getAttribute('data-area') || 0);
+    var scale = 1.0;
+    // Shrink labels for small parcels
+    if      (area < 0.000003) scale = 0.45;
+    else if (area < 0.000008) scale = 0.60;
+    else if (area < 0.00002)  scale = 0.75;
+    else if (area < 0.00006)  scale = 0.88;
+    var finalSize = Math.max(7, Math.round(baseSize * scale));
+    el.style.fontSize = finalSize + 'px';
+  });
+}
+map.on('zoomend', updateLabelSizes);
+map.on('load', updateLabelSizes);
+setTimeout(updateLabelSizes, 500);
+</script>
+<style>
+.mapid-label {
+  background: transparent; border: none; box-shadow: none;
+  font-weight: bold; color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9);
+  pointer-events: none; transition: font-size 0.1s;
+}
+</style>
+<script>
+var _allRows=[];
+var _sortState={conf:{col:-1,asc:true},ver:{col:-1,asc:true},res:{col:-1,asc:true},dnc:{col:-1,asc:true}};
+
+function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
+function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
+function _setDone(mid,done){if(done)localStorage.setItem(_doneKey(mid),'1');else localStorage.removeItem(_doneKey(mid));}
+
+function _toggleDone(mid){
+  var done=!_isDone(mid);
+  _setDone(mid,done);
+  _updateParcel(mid,done);
+  _updateTableRow(mid,done);}
+
+function _updateParcel(mid,done){
+  var lyr=_parcelLayers[mid];
+  if(lyr){
+    if(done){lyr.setStyle({fillColor:'#222222',fillOpacity:0.9,color:'#FFFFFF',weight:4});}
+    else{lyr.setStyle(lyr._origStyle||{fillColor:'#AAAAAA',fillOpacity:0.4,color:'rgba(0,0,0,0.65)',weight:2.0});}}
+  var bld=_buildingLayers[mid];
+  if(bld){
+    if(done){bld.setStyle({fillColor:BUILDING_DONE_FILL,fillOpacity:0.9});}
+    else{bld.setStyle({fillColor:(bld._origStyle&&bld._origStyle.fillColor)||BUILDING_DEFAULT_FILL});}}}
+
+function _updateTableRow(mid,done){
+  document.querySelectorAll('.ml-check[data-mid="'+mid+'"]').forEach(function(el){
+    el.textContent=done?'☑':'☐';});
+  document.querySelectorAll('.ml-row[data-mid="'+mid+'"]').forEach(function(el){
+    el.style.opacity=done?'0.45':'';});}
+
+function _applyDoneState(){
+  // Clear done state if this is a freshly generated map (build timestamp changed)
+  var buildKey='build_'+_TERRITORY;
+  var lastBuild=localStorage.getItem(buildKey);
+  if(lastBuild!==_BUILD_TS){
+    // New pipeline run - clear all done state for this territory
+    var toRemove=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('done_'+_TERRITORY+'_')===0)toRemove.push(k);}
+    toRemove.forEach(function(k){localStorage.removeItem(k);});
+    localStorage.setItem(buildKey,_BUILD_TS);}
+  tableData.forEach(function(p){if(_isDone(p.mapid))_updateParcel(p.mapid,true);});
+  var m=window.location.hash.match(/done=([0-9,]+)/);
+  if(m){m[1].split(',').forEach(function(s){
+    var mid=parseInt(s);
+    if(!isNaN(mid)){_setDone(mid,true);_updateParcel(mid,true);}});}}
+setTimeout(_applyDoneState,400);
+
+function shareProgress(){
+  var done=[];
+  tableData.forEach(function(p){if(_isDone(p.mapid))done.push(p.mapid);});
+  if(!done.length){alert('No parcels checked off yet.');return;}
+  var url=window.location.href.split('#')[0]+'#done='+done.join(',');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){
+      alert('Progress link copied!\nPaste it into an email to share your progress.');});}
+  else{prompt('Copy this link to share your progress:',url);}}
+
+function _sortIndicator(sec,idx){
+  if(idx===0)return '';
+  var s=_sortState[sec];
+  if(s.col!==idx)return ' ▸';
+  return s.asc?' ▲':' ▼';}
+
+function _colHdr(sec){
+  var isConf=(sec==='conf');
+  var cols=isConf
+    ?['','MapID','Owner 1','Owner 2','Site Address']
+    :['','MapID','Owner 1','Owner 2','Site Address','Reason/Notes'];
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+'">';
+  cols.forEach(function(c,i){
+    if(i===0){h+='<span></span>';return;}
+    h+='<span data-sec="'+sec+'" data-col="'+i+'" onclick="_sortSection(this.dataset.sec,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(sec,i)+'</span>';});
+  h+='</div>';
+  return h;}
+
+function _sortSection(sec,col){
+  if(col===0)return;
+  var s=_sortState[sec];
+  if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
+  renderTable(_allRows);}
+
+function _sortRows(arr,sec){
+  var s=_sortState[sec];
+  if(s.col<=0)return arr.slice();
+  var cols=(sec==='conf')
+    ?['','mapid','owner','owner2','site_full']
+    :['','mapid','owner','owner2','site_full','notes'];
+  var key=cols[s.col]||'mapid';
+  return arr.slice().sort(function(a,b){
+    var av,bv;
+    if(key==='site_full'){
+      av=((a.site||'')+(a.site_city||'')+(a.site_state||'')+(a.site_zip||'')).toLowerCase();
+      bv=((b.site||'')+(b.site_city||'')+(b.site_state||'')+(b.site_zip||'')).toLowerCase();}
+    else if(key==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
+    else{av=String(a[key]||'').toLowerCase();bv=String(b[key]||'').toLowerCase();}
+    if(av<bv)return s.asc?-1:1;
+    if(av>bv)return s.asc?1:-1;
+    return 0;});}
+
+function _row(p,cls,sec){
+  var isConf=(sec==='conf');
+  var mid=p.mapid;
+  var done=_isDone(mid);
+  var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
+  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
+  var rowStyle=done?'opacity:0.45;':'';
+  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" style="grid-template-columns:'+grid+';'+rowStyle+'">';
+  r+='<span class="ml-check" data-mid="'+mid+'" onclick="_toggleDone(\''+mid+'\')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'☑':'☐')+'</span>';
+  r+='<span>'+mid+'</span>';
+  r+='<span>'+(p.owner||'')+'</span>';
+  r+='<span>'+(p.owner2||'')+'</span>';
+  r+='<span>'+sf+'</span>';
+  if(!isConf){r+='<span>'+(p.notes||'')+'</span>';}
+  r+='</div>';
+  return r;}
+
+function setParcelOpacity(val){
+  document.getElementById('opacity-val').textContent=Math.round(val*100)+'%';
+  Object.keys(_parcelLayers).forEach(function(mid){
+    var lyr=_parcelLayers[mid];
+    if(lyr&&!_isDone(parseInt(mid))){
+      lyr.setStyle({fillOpacity:val});}});
+  // 2026-07-14: buildings were never wired into the slider at all, so
+  // building footprints stayed opaque no matter what the slider showed.
+  Object.keys(_buildingLayers).forEach(function(bid){
+    var bld=_buildingLayers[bid];
+    if(bld){bld.setStyle({fillOpacity:val});}});}
+
+function buildTable(){_allRows=tableData.slice();renderTable(_allRows);}
+
+function filterTable(){
+  var q=document.getElementById('search-box').value.toLowerCase();
+  renderTable(_allRows.filter(function(p){
+    var sf=(p.site||'')+(p.site_city||'')+(p.site_state||'')+(p.site_zip||'');
+    return [p.mapid,p.owner,p.owner2,sf,p.notes].join(' ').toLowerCase().indexOf(q)>=0;}));}
+
+function renderTable(rows){
+  var conf=[],res=[],dnc=[];
+  rows.forEach(function(p){
+    if(p.dnc==='YES'){dnc.push(p);}
+    else if(p.occupied==='Yes'&&p.confidence==='High'&&p.research!=='Yes'){conf.push(p);}
+    else{res.push(p);}});
+  conf=_sortRows(conf,'conf');res=_sortRows(res,'res');dnc=_sortRows(dnc,'dnc');
+  var h='';
+  h+='<div class=ml-hdr style="background:#375623">✔ CONFIDENT RESIDENTS ('+conf.length+' parcels) — Ready to write letters</div>';
+  h+=_colHdr('conf');
+  conf.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-g':'ml-odd','conf');});
+  if(!conf.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#7F6000">? NEEDS RESEARCH ('+res.length+' parcels) — Verify before writing</div>';
+  h+=_colHdr('res');
+  res.forEach(function(p,i){h+=_row(p,i%2===0?'ml-even-y':'ml-odd','res');});
+  if(!res.length)h+='<div class=ml-none>None</div>';
+  h+='<div class=ml-gap></div>';
+  h+='<div class=ml-hdr style="background:#C00000">✘ DO NOT CALL ('+dnc.length+' parcels)</div>';
+  h+=_colHdr('dnc');
+  dnc.forEach(function(p){h+=_row(p,'ml-dnc','dnc');});
+  if(!dnc.length)h+='<div class=ml-none>None</div>';
+  document.getElementById('table-body').innerHTML=h;}
+
+function showTab(tab){
+  document.getElementById('map').style.display=tab==='map'?'block':'none';
+  document.getElementById('table-view').style.display=tab==='table'?'block':'none';
+  if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});
+  if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}}
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_470 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_470 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_470/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var target=String(val).trim().toUpperCase();if(!target)return;var found=null;parcelsData.features.forEach(function(f){if(String(f.properties.mapid).toUpperCase()===target){found=f;}});if(!found && typeof buildingsData!=='undefined' && buildingsData){buildingsData.features.forEach(function(f){var subid=f.properties.subid?String(f.properties.subid).toUpperCase():'';var mapid=(f.properties.mapid!==undefined&&f.properties.mapid!=='')?String(f.properties.mapid).toUpperCase():'';if(subid===target || (!subid && mapid===target)){found=f;}});}if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function printMap(){window.print();}</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script></body>
+</html>
