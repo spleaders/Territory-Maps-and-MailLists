@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Apartment_412 Territory Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f0f0; }
+#header {
+  background: #4CAF50; color: white;
+  padding: 8px 16px; display: flex;
+  align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 4px; min-height: 56px; box-sizing: border-box;
+}
+#header h1 { font-size: 17px; font-weight: bold; margin: 0; line-height: 1.2; }
+#header .subtitle { font-size: 10px; opacity: 0.75; margin-top: 1px; }
+#header .stats { font-size: 12px; opacity: 0.9; }
+#map { height: calc(100vh - 96px); width: 100%; display: block; }
+.leaflet-popup-content-wrapper {
+  border-radius:0.7em;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  border-left: 6px solid #4CAF50;
+  padding: 0;
+}
+.leaflet-popup-content { margin: 0; width: 360px !important; }
+.popup-inner { padding: 18px 22px; }
+.popup-mapid {
+  font-size: 14px; color: #888; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+.popup-site {
+  font-size: 20px; font-weight: bold; color: #4CAF50;
+  margin-bottom: 7px; line-height: 1.3;
+}
+.popup-owner { font-size: 17px; color: #222; margin-bottom: 4px; }
+.popup-mail { font-size: 17px; color: #555; margin-bottom: 10px; }
+.popup-badge {
+  display: inline-block; padding: 5px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: bold; color: white; margin-right: 4px;
+}
+.badge-owner  { background: #4CAF50; }
+.badge-vacant { background: #808080; }
+.badge-inst   { background: #548235; }
+.badge-biz    { background: #7B2D8B; }
+.badge-dnc    { background: #cc0000; }
+.badge-research { background: #FFFF00; color: #333; }
+.legend-resizer{position:absolute;bottom:4px;right:4px;width:14px;height:14px;cursor:se-resize;opacity:0.4;z-index:10;background:linear-gradient(135deg,transparent 50%,#888 50%,#888 60%,transparent 60%,transparent 70%,#888 70%,#888 80%,transparent 80%);}.legend-resizer:hover{opacity:0.8;}#legend {
+  position: absolute; bottom: 24px; right: 10px; z-index: 1000;
+  background: white; border-radius:0.7em; padding:1em 1.3em;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2); font-size: 17px;
+  display:inline-block;width:max-content;min-width:80px;cursor:move;user-select:none;overflow:hidden;
+}
+#legend h4 {
+  font-size: 1.05em; margin-bottom: 0.7em; white-space: nowrap; color: #333;
+  border-bottom: 2px solid #eee; padding-bottom: 6px;
+}
+#legend-close {
+  float: right; cursor: pointer; font-size: 16px; color: #aaa;
+}
+#legend-close:hover { color: #333; }
+.legend-row { display: flex; align-items: center; margin-bottom: 10px; }
+.legend-swatch {
+  width: 20px; height: 20px; border-radius: 4px;
+  margin-right: 12px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.25);
+  display: inline-block !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+#notes-bar {
+  display: none; position: absolute; top: 58px; left: 10px;
+  right: 10px; z-index: 1000;
+  background: #FFF8E1; border-left: 4px solid #F5A623;
+  border-radius: 6px; padding: 8px 12px;
+  font-size: 12px; color: #555; max-width: 500px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#tab-bar {
+  display: flex; background: #4CAF50;
+  padding: 0 12px; height: 40px; box-sizing: border-box;
+}
+.tab-btn {
+  padding: 8px 20px; cursor: pointer; color: rgba(255,255,255,0.7);
+  font-size: 13px; font-weight: bold; border: none;
+  background: transparent; border-bottom: 3px solid transparent;
+}
+.tab-btn.active {
+  color: white; border-bottom: 3px solid white;
+}
+
+#table-view {
+  display: none; height: calc(100vh - 90px);
+  overflow-x: scroll; overflow-y: auto; padding: 16px; background: #f5f5f5;
+}
+#table-view::-webkit-scrollbar {
+  height: 12px; width: 12px;
+}
+#table-view::-webkit-scrollbar-track {
+  background: #ddd; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb {
+  background: #888; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+#search-box {
+  width: 100%; max-width: 400px; padding: 8px 12px;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: 14px; margin-bottom: 12px;
+}
+#data-table {
+  width: 1480px; border-collapse: collapse;
+  table-layout: fixed;
+  background: white; font-size: 13px;
+}
+#table-wrapper {
+  display: block; overflow-x: auto;
+  border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#data-table th {
+  background: #4CAF50; color: white;
+  padding: 10px 12px; text-align: left;
+  cursor: pointer; white-space: nowrap;
+  user-select: none; position: sticky;
+  top: 0; z-index: 10; min-width: 60px;
+}
+#data-table th:hover { opacity: 0.85; }
+#data-table th.sort-asc::after { content: " "; font-size: 10px; }
+#data-table th.sort-desc::after { content: " "; font-size: 10px; }
+#data-table td {
+  padding: 8px 12px; border-bottom: 1px solid #eee;
+  vertical-align: top; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  max-width: 0;
+}
+#data-table td:hover {
+  white-space: normal; overflow: visible;
+  background: #fffde7; position: relative; z-index: 5;
+}
+#data-table th {
+  position: sticky; top: 0; z-index: 10;
+  resize: horizontal; overflow: auto;
+  min-width: 40px;
+}
+#data-table tr:hover td { background: #f0f4ff; }
+.badge-res   { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-biz2  { background: #7B2D8B; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-inst2 { background: #548235; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-vac2  { background: #808080; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-dnc2  { background: #cc0000; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-res2  { background: #E65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+#btn-bar {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; gap: 8px; align-items: center;
+}
+#share-btn, #print-btn {
+  background: rgba(255,255,255,0.95); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 14px;
+  font-size: 13px; font-weight: bold; color: #333;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#share-btn:hover, #print-btn:hover { background: #f0f0f0; }
+@media print {
+  @page { margin: 0; size: auto; }
+  #header, #tab-bar, #btn-bar, #share-btn, #print-btn, #mapid-search,
+  #notes-bar, #table-view,
+  .leaflet-control-container { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important;
+                overflow: hidden !important; }
+  #map { position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          z-index: 1 !important; }
+  #legend { z-index: 2 !important;
+             max-width: 200px !important;
+             right: 10px !important;
+             bottom: 10px !important;
+             left: auto !important;
+             top: auto !important;
+             font-size: 13px !important; }
+}
+#mapid-search {
+  background: rgba(255,255,255,0.97); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex; align-items: center; gap: 8px;
+}
+#mapid-search input {
+  border: none; outline: none; font-size: 13px;
+  width: 80px; background: transparent;
+}
+#mapid-search label {
+  font-size: 12px; color: #666; white-space: nowrap;
+}
+#mapid-search-clear {
+  cursor: pointer; color: #aaa; font-size: 14px;
+  display: none;
+}
+#mapid-search-clear:hover { color: #333; }
+.ml-hdr{padding:10px 16px;font-weight:bold;font-size:13px;color:white;letter-spacing:0.5px;}
+.ml-col-header{display:grid;background:#4472C4;color:white;font-size:12px;font-weight:bold;}
+.ml-col-header span{padding:6px 8px;white-space:nowrap;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.2);cursor:pointer;user-select:none;}
+.ml-col-header span:hover{background:rgba(255,255,255,0.15);}
+.ml-row{display:grid;font-size:12px;border-bottom:1px solid #eee;}
+.ml-row span{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ml-row:hover span{white-space:normal;overflow:visible;background:#fffde7;
+  position:relative;z-index:5;}
+.check-icon{font-size:16px;cursor:pointer;background:rgba(255,255,255,0.85);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  line-height:1;border:none!important;box-shadow:none!important;}
+.check-icon:hover{background:rgba(255,255,255,1);}
+.ml-even-g{background:#E2EFDA;}
+.ml-odd{background:#FFFFFF;}
+.ml-even-y{background:#FFF2CC;}
+.ml-dnc{background:#FFB3B3;}
+.ml-gap{height:12px;background:#e8e8e8;}
+.ml-none{padding:8px 16px;color:#888;font-size:12px;font-style:italic;}
+</style>
+</head>
+<body>
+<div id="header">
+  <div>
+    <h1>Apartment_412 Territory</h1>
+    <div class="subtitle">Apartment_412_20260808_0042.xlsx</div>
+  </div>
+  <div class="stats">
+    1 parcels &nbsp;&nbsp;
+    0 owner occupied &nbsp;&nbsp;
+    0 need research &nbsp;&nbsp;
+    0 vacant
+    
+  </div>
+</div>
+<div id="notes-bar">Before working apartment territories.  Please review the following:  KM 12/08 pg. 3-4 and KM 11/85 Pg. 3-6 | Please work: 397, 407, and 417 Harrison St. North Fond du Lac Wisconsin</div>
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="showTab('map')">&#x1F5FA; Map</button>
+  <button class="tab-btn" onclick="showTab('table')">&#x1F4CB; Mailing List</button>
+</div>
+<div id="map"></div>
+<div id="table-view">
+  <div style="padding:10px 16px 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()"
+      style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:300px;">
+    <button onclick="shareProgress()" style="padding:7px 14px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:white;font-weight:bold;">&#x1F4CB; Share Progress</button>
+  </div>
+  <div id="table-body"></div>
+</div>
+<div id="btn-bar">
+<button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+<button id="print-btn" onclick="printMap()">&#x1F5A8; Print Map</button>
+<div id="mapid-search">
+  <label>&#x1F50D; MapID</label>
+  <input type="number" id="mapid-input" placeholder="e.g. 42" min="1"
+    oninput="searchMapID(this.value)"
+    onkeydown="if(event.key==='Escape'){clearMapID();}" />
+  <span id="mapid-search-clear" onclick="clearMapID()">&#x2715;</span>
+</div>
+<div id="opacity-ctrl" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.97);border:1px solid #ccc;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <label style="font-size:12px;color:#666;white-space:nowrap;">&#x1F3A8; Fill</label>
+  <input type="range" id="opacity-slider" min="0" max="100" value="30"
+    style="width:80px;cursor:pointer;"
+    oninput="setParcelOpacity(this.value/100)" />
+  <span id="opacity-val" style="font-size:12px;color:#666;width:32px;">30%</span>
+</div>
+</div>
+<div id="legend">
+  <h4>Legend <span id="legend-close" onclick="document.getElementById('legend').style.display='none'">&#x2715;</span></h4>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#2E5496"></div>Confident Resident
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#FFFF00"></div>Needs Research
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#228B22"></div>Verified
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#E65100"></div>Suspect — verify before mailing
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#8B4513"></div>Institution
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#7B2D8B"></div>Business
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#808080"></div>Vacant
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#CC0000"></div>Do Not Contact
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#222222;border:2px solid #FFFFFF;box-sizing:border-box"></div>Completed
+  </div>
+  <div class="legend-resizer" id="legend-resizer"></div>
+</div>
+<script>
+var map = L.map('map', {zoomControl: true, preferCanvas: true, scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.25});
+document.getElementById('map').addEventListener('wheel', function(e){ e.preventDefault(); var delta = e.deltaY > 0 ? -0.25 : 0.25; var mousePos = map.mouseEventToLatLng(e); map.setZoomAround(mousePos, map.getZoom() + delta); }, {passive: false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: ' OpenStreetMap contributors | CartoDB', maxZoom: 20, subdomains: 'abcd'
+}).addTo(map);
+
+var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.49207282066345, 43.809047864492825], [-88.49069952964783, 43.809051735729895], [-88.49076390266418, 43.80778195651279], [-88.49212110042572, 43.80781292705876], [-88.49207282066345, 43.809047864492825], [-88.49207282066345, 43.809047864492825], [-88.49207282066345, 43.809047864492825]]], "type": "Polygon"}, "properties": {}}]};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.492043, 43.808244], [-88.491482, 43.808246], [-88.491482, 43.808171], [-88.491436, 43.808171], [-88.491436, 43.808127], [-88.491483, 43.808126], [-88.491482, 43.808064], [-88.492041, 43.808062], [-88.492043, 43.808244]]]}, "properties": {"mapid": 2, "subid": "407", "site": "407 HARRISON ST, North Fond du Lac WI 54937", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "label_lon": -88.49173897802197, "label_lat": 43.808149}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.49209294924214, 43.808533], [-88.491544, 43.808533], [-88.491544, 43.808405], [-88.49209795339004, 43.808405], [-88.49209294924214, 43.808533]]]}, "properties": {"mapid": 2, "subid": "417", "site": "417 HARRISON ST, North Fond du Lac WI 54937", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "Approximate match", "secondary": true, "label_lon": -88.49181972565805, "label_lat": 43.808469}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.490827, 43.808524], [-88.490928, 43.808524], [-88.490929, 43.808494], [-88.490985, 43.808494], [-88.490985, 43.808524], [-88.491081, 43.808524], [-88.491079, 43.808882], [-88.490825, 43.808881], [-88.490827, 43.808524]]]}, "properties": {"mapid": 2, "subid": "397", "site": "397 HARRISON ST, North Fond du Lac WI 54937", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "label_lon": -88.49095300139665, "label_lat": 43.808702499999995}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.491308, 43.808539], [-88.4914, 43.808539], [-88.4914, 43.808883], [-88.491308, 43.808883], [-88.491308, 43.808539]]]}, "properties": {"mapid": 2, "subid": "397", "site": "397 HARRISON ST, North Fond du Lac WI 54937", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "Approximate match", "secondary": true, "label_lon": -88.491354, "label_lat": 43.808711}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.492072, 43.808884], [-88.491547, 43.808882], [-88.491547, 43.80881], [-88.491503, 43.80881], [-88.491503, 43.808766], [-88.49155, 43.808767], [-88.491551, 43.808698], [-88.492074, 43.808701], [-88.492072, 43.808884]]]}, "properties": {"mapid": 2, "subid": "417", "site": "417 HARRISON ST, North Fond du Lac WI 54937", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "label_lon": -88.49178802185793, "label_lat": 43.808788500000006}}]};
+var isApartment = true;
+var _TERRITORY = 'Apartment_412';
+var _BUILD_TS = '20260808_004212';
+var FIREBASE_CONFIG = {"apiKey": "AIzaSyAkP3qiXWwqWt9OgBPhmcCnk6OuaZKWi0w", "authDomain": "territory-master-sync.firebaseapp.com", "databaseURL": "https://territory-master-sync-default-rtdb.firebaseio.com", "projectId": "territory-master-sync", "storageBucket": "territory-master-sync.firebasestorage.app", "messagingSenderId": "558973947206", "appId": "1:558973947206:web:6cf0b1fc790387bfede947"};
+var tableData = [{"mapid": "397", "owner": "Current Resident", "owner2": "PEPPER INVEST LLC", "site": "397 HARRISON ST", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "333 BISHOPS WAY #160", "city": "Brookfield", "state": "WI", "zip": "53005", "btype": "Apartment", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Gihon Llc \u2014 Pepper Invest Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known multi-unit building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "407", "owner": "Current Resident", "owner2": "PEPPER INVEST LLC", "site": "407 HARRISON ST", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "333 BISHOPS WAY #160", "city": "Brookfield", "state": "WI", "zip": "53005", "btype": "Apartment", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Gihon Llc \u2014 Pepper Invest Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known multi-unit building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "417", "owner": "Current Resident", "owner2": "PEPPER INVEST LLC", "site": "417 HARRISON ST", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "333 BISHOPS WAY #160", "city": "Brookfield", "state": "WI", "zip": "53005", "btype": "Apartment", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Gihon Llc \u2014 Pepper Invest Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known multi-unit building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "397", "owner": "Current Resident", "owner2": "PEPPER INVEST LLC", "site": "397 HARRISON ST", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "333 BISHOPS WAY #160", "city": "Brookfield", "state": "WI", "zip": "53005", "btype": "Apartment", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Gihon Llc \u2014 Pepper Invest Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known multi-unit building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "407", "owner": "Current Resident", "owner2": "PEPPER INVEST LLC", "site": "407 HARRISON ST", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "333 BISHOPS WAY #160", "city": "Brookfield", "state": "WI", "zip": "53005", "btype": "Apartment", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Gihon Llc \u2014 Pepper Invest Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known multi-unit building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "417", "owner": "Current Resident", "owner2": "PEPPER INVEST LLC", "site": "417 HARRISON ST", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "333 BISHOPS WAY #160", "city": "Brookfield", "state": "WI", "zip": "53005", "btype": "Apartment", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Gihon Llc \u2014 Pepper Invest Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known multi-unit building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "397", "owner": "Current Resident", "owner2": "PEPPER INVEST LLC", "site": "397 HARRISON ST", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "333 BISHOPS WAY #160", "city": "Brookfield", "state": "WI", "zip": "53005", "btype": "Apartment", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Gihon Llc \u2014 Pepper Invest Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known multi-unit building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "407", "owner": "Current Resident", "owner2": "PEPPER INVEST LLC", "site": "407 HARRISON ST", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "333 BISHOPS WAY #160", "city": "Brookfield", "state": "WI", "zip": "53005", "btype": "Apartment", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Gihon Llc \u2014 Pepper Invest Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known multi-unit building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "417", "owner": "Current Resident", "owner2": "PEPPER INVEST LLC", "site": "417 HARRISON ST", "site_city": "North Fond du Lac", "site_state": "WI", "site_zip": "54937", "mail": "333 BISHOPS WAY #160", "city": "Brookfield", "state": "WI", "zip": "53005", "btype": "Apartment", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "Gihon Llc \u2014 Pepper Invest Llc", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known multi-unit building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}];
+
+if (boundaryData) {
+  var boundary = L.geoJSON(boundaryData, {
+    style: {
+      color: '#4CAF50', weight: 3, opacity: 1,
+      fillColor: '#4CAF50', fillOpacity: 0.04,
+      dashArray: '8,5'
+    }
+  }).addTo(map);
+  map.fitBounds(boundary.getBounds(), {padding: [30, 30]});
+  // Territory name label — centered on boundary, semi-transparent
+  var bounds = boundary.getBounds();
+  var center = bounds.getCenter();
+  L.marker(center, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:52px;font-weight:900;'
+           +'color:#1A3A6B;opacity:0.55;'
+           +'white-space:nowrap;pointer-events:none;'
+           +'position:relative;z-index:9999;'
+           +'text-shadow:2px 2px 0px white,-2px -2px 0px white,2px -2px 0px white,-2px 2px 0px white;'
+           +'transform:translate(-50%,-50%);">Apartment_412</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    }),
+    interactive: false
+  }).addTo(map);
+}
+
+var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.49074570915349, 43.80814082957911], [-88.4909980227135, 43.807787299010364], [-88.49212110042572, 43.80781292705876], [-88.49207639771262, 43.80895636793772], [-88.49087024489151, 43.808943138869346], [-88.49084823048045, 43.8089430363093], [-88.49082621602686, 43.80894321184359], [-88.49080421022988, 43.80894366547292], [-88.49078221806018, 43.80894439809766], [-88.49076024697425, 43.80894540791849], [-88.49073830442846, 43.80894669493597], [-88.49071639539362, 43.80894825915057], [-88.49070472570328, 43.80894924180307], [-88.49074570915349, 43.80814082957911]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved1", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "city": "", "state": "", "zip": ""}}]};
+
+var _parcelLayers={};
+
+// 2026-07-12: Google Maps sometimes can't geocode certain county-style
+// street-suffix abbreviations -- "LA" for Lane is the confirmed case
+// (Google appears to read it as the Louisiana state code instead), even
+// though the rest of the address is fine. Swap in the USPS-standard
+// abbreviation just for the directions/search links, leaving the
+// displayed/mailing address untouched. Add more replacements here if
+// other suffixes turn out to trip Google up too.
+function _mapsAddr(site) {
+  if (!site) return site;
+  return site.replace(/\bLA\b\.?/gi, 'Ln');
+}
+
+function getPopup(p) {
+  var badge = '';
+  if (p.dnc === 'YES') badge = '<span class="popup-badge badge-dnc">DO NOT CONTACT</span>';
+  else if (p.sheet === 'Institutions') badge = '<span class="popup-badge badge-inst">' + p.btype + '</span>';
+  else if (p.sheet === 'Vacant') badge = '<span class="popup-badge badge-vacant">Vacant</span>';
+  else if (p.btype === 'Commercial / Rental') badge = '<span class="popup-badge badge-biz">Business</span>';
+  else if (p.occupied === 'Yes') badge = '<span class="popup-badge badge-owner">Owner Occupied</span>';
+  if (p.research === 'Yes') badge += '<span class="popup-badge badge-research">Research Needed</span>';
+
+  var mailHtml = p.mail ? '<div class="popup-mail"> ' + p.mail + '</div>' : '';
+  var saluteHtml = p.salute && p.salute !== 'nan' ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+  // 2026-07-12: p.site is already the full "street, city state zip" address
+  // (built that way in refresh_html_map.py) -- appending ", Fond du Lac, WI"
+  // on top of that duplicated the city/state/zip and made Google Maps fail
+  // to find the address (confirmed by Steve). Use p.site as-is.
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+  var viewUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(_mapsAddr(p.site));
+  var mapsHtml = p.site ? '<div style="margin-top:6px"><a href="' + mapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>' : '';
+
+  return '<div class="popup-inner">' +
+    '<div class="popup-mapid">Parcel #' + p.mapid + '</div>' +
+    '<div class="popup-site">' + p.site + '</div>' +
+    '<div class="popup-owner">' + p.owner + '</div>' +
+    mailHtml + saluteHtml +
+    mapsHtml +
+    '<div style="margin-top:6px">' + badge + '</div>' +
+    '</div>';
+}
+
+function getParcelArea(feature) {
+  var coords = feature.geometry.coordinates;
+  var allPoints = [];
+  function collectPoints(c) {
+    if (typeof c[0] === 'number') { allPoints.push(c); }
+    else { c.forEach(collectPoints); }
+  }
+  collectPoints(coords);
+  if (allPoints.length < 2) return 0;
+  var lats = allPoints.map(function(p) { return p[1]; });
+  var lngs = allPoints.map(function(p) { return p[0]; });
+  return (Math.max.apply(null,lats)-Math.min.apply(null,lats)) * (Math.max.apply(null,lngs)-Math.min.apply(null,lngs));
+}
+var DEFAULT_FILL_OPACITY = 0.3;  // 2026-07-14: matches opacity-slider's value="30" -- getOpacity()
+                                  // previously always returned 1.0 regardless of the slider default,
+                                  // so parcels loaded fully opaque until the slider was touched by hand.
+function getOpacity(feature) {
+  return DEFAULT_FILL_OPACITY;
+}
+// Store per-parcel area for label sizing
+var parcelAreas = {};
+parcelsData.features.forEach(function(f) {
+  parcelAreas[f.properties.mapid] = getParcelArea(f);
+});
+
+L.geoJSON(parcelsData, {
+  style: function(feature) {
+    var p = feature.properties;
+    return {
+      fillColor: p.fill,
+      fillOpacity: getOpacity(feature),
+      color: 'rgba(0,0,0,0.65)',
+      weight: 2.0
+    };
+  },
+  onEachFeature: function(feature, layer) {
+    var p = feature.properties;
+    _parcelLayers[p.mapid]=layer;
+    layer._origStyle={
+      fillColor:layer.options.fillColor,
+      fillOpacity:layer.options.fillOpacity,
+      color:layer.options.color,
+      weight:layer.options.weight
+    };
+    layer.bindPopup(getPopup(p), {maxWidth: 300});
+    var area = getParcelArea(feature);
+    // Store area on tooltip element for zoom-aware sizing.
+    // 2026-07-11: skip the label entirely for placeholder mapids
+    // (prefixed "_dissolved" by refresh_html_map.py) -- these mark a
+    // parcel that was broken into individual buildings, kept only so the
+    // polygon/fill still shows; the placeholder name isn't a real MapID
+    // and showing it just confuses the map.
+    // 2026-07-14: also skip it for Multi_Occupant parcels (townhouse-style
+    // complexes with many individually-addressed units) -- each building
+    // footprint inside now gets its own real street-address label, so the
+    // parcel's plain container number (e.g. "64") just lands on top of
+    // whichever building happens to sit at the parcel's center and looks
+    // like doubled/confusing text, same reasoning as the _dissolved case.
+    // Only when isApartment is true, though -- that's the only case where
+    // buildings actually get their own labels to replace this one; for any
+    // other territory type the parcel's own number is still the only label
+    // that area would have, so it must stay.
+    if (!(p.mapid && String(p.mapid).indexOf('_dissolved') === 0) &&
+        !(isApartment && p.sheet === 'Multi_Occupant')) {
+      var tt = layer.bindTooltip(String(p.mapid), {
+        permanent: true, direction: 'center',
+        className: 'mapid-label',
+        offset: [0, 0]
+      });
+      layer.on('tooltipopen', function(e) {
+        e.tooltip.getElement().setAttribute('data-area', area);
+      });
+    }
+  }
+}).addTo(map);
+
+// 2026-07-12: building footprints used to be permanently solid black.
+// Now they default to grey and only turn black once the matching
+// mailing-list checkbox is marked done -- _buildingLayers is the
+// per-building lookup _updateParcel() (in the table-tracking script
+// below) uses to flip the color, same pattern as _parcelLayers.
+var _buildingLayers = {};
+var BUILDING_DEFAULT_FILL = '#C4C4C4';
+var BUILDING_DONE_FILL    = '#000000';
+
+if (buildingsData) {
+  L.geoJSON(buildingsData, {
+    style: function(feature) {
+      var p = feature.properties||{};
+      return {
+        fillColor: BUILDING_DEFAULT_FILL,
+        fillOpacity: DEFAULT_FILL_OPACITY,
+        color: '#000000',
+        weight: 1.5,
+        interactive: !p.secondary
+      };
+    },
+    interactive: isApartment,
+    onEachFeature: isApartment ? function(feature, layer) {
+      var p = feature.properties;
+      var isSecondary = !!p.secondary;
+      var bKey = p.subid ? p.subid : (p.mapid || '');
+      // Permanent sub-ID label on each building footprint.
+      // 2026-07-24: labels now anchor to a pre-computed "guaranteed inside
+      // the footprint" point (props.label_lon/label_lat, from Python's
+      // visual_center_of_geojson) instead of Leaflet's own getCenter(),
+      // which can land in a courtyard/gap or on a neighboring building for
+      // L-shaped, multi-wing, or tightly-packed buildings. Old bindTooltip
+      // behavior is kept as a fallback for any building missing that point.
+      // 2026-07-28: a secondary duplicate (garage/shed sharing another
+      // building's real address) still gets this SAME permanent label --
+      // just with an extra CSS class that renders it noticeably smaller,
+      // so it's clearly tied to the real building's address without
+      // being mistaken for an equally-important building of its own.
+      var label = p.subid ? p.subid.toUpperCase() : (p.mapid ? String(p.mapid) : '');
+      if (label) {
+        var _labelClass = 'mapid-label' + (typeof isSecondary !== 'undefined' && isSecondary ? ' mapid-label-sm' : '');
+        var _hasLabelPt = (typeof p.label_lat === 'number' && typeof p.label_lon === 'number');
+        if (_hasLabelPt) {
+          L.marker([p.label_lat, p.label_lon], {
+            icon: L.divIcon({
+              className: _labelClass,
+              html: '<span style="display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;">' + label + '</span>',
+              iconSize: [0, 0]
+            }),
+            interactive: false,
+            keyboard: false
+          }).addTo(map);
+        } else {
+          layer.bindTooltip(label, {
+            permanent: true, direction: 'center',
+            className: _labelClass, offset: [0, 0]
+          });
+        }
+      }
+      // 2026-07-28: a secondary duplicate (a smaller building sharing
+      // another building's address, e.g. a garage) never becomes "the
+      // responder" for that address's checkbox, and never gets a click
+      // popup -- only the largest footprint per address stays
+      // interactive. It still gets its own permanent on-map label (added
+      // by refresh_html_map.py's buildings-tooltip-label patch, same as
+      // every other building), just noticeably smaller -- see that
+      // script for the label-sizing logic. Deliberately NOT duplicating
+      // any label logic here -- that patch already handles every
+      // building's label correctly (including L-shaped/tightly-packed
+      // footprint anchoring), so this only controls click/checkbox
+      // behavior.
+      if (bKey !== '' && !isSecondary) {
+        _buildingLayers[bKey] = layer;
+        layer._origStyle = {
+          fillColor: layer.options.fillColor,
+          fillOpacity: layer.options.fillOpacity,
+          color: layer.options.color,
+          weight: layer.options.weight
+        };
+      }
+      if (p.site && p.site !== '' && !isSecondary) {
+        var subLabel = p.subid ? p.subid.toUpperCase() : ('Parcel #' + p.mapid);
+        var saluteHtml = p.salute && p.salute !== 'nan' && p.salute !== ''
+          ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+        // 2026-07-15: p.note is a short data-provenance flag ("Approximate
+        // match" / "From Fond du Lac County GIS") -- shown as its own line,
+        // kept OUT of p.site itself so the Get Directions link below still
+        // gets a clean, real address.
+        var noteHtml = p.note && p.note !== ''
+          ? '<div class="popup-mail" style="color:#888;font-style:italic">' + p.note + '</div>' : '';
+        var bMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+        var bMapsHtml = '<div style="margin-top:6px"><a href="' + bMapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>';
+        var html = '<div class="popup-inner">' +
+          '<div class="popup-mapid">Building ' + subLabel + '</div>' +
+          '<div class="popup-site">' + p.site + '</div>' +
+          '<div class="popup-owner">' + (p.owner || '') + '</div>' +
+          saluteHtml + noteHtml +
+          bMapsHtml +
+          '</div>';
+        layer.bindPopup(html, {maxWidth: 300});
+      }
+    } : function(feature, layer) {}
+  }).addTo(map);
+}
+
+if (!boundaryData) {
+  map.setView([43.77, -88.43], 14);
+}
+
+// Scale MapID labels by zoom level AND parcel area
+function updateLabelSizes() {
+  var z = map.getZoom();
+  // Base size from zoom
+  var baseSize;
+  if      (z <= 13) baseSize = 11;
+  else if (z <= 14) baseSize = 15;
+  else if (z <= 15) baseSize = 19;
+  else if (z <= 16) baseSize = 24;
+  else              baseSize = 30;
+  document.querySelectorAll('.mapid-label').forEach(function(el) {
+    var area = parseFloat(el.getAttribute('data-area') || 0);
+    var scale = 1.0;
+    // Shrink labels for small parcels
+    if      (area < 0.000003) scale = 0.45;
+    else if (area < 0.000008) scale = 0.60;
+    else if (area < 0.00002)  scale = 0.75;
+    else if (area < 0.00006)  scale = 0.88;
+    var finalSize = Math.max(7, Math.round(baseSize * scale));
+    // 2026-07-28: a "secondary" duplicate building (e.g. a garage sharing
+    // an apartment building's address) gets a noticeably smaller label
+    // than the real/primary building at that address, at every zoom
+    // level -- computed here (rather than a flat CSS override) so it
+    // shrinks and grows proportionally with everything else instead of
+    // fighting the zoom-based sizing above.
+    if (el.classList.contains('mapid-label-sm')) {
+      finalSize = Math.max(6, Math.round(finalSize * 0.55));
+    }
+    el.style.fontSize = finalSize + 'px';
+  });
+}
+map.on('zoomend', updateLabelSizes);
+map.on('load', updateLabelSizes);
+setTimeout(updateLabelSizes, 500);
+</script>
+<style>
+.mapid-label {
+  background: transparent; border: none; box-shadow: none;
+  font-weight: bold; color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9);
+  pointer-events: none; transition: font-size 0.1s;
+}
+</style>
+<script>
+var _allRows=[];
+// 2026-07-27: sort state used to be one fixed entry per confidence bucket
+// (conf/ver/res/dnc). Now that the Mailing List tab groups by street within
+// each sheet section (Residential/Multi-Occupant/Institutions), each street
+// banner needs its own independent sort state -- clicking "sort by Owner"
+// on Viking Dr shouldn't touch Columbia Dr's order. Keyed lazily by
+// "<sec>|<STREET>" via _getSortState() below instead of a fixed object.
+var _sortState={};
+function _getSortState(key){
+  if(!_sortState[key]){_sortState[key]={col:-1,asc:true};}
+  return _sortState[key];}
+
+function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
+function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
+function _setDone(mid,done){if(done)localStorage.setItem(_doneKey(mid),'1');else localStorage.removeItem(_doneKey(mid));}
+
+function _toggleDone(mid){
+  var done=!_isDone(mid);
+  _setDone(mid,done);
+  _updateParcel(mid,done);
+  _updateTableRow(mid,done);
+  _updateParentBuilding(mid);
+  _fbPush(mid,done);}
+
+// 2026-07-28: live cross-device Done-checkbox sync. Whenever this page's
+// own Firebase listener sees a change (from this page's own toggle, or
+// from anyone else's), it lands here and applies it locally -- it never
+// calls _fbPush() itself, so this can't turn into a feedback loop. If
+// Firebase never loads (no internet in the field, CDN blocked, etc.)
+// this quietly no-ops and every checkbox still works exactly as it
+// always has, purely locally via localStorage.
+var _fbTerRef=null;
+function _fbInit(){
+  try{
+    if(typeof firebase==='undefined'||!firebase.initializeApp||!FIREBASE_CONFIG)return;
+    if(!window._fbApp){window._fbApp=firebase.initializeApp(FIREBASE_CONFIG);}
+    _fbTerRef=firebase.database().ref('territories/'+_TERRITORY);
+    _fbTerRef.on('value', function(snap){
+      var vals=snap.val()||{};
+      Object.keys(vals).forEach(function(mid){
+        var done=!!vals[mid];
+        if(_isDone(mid)!==done){
+          _setDone(mid,done);
+          _updateParcel(mid,done);
+          _updateTableRow(mid,done);
+          _updateParentBuilding(mid);}});
+    });
+  }catch(e){ if(window.console)console.warn('Firebase sync unavailable:',e); }}
+function _fbPush(mid,done){
+  if(_fbTerRef){
+    try{ _fbTerRef.child(String(mid)).set(!!done); }catch(e){}}}
+setTimeout(_fbInit,600);
+
+function _updateParcel(mid,done){
+  var lyr=_parcelLayers[mid];
+  if(lyr){
+    if(done){lyr.setStyle({fillColor:'#222222',fillOpacity:0.9,color:'#FFFFFF',weight:4});}
+    else{lyr.setStyle(lyr._origStyle||{fillColor:'#AAAAAA',fillOpacity:0.4,color:'rgba(0,0,0,0.65)',weight:2.0});}}
+  var bld=_buildingLayers[mid];
+  if(bld){
+    if(done){bld.setStyle({fillColor:BUILDING_DONE_FILL,fillOpacity:0.9});}
+    else{bld.setStyle({fillColor:(bld._origStyle&&bld._origStyle.fillColor)||BUILDING_DEFAULT_FILL});}}}
+
+// 2026-07-28: apartment units each got their own checkbox/MapID (397-1,
+// 397-2, ...) so checking one unit wouldn't mark every unit in the
+// building done. Side effect: _updateParcel(mid,...) above only ever
+// matches _buildingLayers keyed by the building's OWN id ("397"), so no
+// individual unit's checkbox ever touched the building footprint's
+// black/done fill anymore -- checking every single unit in a building no
+// longer turned it black either. This restores that: whenever any row
+// with a parent_mapid is toggled, look at all of that same parent's
+// sibling rows and turn the building black only once every one of them
+// is checked (grey again the moment any one gets unchecked).
+function _updateParentBuilding(mid){
+  var row=null;
+  for(var i=0;i<tableData.length;i++){if(String(tableData[i].mapid)===String(mid)){row=tableData[i];break;}}
+  if(!row||!row.parent_mapid||String(row.parent_mapid)===String(mid))return;
+  var siblings=tableData.filter(function(p){return String(p.parent_mapid)===String(row.parent_mapid);});
+  if(!siblings.length)return;
+  var allDone=siblings.every(function(p){return _isDone(p.mapid);});
+  _updateParcel(row.parent_mapid,allDone);}
+
+function _updateTableRow(mid,done){
+  document.querySelectorAll('.ml-check[data-mid="'+mid+'"]').forEach(function(el){
+    el.textContent=done?'☑':'☐';});
+  document.querySelectorAll('.ml-row[data-mid="'+mid+'"]').forEach(function(el){
+    el.style.opacity=done?'0.45':'';});}
+
+function _applyDoneState(){
+  // Clear done state if this is a freshly generated map (build timestamp changed)
+  var buildKey='build_'+_TERRITORY;
+  var lastBuild=localStorage.getItem(buildKey);
+  if(lastBuild!==_BUILD_TS){
+    // New pipeline run - clear all done state for this territory
+    var toRemove=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('done_'+_TERRITORY+'_')===0)toRemove.push(k);}
+    toRemove.forEach(function(k){localStorage.removeItem(k);});
+    localStorage.setItem(buildKey,_BUILD_TS);}
+  tableData.forEach(function(p){if(_isDone(p.mapid))_updateParcel(p.mapid,true);});
+  // 2026-07-28: also reflect apartment building footprints on load, same
+  // rule _updateParentBuilding() applies live -- black only once every
+  // unit sharing that parent_mapid is already checked.
+  var parentGroups={};
+  tableData.forEach(function(p){
+    if(p.parent_mapid&&String(p.parent_mapid)!==String(p.mapid)){
+      var pk=String(p.parent_mapid);
+      if(!parentGroups[pk])parentGroups[pk]=[];
+      parentGroups[pk].push(p.mapid);}});
+  Object.keys(parentGroups).forEach(function(pk){
+    var allDone=parentGroups[pk].every(function(m){return _isDone(m);});
+    if(allDone)_updateParcel(pk,true);});
+  var m=window.location.hash.match(/done=([0-9,]+)/);
+  if(m){m[1].split(',').forEach(function(s){
+    var mid=parseInt(s);
+    if(!isNaN(mid)){_setDone(mid,true);_updateParcel(mid,true);}});}}
+setTimeout(_applyDoneState,400);
+
+function shareProgress(){
+  var done=[];
+  tableData.forEach(function(p){if(_isDone(p.mapid))done.push(p.mapid);});
+  if(!done.length){alert('No parcels checked off yet.');return;}
+  var url=window.location.href.split('#')[0]+'#done='+done.join(',');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){
+      alert('Progress link copied!\nPaste it into an email to share your progress.');});}
+  else{prompt('Copy this link to share your progress:',url);}}
+
+function _sortIndicator(key,idx){
+  if(idx===0)return '';
+  var s=_getSortState(key);
+  if(s.col!==idx)return ' ▸';
+  return s.asc?' ▲':' ▼';}
+
+// 2026-07-27: every section (Residential/Multi-Occupant/Institutions) now
+// uses the same 7-column layout and is independently sortable per street
+// banner (key = "<sec>|<STREET>"), matching the per-street Excel Tables
+// added to generate_mailing_list.py's banner sheets this session.
+// 2026-07-27: Steve's call -- the Multi-Occupant table should show the
+// exact same columns as the Excel Multi_Occupant sheet (MapID, NAME1,
+// NAME2, BLDG #, STREET, UNIT, CITY, STATE, ZIP, NOTES) instead of the
+// generic Owner 1/Owner 2/Site Address/Source layout Residential and
+// Institutions use. secKey==='mo' switches both the header and each row
+// to the Excel-matching column set; every other section is unchanged.
+function _colHdr(key,secKey){
+  var isMO=secKey==='mo';
+  var cols=isMO
+    ? ['','MapID','NAME1','NAME2','BLDG #','STREET','UNIT','CITY','STATE','ZIP','NOTES']
+    : ['','MapID','Owner 1','Owner 2','Site Address','Source','Reason/Notes'];
+  var grid=isMO
+    ? '30px 60px 150px 150px 70px 150px 55px 110px 45px 55px 260px'
+    : '30px 60px 170px 170px 250px 130px 200px';
+  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+';background:#FFA000;color:#3a2800;">';
+  cols.forEach(function(c,i){
+    if(i===0){h+='<span></span>';return;}
+    h+='<span data-key="'+key+'" data-col="'+i+'" onclick="_sortSection(this.dataset.key,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(key,i)+'</span>';
+  });
+  h+='</div>';
+  return h;}
+
+function _sortSection(key,col){
+  if(col===0)return;
+  var s=_getSortState(key);
+  if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
+  renderTable(_allRows);}
+
+function _sortRows(arr,key,secKey){
+  var s=_getSortState(key);
+  if(s.col<=0){
+    // No column chosen yet -- default to building-number order (numeric
+    // first, then alphabetic), same default the Excel banner sheets use
+    // within each street group.
+    return arr.slice().sort(function(a,b){
+      var an=_bnumOf(a.site),bn=_bnumOf(b.site);
+      var ai=parseInt(an,10),bi=parseInt(bn,10);
+      var aNum=!isNaN(ai)&&String(ai)===an, bNum=!isNaN(bi)&&String(bi)===bn;
+      if(aNum&&bNum)return ai-bi;
+      if(aNum!==bNum)return aNum?-1:1;
+      return an.localeCompare(bn);});}
+  var cols=secKey==='mo'
+    ? ['','mapid','owner','owner2','bldg','street','unit','site_city','site_state','site_zip','notes']
+    : ['','mapid','owner','owner2','site_full','source','notes'];
+  var sortKey=cols[s.col]||'mapid';
+  return arr.slice().sort(function(a,b){
+    var av,bv;
+    if(sortKey==='site_full'){
+      av=((a.site||'')+(a.site_city||'')+(a.site_state||'')+(a.site_zip||'')).toLowerCase();
+      bv=((b.site||'')+(b.site_city||'')+(b.site_state||'')+(b.site_zip||'')).toLowerCase();}
+    else if(sortKey==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
+    else if(sortKey==='unit'){
+      var au=parseInt(a.unit,10),bu=parseInt(b.unit,10);
+      if(!isNaN(au)&&!isNaN(bu)){av=au;bv=bu;}
+      else{av=String(a.unit||'').toLowerCase();bv=String(b.unit||'').toLowerCase();}}
+    else{av=String(a[sortKey]||'').toLowerCase();bv=String(b[sortKey]||'').toLowerCase();}
+    if(av<bv)return s.asc?-1:1;
+    if(av>bv)return s.asc?1:-1;
+    return 0;});}
+
+// 2026-07-27: clicking a mailing-list row (anywhere except the checkbox,
+// which stops its own click from bubbling up here) pans/zooms the map to
+// that address's building and switches to the Map tab. New feature Steve
+// asked for alongside the street-banner layout.
+function _rowClickZoom(mid){
+  var target=_buildingLayers[mid]||_parcelLayers[mid];
+  if(!target||!target.getBounds)return;
+  showTab('map');
+  setTimeout(function(){map.fitBounds(target.getBounds(),{maxZoom:18});},150);}
+
+function _row(p,cls,secKey){
+  var mid=p.mapid;
+  var done=_isDone(mid);
+  var isMO=secKey==='mo';
+  var grid=isMO
+    ? '30px 60px 150px 150px 70px 150px 55px 110px 45px 55px 260px'
+    : '30px 60px 170px 170px 250px 130px 200px';
+  var rowStyle=(done?'opacity:0.45;':'')+'cursor:pointer;';
+  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" onclick="_rowClickZoom(\''+mid+'\')" style="grid-template-columns:'+grid+';'+rowStyle+'">';
+  r+='<span class="ml-check" data-mid="'+mid+'" onclick="event.stopPropagation();_toggleDone(\''+mid+'\')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'☑':'☐')+'</span>';
+  r+='<span>'+mid+'</span>';
+  if(isMO){
+    r+='<span>'+(p.owner||'')+'</span>';
+    r+='<span>'+(p.owner2||'')+'</span>';
+    r+='<span>'+(p.bldg||'')+'</span>';
+    r+='<span>'+(p.street||'')+'</span>';
+    r+='<span>'+(p.unit||'')+'</span>';
+    r+='<span>'+(p.site_city||'')+'</span>';
+    r+='<span>'+(p.site_state||'')+'</span>';
+    r+='<span>'+(p.site_zip||'')+'</span>';
+    r+='<span>'+(p.notes||'')+'</span>';
+  } else {
+    var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
+    r+='<span>'+(p.owner||'')+'</span>';
+    r+='<span>'+(p.owner2||'')+'</span>';
+    r+='<span>'+sf+'</span>';
+    r+='<span>'+(p.source||'')+'</span>';
+    r+='<span>'+(p.notes||'')+'</span>';
+  }
+  r+='</div>';
+  return r;}
+
+function setParcelOpacity(val){
+  document.getElementById('opacity-val').textContent=Math.round(val*100)+'%';
+  Object.keys(_parcelLayers).forEach(function(mid){
+    var lyr=_parcelLayers[mid];
+    if(lyr&&!_isDone(parseInt(mid))){
+      lyr.setStyle({fillOpacity:val});}});
+  // 2026-07-14: buildings were never wired into the slider at all, so
+  // building footprints stayed opaque no matter what the slider showed.
+  // 2026-07-24: that fix applied the slider to EVERY building with no
+  // done-state guard at all (the parcel loop above always had one) -- so
+  // a building already checked off on the mailing list, locked to solid
+  // black by _updateParcel(), got its opacity overwritten right back to
+  // the slider's value on the very next drag, fading out again as the
+  // slider moved left. Buildings use their subid (e.g. "30") as their
+  // _isDone key directly -- same string _toggleDone() already stores it
+  // under -- no parseInt needed here the way the numeric parcel mids need.
+  Object.keys(_buildingLayers).forEach(function(bid){
+    var bld=_buildingLayers[bid];
+    if(bld&&!_isDone(bid)){
+      bld.setStyle({fillOpacity:val});}});}
+
+function buildTable(){_allRows=tableData.slice();renderTable(_allRows);}
+
+function filterTable(){
+  var q=document.getElementById('search-box').value.toLowerCase();
+  renderTable(_allRows.filter(function(p){
+    var sf=(p.site||'')+(p.site_city||'')+(p.site_state||'')+(p.site_zip||'');
+    return [p.mapid,p.owner,p.owner2,sf,p.notes,p.source].join(' ').toLowerCase().indexOf(q)>=0;}));}
+
+// 2026-07-24: pull the street name (or the full remainder after a rural
+// N/S/E/W route number) off a site-address string, same logic as fill_
+// addresses.py/generate_mailing_list.py's split_site_address() use on the
+// Python side -- used to group Multi_Occupant rows by street the same way
+// the Excel Multi_Occupant sheet's banners do.
+function _streetOf(site){
+  var s=String(site||'').trim();
+  var parts=s.split(/\s+/);
+  if(parts.length && /^\d+$/.test(parts[0])){parts.shift();}
+  else if(parts.length && /^[NSEWnsew]\d+$/.test(parts[0])){parts.shift();}
+  return parts.join(' ');}
+function _bnumOf(site){
+  var s=String(site||'').trim();
+  var parts=s.split(/\s+/);
+  if(!parts.length)return '';
+  if(/^\d+$/.test(parts[0]))return parts[0];
+  if(/^[NSEWnsew]\d+$/.test(parts[0]))return parts[0].toUpperCase();
+  return '';}
+
+// 2026-07-27: replaces the old flat Confident/Needs Research/Do Not Call
+// buckets. Every section (Residential, Multi-Occupant, Institutions) now
+// uses this same banner-per-street layout, matching the Excel mailing
+// list's look (navy section title, blue street banner, green stats line,
+// amber column header) instead of segregating rows by confidence into
+// separate top-level lists. colorByConfidence controls whether individual
+// rows are colored green/yellow/red by status (Residential, Institutions --
+// these have a real mix of confirmed/unconfirmed/DNC rows, same as their
+// Excel sheets) or left with the simple alternating green/white look
+// Multi_Occupant already had (its rows are all "current resident or
+// Melissa lookup" until proven otherwise, same reasoning the Excel side
+// used to skip confidence coloring on that sheet).
+function _confidenceClass(p){
+  if(p.dnc==='YES')return 'ml-dnc';
+  if(p.occupied==='Yes'&&p.confidence==='High'&&p.research!=='Yes')return 'ml-even-g';
+  return 'ml-even-y';}
+
+// 2026-07-27: Multi-Occupant street groups can mean two very different
+// things -- a street of individually-addressed properties (e.g. Apartment
+// 471's Stone Castle Dr, each address its own unit -- Steve's 2026-07-24
+// call was ONE banner per street there, not one per address, since one-
+// per-address was "too busy and non-functional") vs. a street with a
+// handful of REAL apartment buildings that each hold many units (e.g.
+// Apartment_412's 397/407/417 Harrison St, matching the Excel Multi_
+// Occupant sheet's own one-banner-per-building layout). Both cases group
+// by street first; this only decides whether to split that street group
+// further. The test: if any exact site address repeats within the street
+// (multiple unit rows sharing one building's address), it's the real-
+// building case -- split into one banner per site. If every site is
+// unique, it's the individually-addressed case -- leave it as the single
+// combined street banner, unchanged from before. Residential/Institutions
+// are untouched either way.
+function _bannersForStreetGroup(secKey,rows){
+  if(secKey!=='mo')return [{label:null,rows:rows}];
+  var bySite={},order=[];
+  rows.forEach(function(p){
+    var k=String(p.site||'').toUpperCase();
+    if(!(k in bySite)){bySite[k]=[];order.push(k);}
+    bySite[k].push(p);});
+  var hasRepeat=order.some(function(k){return bySite[k].length>1;});
+  if(!hasRepeat)return [{label:null,rows:rows}];
+  return order.map(function(k){return {label:bySite[k][0].site,rows:bySite[k]};});}
+function _renderBannerSection(secKey,title,rows,colorByConfidence){
+  if(!rows.length)return '';
+  var groups={},order=[];
+  rows.forEach(function(p){
+    var key=_streetOf(p.site).toUpperCase();
+    if(!(key in groups)){groups[key]=[];order.push(key);}
+    groups[key].push(p);});
+  order.sort();
+  var h='<div class=ml-hdr style="background:#1A3A6B">■ '+title+' ('+rows.length+' total)</div>';
+  order.forEach(function(streetKey){
+    var banners=_bannersForStreetGroup(secKey,groups[streetKey]);
+    banners.forEach(function(b){
+    var sortKey=secKey+'|'+streetKey+(b.label?('|'+b.label):'');
+    var grp=_sortRows(b.rows,sortKey,secKey);
+    var first=grp[0];
+    var addrLine=(b.label||_streetOf(first.site))+(first.site_city?', '+first.site_city:'')+(first.site_state?' '+first.site_state:'')+(first.site_zip?' '+first.site_zip:'');
+    h+='<div class=ml-hdr style="background:#2E5496;font-size:13px;">'+addrLine+'</div>';
+    var btype=first.btype||'';
+    h+='<div class=ml-hdr style="background:#1B5E20;font-size:11px;font-weight:normal;">'+grp.length+' address(es) on file'+(btype?' &nbsp;|&nbsp; Type: '+btype:'')+'</div>';
+    h+=_colHdr(sortKey,secKey);
+    grp.forEach(function(p,i){
+      var cls=colorByConfidence?_confidenceClass(p):(i%2===0?'ml-even-g':'ml-odd');
+      h+=_row(p,cls,secKey);});});});
+  return h;}
+
+function renderTable(rows){
+  var res=[],mo=[],inst=[];
+  rows.forEach(function(p){
+    if(p.sheet==='Multi_Occupant'){mo.push(p);}
+    else if(p.sheet==='Institutions'){inst.push(p);}
+    else{res.push(p);}});
+  var sections=[
+    _renderBannerSection('res','RESIDENTIAL',res,true),
+    _renderBannerSection('mo','MULTI-OCCUPANT ADDRESSES',mo,false),
+    _renderBannerSection('inst','INSTITUTIONS',inst,true)
+  ].filter(function(s){return s;});
+  var h=sections.length?sections.join('<div class=ml-gap></div>'):'<div class=ml-none>No addresses found for this territory.</div>';
+  document.getElementById('table-body').innerHTML=h;}
+
+function showTab(tab){
+  document.getElementById('map').style.display=tab==='map'?'block':'none';
+  document.getElementById('table-view').style.display=tab==='table'?'block':'none';
+  if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});
+  if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}}
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_412 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_412 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_412/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var target=String(val).trim().toUpperCase();if(!target)return;var found=null;parcelsData.features.forEach(function(f){if(String(f.properties.mapid).toUpperCase()===target){found=f;}});if(!found && typeof buildingsData!=='undefined' && buildingsData){buildingsData.features.forEach(function(f){var subid=f.properties.subid?String(f.properties.subid).toUpperCase():'';var mapid=(f.properties.mapid!==undefined&&f.properties.mapid!=='')?String(f.properties.mapid).toUpperCase():'';if(subid===target || (!subid && mapid===target)){found=f;}});}if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function printMap(){window.print();}</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script></body>
+</html>
