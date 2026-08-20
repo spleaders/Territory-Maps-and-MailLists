@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Apartment_288 Territory Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f0f0; }
+#header {
+  background: #4CAF50; color: white;
+  padding: 8px 16px; display: flex;
+  align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 4px; min-height: 56px; box-sizing: border-box;
+}
+#header h1 { font-size: 17px; font-weight: bold; margin: 0; line-height: 1.2; }
+#header .subtitle { font-size: 10px; opacity: 0.75; margin-top: 1px; }
+#header .stats { font-size: 12px; opacity: 0.9; }
+#map { height: calc(100vh - 96px); width: 100%; display: block; }
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  border-left: 6px solid #4CAF50;
+  padding: 0;
+}
+.leaflet-popup-content { margin: 0; width: 360px !important; }
+.popup-inner { padding: 18px 22px; }
+.popup-mapid {
+  font-size: 14px; color: #888; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+.popup-site {
+  font-size: 20px; font-weight: bold; color: #4CAF50;
+  margin-bottom: 7px; line-height: 1.3;
+}
+.popup-owner { font-size: 17px; color: #222; margin-bottom: 4px; }
+.popup-mail { font-size: 17px; color: #555; margin-bottom: 10px; }
+.popup-badge {
+  display: inline-block; padding: 5px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: bold; color: white; margin-right: 4px;
+}
+.badge-owner  { background: #4CAF50; }
+.badge-vacant { background: #808080; }
+.badge-inst   { background: #548235; }
+.badge-biz    { background: #7B2D8B; }
+.badge-dnc    { background: #cc0000; }
+.badge-research { background: #FFFF00; color: #333; }
+.legend-resizer{position:absolute;bottom:4px;right:4px;width:14px;height:14px;cursor:se-resize;opacity:0.4;z-index:10;background:linear-gradient(135deg,transparent 50%,#888 50%,#888 60%,transparent 60%,transparent 70%,#888 70%,#888 80%,transparent 80%);}.legend-resizer:hover{opacity:0.8;}#legend {
+  position: absolute; bottom: 24px; right: 10px; z-index: 1000;
+  background: white; border-radius: 12px; padding: 16px 22px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2); font-size: 17px;
+  min-width: 224px; cursor: move; user-select: none;
+}
+#legend h4 {
+  font-size: 18px; margin-bottom: 12px; color: #333;
+  border-bottom: 2px solid #eee; padding-bottom: 6px;
+}
+#legend-close {
+  float: right; cursor: pointer; font-size: 16px; color: #aaa;
+}
+#legend-close:hover { color: #333; }
+.legend-row { display: flex; align-items: center; margin-bottom: 10px; }
+.legend-swatch {
+  width: 20px; height: 20px; border-radius: 4px;
+  margin-right: 12px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.25);
+  display: inline-block !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  opacity: 0.3;  /* 2026-08-20: matches DEFAULT_FILL_OPACITY / the Fill slider's
+                     starting value so the legend matches the map on first load;
+                     kept in sync live by setParcelOpacity() as the slider moves */
+}
+#notes-bar {
+  display: none; position: absolute; top: 58px; left: 10px;
+  right: 10px; z-index: 1000;
+  background: #FFF8E1; border-left: 4px solid #F5A623;
+  border-radius: 6px; padding: 8px 12px;
+  font-size: 12px; color: #555; max-width: 500px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#tab-bar {
+  display: flex; background: #4CAF50;
+  padding: 0 12px; height: 40px; box-sizing: border-box;
+}
+.tab-btn {
+  padding: 8px 20px; cursor: pointer; color: rgba(255,255,255,0.7);
+  font-size: 13px; font-weight: bold; border: none;
+  background: transparent; border-bottom: 3px solid transparent;
+}
+.tab-btn.active {
+  color: white; border-bottom: 3px solid white;
+}
+
+#table-view {
+  display: none; height: calc(100vh - 90px);
+  overflow-x: scroll; overflow-y: auto; padding: 16px; background: #f5f5f5;
+  /* 2026-08-14: paired with the scrollLeft=0 reset in showTab() -- stops
+     the browser's own scroll-anchoring from nudging this container
+     sideways again (e.g. on rotation) once the wide table is built. */
+  overflow-anchor: none;
+}
+#table-view::-webkit-scrollbar {
+  height: 12px; width: 12px;
+}
+#table-view::-webkit-scrollbar-track {
+  background: #ddd; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb {
+  background: #888; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+#search-box {
+  width: 100%; max-width: 400px; padding: 8px 12px;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: 14px; margin-bottom: 12px;
+}
+#data-table {
+  width: 1480px; border-collapse: collapse;
+  table-layout: fixed;
+  background: white; font-size: 13px;
+}
+#table-wrapper {
+  display: block; overflow-x: auto;
+  border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#data-table th {
+  background: #4CAF50; color: white;
+  padding: 10px 12px; text-align: left;
+  cursor: pointer; white-space: nowrap;
+  user-select: none; position: sticky;
+  top: 0; z-index: 10; min-width: 60px;
+}
+#data-table th:hover { opacity: 0.85; }
+#data-table th.sort-asc::after { content: " "; font-size: 10px; }
+#data-table th.sort-desc::after { content: " "; font-size: 10px; }
+#data-table td {
+  padding: 8px 12px; border-bottom: 1px solid #eee;
+  vertical-align: top; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  max-width: 0;
+}
+#data-table td:hover {
+  white-space: normal; overflow: visible;
+  background: #fffde7; position: relative; z-index: 5;
+}
+#data-table th {
+  position: sticky; top: 0; z-index: 10;
+  resize: horizontal; overflow: auto;
+  min-width: 40px;
+}
+#data-table tr:hover td { background: #f0f4ff; }
+.badge-res   { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-biz2  { background: #7B2D8B; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-inst2 { background: #548235; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-vac2  { background: #808080; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-dnc2  { background: #cc0000; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-res2  { background: #E65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+#btn-bar {
+  /* 2026-08-13: top moved from 56px (bottom of #header only) to 96px
+     (bottom of #header + #tab-bar, same 96 used in #map's height calc
+     below) -- once this wraps to multiple rows on a narrow phone, 56px
+     let it float down over the Map/Mailing List tabs, covering part of
+     the Mailing List tab. Starting below the tabs means it only ever
+     floats over the map area, no matter how tall it wraps. */
+  position: absolute; top: 96px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; gap: 8px; align-items: center;
+  /* 2026-08-13: was a single un-wrapped row -- wider than a phone screen,
+     so Share Territory (leftmost) got pushed off-screen with no way to
+     scroll a floating/absolute element back into view. Wrapping onto
+     multiple centered rows keeps every control reachable on narrow
+     screens; no change on desktop, where it already fit on one line. */
+  flex-wrap: wrap; justify-content: center; max-width: 94vw;
+}
+#header #share-btn {
+  /* 2026-08-14: moved out of the floating #btn-bar and into the header's
+     own flex row so it takes up real layout space instead of floating on
+     top of the page -- it can no longer cover the Mailing List table (or
+     anything else) underneath it. Print Map was removed at the same time
+     (rarely used, and window.print() output wasn't reliable). */
+  background: rgba(255,255,255,0.95); border: 1px solid #ccc;
+  border-radius: 8px; padding: 5px 12px;
+  font-size: 12px; font-weight: bold; color: #333;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#header #share-btn:hover { background: #f0f0f0; }
+@media print {
+  @page { margin: 0; size: auto; }
+  #header, #tab-bar, #btn-bar, #mapid-search,
+  #notes-bar, #table-view,
+  .leaflet-control-container { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important;
+                overflow: hidden !important; }
+  #map { position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          z-index: 1 !important; }
+  #legend { z-index: 2 !important;
+             max-width: 200px !important;
+             right: 10px !important;
+             bottom: 10px !important;
+             left: auto !important;
+             top: auto !important;
+             font-size: 13px !important; }
+}
+#mapid-search {
+  background: rgba(255,255,255,0.97); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex; align-items: center; gap: 8px;
+}
+#mapid-search input {
+  border: none; outline: none; font-size: 13px;
+  width: 80px; background: transparent;
+}
+#mapid-search label {
+  font-size: 12px; color: #666; white-space: nowrap;
+}
+#mapid-search-clear {
+  cursor: pointer; color: #aaa; font-size: 14px;
+  display: none;
+}
+#mapid-search-clear:hover { color: #333; }
+#table-body{
+  /* 2026-08-14: the .ml-hdr banner strips (street address / building-type
+     bars) are plain divs, not grids -- they can't size themselves to
+     match their sibling .ml-row/.ml-col-header's 1135px-wide grid content
+     the way width:max-content works on those. Fixing #table-body itself
+     to its content's real width instead makes every plain-div child
+     (which defaults to filling 100% of ITS parent) stretch to match,
+     same fix family as the .ml-row/.ml-col-header width rules below. */
+  width: max-content; min-width: 100%;
+}
+.ml-hdr{padding:10px 16px;font-weight:bold;font-size:13px;color:white;letter-spacing:0.5px;}
+/* 2026-08-14: without an explicit width, a grid row/header only sizes
+   itself to the *viewport's* width (its containing block), even though
+   its grid-template-columns add up to something much wider (the
+   Multi-Occupant table's 11 columns run ~1135px). The extra columns still
+   render -- that's why scrolling right shows the data -- but the row's
+   own background paint stops at its (viewport-width) box edge, so every
+   column past that point looks blank/white on a phone. On a desktop
+   window wider than 1135px this never showed up, since the row's
+   viewport-constrained width already covered the whole table. max-content
+   makes the row/header size itself to its actual grid content instead;
+   min-width:100% keeps it filling the full width on screens wider than
+   the table itself, same as before. */
+.ml-col-header{display:grid;width:max-content;min-width:100%;background:#4472C4;color:white;font-size:12px;font-weight:bold;}
+/* 2026-08-18: Steve's call -- visible gridlines on both the column header
+   and every data row, spreadsheet-style. Header's divider was already
+   there but very faint (white-on-blue); data rows had no vertical divider
+   at all, just a bottom line on the whole row. */
+.ml-col-header span{padding:6px 8px;white-space:nowrap;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.45);cursor:pointer;user-select:none;}
+.ml-col-header span:hover{background:rgba(255,255,255,0.15);}
+.ml-row{display:grid;width:max-content;min-width:100%;font-size:12px;border-bottom:1px solid #ccc;}
+.ml-row span{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  border-right:1px solid #ddd;}
+.ml-row span:last-child{border-right:none;}
+.ml-row:hover span{white-space:normal;overflow:visible;background:#fffde7;
+  position:relative;z-index:5;}
+/* 2026-08-17: Occupancy carries a full sentence now, not a short tag --
+   wrap it permanently (not just on hover like other columns) so it's
+   readable without needing to mouse over every row. */
+.ml-wrap{white-space:normal !important;overflow:visible !important;
+  text-overflow:clip !important;word-break:break-word;line-height:1.3;}
+.check-icon{font-size:16px;cursor:pointer;background:rgba(255,255,255,0.85);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  line-height:1;border:none!important;box-shadow:none!important;}
+.check-icon:hover{background:rgba(255,255,255,1);}
+.ml-even-g{background:#E2EFDA;}
+.ml-odd{background:#FFFFFF;}
+.ml-even-y{background:#FFF2CC;}
+.ml-dnc{background:#FFB3B3;}
+.ml-gap{height:12px;background:#e8e8e8;}
+.ml-none{padding:8px 16px;color:#888;font-size:12px;font-style:italic;}
+</style>
+</head>
+<body>
+<!-- 2026-08-17: diagonal-hatch pattern for excluded/DNC parcels & buildings,
+     Steve's request to make them stand out beyond just red fill. Referenced
+     via fillColor:'url(#dncHatch)' by a small SVG-rendered overlay layer
+     added on top of the main canvas-rendered map (the main layer uses
+     preferCanvas for performance, and canvas fills can't reference an SVG
+     pattern -- so the hatch draws in its own tiny SVG layer instead, just
+     for the handful of excluded features, not the whole parcel set). -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <pattern id="dncHatch" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
+      <rect width="10" height="10" fill="#CC0000"></rect>
+      <line x1="0" y1="0" x2="0" y2="10" stroke="#660000" stroke-width="4"></line>
+    </pattern>
+  </defs>
+</svg>
+<div id="header">
+  <div>
+    <h1>Apartment_288 Territory</h1>
+    <div class="subtitle">Apartment_288_20260820_1740.xlsx</div>
+  </div>
+  <div class="stats">
+    1 parcels &nbsp;&nbsp;
+    0 owner occupied &nbsp;&nbsp;
+    0 need research &nbsp;&nbsp;
+    0 vacant
+    
+  </div>
+  <button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+</div>
+<div id="notes-bar">Before working apartment territories.  Please review the following:  KM 12/08 pg. 3-4 and KM 11/85 Pg. 3-6 | The managers office is a don't call. | Located across from the Eden Cafe near the Country Road B and Country Road V intersection.</div>
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="showTab('map')">&#x1F5FA; Map</button>
+  <button class="tab-btn" onclick="showTab('table')">&#x1F4CB; Mailing List</button>
+</div>
+<div id="map"></div>
+<div id="table-view">
+  <!-- 2026-08-18: Steve's call -- pin the search/Share Progress row to the
+       top of the Mailing List tab so it stays visible while scrolling
+       through a long territory, instead of scrolling away with the table. -->
+  <div style="padding:10px 16px 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:20;background:#f5f5f5;">
+    <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()"
+      style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:300px;">
+    <button onclick="shareProgress()" style="padding:7px 14px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:white;font-weight:bold;">&#x1F4CB; Share Progress</button>
+  </div>
+  <div id="table-body"></div>
+</div>
+<div id="btn-bar">
+<div id="mapid-search">
+  <label>&#x1F50D; MapID</label>
+  <input type="number" id="mapid-input" placeholder="e.g. 42" min="1"
+    oninput="searchMapID(this.value)"
+    onkeydown="if(event.key==='Escape'){clearMapID();}" />
+  <span id="mapid-search-clear" onclick="clearMapID()">&#x2715;</span>
+</div>
+<div id="opacity-ctrl" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.97);border:1px solid #ccc;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <label style="font-size:12px;color:#666;white-space:nowrap;">&#x1F3A8; Fill</label>
+  <input type="range" id="opacity-slider" min="0" max="100" value="30"
+    style="width:80px;cursor:pointer;"
+    oninput="setParcelOpacity(this.value/100)" />
+  <span id="opacity-val" style="font-size:12px;color:#666;width:32px;">30%</span>
+</div>
+</div>
+<div id="legend">
+  <h4>Legend <span id="legend-close" onclick="document.getElementById('legend').style.display='none'">&#x2715;</span></h4>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#2E5496"></div>Confident Resident
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#FFFF00"></div>Needs Research
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#228B22"></div>Verified
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#E65100"></div>Suspect — verify before mailing
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#8B4513"></div>Institution
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#7B2D8B"></div>Business
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#808080"></div>Vacant
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#CC0000"></div>Do Not Contact
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#222222;border:2px solid #FFFFFF;box-sizing:border-box"></div>Completed
+  </div>
+  <div class="legend-resizer" id="legend-resizer"></div>
+</div>
+<script>
+var map = L.map('map', {zoomControl: true, preferCanvas: true, scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.25});
+document.getElementById('map').addEventListener('wheel', function(e){ e.preventDefault(); var delta = e.deltaY > 0 ? -0.25 : 0.25; var mousePos = map.mouseEventToLatLng(e); map.setZoomAround(mousePos, map.getZoom() + delta); }, {passive: false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: ' OpenStreetMap contributors | CartoDB', maxZoom: 20, subdomains: 'abcd'
+}).addTo(map);
+
+var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.37077260017395, 43.692227664621335], [-88.37022542953491, 43.69243711949397], [-88.36946368217468, 43.691552749500055], [-88.37173819541931, 43.690024465350085], [-88.37334752082825, 43.68941934715805], [-88.37481737136841, 43.68936504138076], [-88.37491393089294, 43.69017186501062], [-88.3735728263855, 43.69028047505502], [-88.37086915969849, 43.6917622067298], [-88.3709979057312, 43.69187081389427], [-88.37056875228882, 43.69207251239222], [-88.37077260017395, 43.692227664621335], [-88.37077260017395, 43.692227664621335]]], "type": "Polygon"}, "properties": {}}]};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.374061, 43.689796], [-88.373965, 43.68981], [-88.37395, 43.68976], [-88.373983, 43.689755], [-88.373954, 43.689655], [-88.374018, 43.689645], [-88.374061, 43.689796]]]}, "properties": {"mapid": 3, "subid": "56", "site": "6 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37400179304636, "label_lat": 43.689705000000004}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.373705, 43.68983], [-88.373644, 43.689845], [-88.37357, 43.689691], [-88.373631, 43.689676], [-88.373705, 43.68983]]]}, "properties": {"mapid": 3, "subid": "8", "site": "10 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.3736375, "label_lat": 43.689760500000006}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.373766, 43.689702], [-88.373845, 43.689689], [-88.373887, 43.689822], [-88.373768, 43.689841], [-88.37375, 43.689784], [-88.37379, 43.689778], [-88.373766, 43.689702]]]}, "properties": {"mapid": 3, "subid": "62", "site": "8 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37381955263157, "label_lat": 43.68974}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37348, 43.689884], [-88.373386, 43.689749], [-88.373443, 43.689728], [-88.373536, 43.689863], [-88.37348, 43.689884]]]}, "properties": {"mapid": 3, "subid": "9", "site": "12 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.3734612111111, "label_lat": 43.689806000000004}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.373108, 43.689946], [-88.373056, 43.689828], [-88.37316, 43.689804], [-88.373213, 43.689922], [-88.373108, 43.689946]]]}, "properties": {"mapid": 3, "subid": "11", "site": "14 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37313430084745, "label_lat": 43.689875}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.372819, 43.689886], [-88.372923, 43.689831], [-88.373068, 43.689973], [-88.373016, 43.690001], [-88.372954, 43.68994], [-88.372902, 43.689968], [-88.372819, 43.689886]]]}, "properties": {"mapid": 3, "subid": "13", "site": "16 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37292653083134, "label_lat": 43.689913000000004}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.372711, 43.689955], [-88.372676, 43.689971], [-88.372638, 43.689926], [-88.372737, 43.689882], [-88.37287, 43.690037], [-88.372789, 43.690074], [-88.372729, 43.690004], [-88.372747, 43.689997], [-88.372711, 43.689955]]]}, "properties": {"mapid": 3, "subid": "15", "site": "18 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37278018986174, "label_lat": 43.689983999999995}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.374404, 43.690088], [-88.374302, 43.690088], [-88.374302, 43.690007], [-88.374404, 43.690007], [-88.374404, 43.690088]]]}, "properties": {"mapid": 3, "subid": "28", "site": "3 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.374353, "label_lat": 43.690047500000006}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.373932, 43.690077], [-88.374002, 43.690077], [-88.374002, 43.690211], [-88.373932, 43.690211], [-88.373932, 43.690077]]]}, "properties": {"mapid": 3, "subid": "61", "site": "7 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.373967, "label_lat": 43.690144000000004}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.372178, 43.690056], [-88.372393, 43.690211], [-88.372343, 43.690247], [-88.372129, 43.690093], [-88.372178, 43.690056]]]}, "properties": {"mapid": 3, "subid": "22", "site": "24 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37226107415165, "label_lat": 43.690152}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.372059, 43.690167], [-88.37224, 43.690298], [-88.372197, 43.690329], [-88.372016, 43.690198], [-88.372059, 43.690167]]]}, "properties": {"mapid": 3, "subid": "24", "site": "26 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.372128, "label_lat": 43.690248}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.373262, 43.690167], [-88.373353, 43.690346], [-88.373285, 43.690364], [-88.373193, 43.690185], [-88.373262, 43.690167]]]}, "properties": {"mapid": 3, "subid": "12", "site": "15 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37327322486033, "label_lat": 43.690265499999995}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.373176, 43.690398], [-88.373115, 43.690418], [-88.373011, 43.690248], [-88.373072, 43.690228], [-88.373176, 43.690398]]]}, "properties": {"mapid": 3, "subid": "14", "site": "17 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.3730935, "label_lat": 43.690323}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371883, 43.690244], [-88.372096, 43.690384], [-88.372051, 43.690419], [-88.371838, 43.690279], [-88.371883, 43.690244]]]}, "properties": {"mapid": 3, "subid": "26", "site": "28 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.371967, "label_lat": 43.6903315}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.372925, 43.69048], [-88.372834, 43.690333], [-88.372899, 43.690312], [-88.37299, 43.690459], [-88.372925, 43.69048]]]}, "properties": {"mapid": 3, "subid": "16", "site": "19 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.372912, "label_lat": 43.690396}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371887, 43.690499], [-88.371776, 43.690422], [-88.371724, 43.690462], [-88.371649, 43.690409], [-88.371742, 43.690339], [-88.371929, 43.690468], [-88.371887, 43.690499]]]}, "properties": {"mapid": 3, "subid": "29", "site": "30 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37175554673101, "label_lat": 43.6904155}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371585, 43.690441], [-88.371794, 43.690557], [-88.371755, 43.690594], [-88.371546, 43.690478], [-88.371585, 43.690441]]]}, "properties": {"mapid": 3, "subid": "31", "site": "32 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37167, "label_lat": 43.6905175}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371617, 43.69069], [-88.371385, 43.69055], [-88.371426, 43.690514], [-88.371658, 43.690655], [-88.371617, 43.69069]]]}, "properties": {"mapid": 3, "subid": "33", "site": "34 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37152180851064, "label_lat": 43.6906025}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37132, 43.690612], [-88.37152, 43.690743], [-88.371482, 43.690773], [-88.371282, 43.690642], [-88.37132, 43.690612]]]}, "properties": {"mapid": 3, "subid": "35", "site": "36 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37140099999999, "label_lat": 43.6906925}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371394, 43.690826], [-88.371364, 43.690859], [-88.371153, 43.690762], [-88.371182, 43.690728], [-88.371394, 43.690826]]]}, "properties": {"mapid": 3, "subid": "37", "site": "38 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.3712736918788, "label_lat": 43.690794}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37236, 43.690514], [-88.372448, 43.690608], [-88.372516, 43.690575], [-88.372575, 43.690637], [-88.372465, 43.690691], [-88.372318, 43.690535], [-88.37236, 43.690514]]]}, "properties": {"mapid": 3, "subid": "23", "site": "25 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37240189678806, "label_lat": 43.6905915}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.372203, 43.690613], [-88.372365, 43.690748], [-88.372325, 43.690773], [-88.372163, 43.690638], [-88.372203, 43.690613]]]}, "properties": {"mapid": 3, "subid": "25", "site": "27 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.372264, "label_lat": 43.690692999999996}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.372069, 43.690691], [-88.372151, 43.690764], [-88.372191, 43.690741], [-88.372265, 43.690807], [-88.372174, 43.690861], [-88.372017, 43.690721], [-88.372069, 43.690691]]]}, "properties": {"mapid": 3, "subid": "27", "site": "29 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37216511304112, "label_lat": 43.690785500000004}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371921, 43.69079], [-88.372048, 43.690884], [-88.372003, 43.690916], [-88.371875, 43.690822], [-88.371921, 43.69079]]]}, "properties": {"mapid": 3, "subid": "30", "site": "31 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37196166489363, "label_lat": 43.690853}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37241533354798, 43.690914833501985], [-88.372413, 43.690913], [-88.372438, 43.690897], [-88.37244205714867, 43.69090018775967], [-88.37241533354798, 43.690914833501985]]]}, "properties": {"mapid": 3, "subid": "27", "site": "29 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "secondary": true, "label_lon": -88.37242668883812, "label_lat": 43.69090659387983}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37246128704366, 43.69088964890713], [-88.372453, 43.690883], [-88.372494, 43.690857], [-88.37250490124774, 43.69086574634993], [-88.37246128704366, 43.69088964890713]]]}, "properties": {"mapid": 3, "subid": "25", "site": "27 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "secondary": true, "label_lon": -88.37247788200271, "label_lat": 43.690874373174964}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37230185529941, 43.69097702471664], [-88.372288, 43.690967], [-88.37233, 43.690937], [-88.3723492812898, 43.69095103312807], [-88.37230185529941, 43.69097702471664]]]}, "properties": {"mapid": 3, "subid": "27", "site": "29 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "secondary": true, "label_lon": -88.37231694549453, "label_lat": 43.69095901656404}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370939, 43.690977], [-88.371049, 43.691067], [-88.371014, 43.691089], [-88.370904, 43.690999], [-88.370939, 43.690977]]]}, "properties": {"mapid": 3, "subid": "42", "site": "42 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.3709765, "label_lat": 43.691033}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370717, 43.691041], [-88.37076, 43.691066], [-88.370737, 43.691087], [-88.370694, 43.691061], [-88.370717, 43.691041]]]}, "properties": {"mapid": 3, "subid": "44", "site": "44 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "secondary": true, "label_lon": -88.37072691730769, "label_lat": 43.6910635}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370969, 43.691119], [-88.370932, 43.691148], [-88.370734, 43.691019], [-88.370771, 43.690989], [-88.370969, 43.691119]]]}, "properties": {"mapid": 3, "subid": "44", "site": "44 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37085179516995, "label_lat": 43.691069}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370786, 43.691236], [-88.370591, 43.691108], [-88.370627, 43.691079], [-88.370823, 43.691207], [-88.370786, 43.691236]]]}, "properties": {"mapid": 3, "subid": "46", "site": "46 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37070680664063, "label_lat": 43.6911575}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371525, 43.691057], [-88.371697, 43.691238], [-88.371644, 43.691264], [-88.371472, 43.691083], [-88.371525, 43.691057]]]}, "properties": {"mapid": 3, "subid": "36", "site": "37 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.3715845, "label_lat": 43.691160499999995}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371526, 43.691309], [-88.371482, 43.691332], [-88.371331, 43.69118], [-88.371375, 43.691157], [-88.371526, 43.691309]]]}, "properties": {"mapid": 3, "subid": "38", "site": "39 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.3714285, "label_lat": 43.691244499999996}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371788, 43.691073], [-88.37184, 43.691141], [-88.371775, 43.691168], [-88.371722, 43.691099], [-88.371788, 43.691073]]]}, "properties": {"mapid": 3, "subid": "34", "site": "35 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "secondary": true, "label_lon": -88.37178103580563, "label_lat": 43.69112}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370686, 43.691299], [-88.37065, 43.691331], [-88.370451, 43.691215], [-88.370487, 43.691183], [-88.370686, 43.691299]]]}, "properties": {"mapid": 3, "subid": "48", "site": "48 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37056849999999, "label_lat": 43.691257}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371383, 43.691321], [-88.371463, 43.691395], [-88.371375, 43.691445], [-88.371191, 43.691274], [-88.371239, 43.691247], [-88.371343, 43.691344], [-88.371383, 43.691321]]]}, "properties": {"mapid": 3, "subid": "41", "site": "41 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37136459633317, "label_lat": 43.6913695}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370492, 43.691433], [-88.370305, 43.691298], [-88.370346, 43.691268], [-88.370534, 43.691403], [-88.370492, 43.691433]]]}, "properties": {"mapid": 3, "subid": "50", "site": "50 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37041930555554, "label_lat": 43.6913505}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371074, 43.691406], [-88.371055, 43.691364], [-88.371098, 43.691354], [-88.371116, 43.691397], [-88.371074, 43.691406]]]}, "properties": {"mapid": 3, "subid": "43", "site": "43 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "secondary": true, "label_lon": -88.37108577865449, "label_lat": 43.6913805}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370361, 43.691527], [-88.370297, 43.691487], [-88.370248, 43.691527], [-88.370157, 43.691469], [-88.370202, 43.691432], [-88.370164, 43.691408], [-88.37021, 43.69137], [-88.370403, 43.691492], [-88.370361, 43.691527]]]}, "properties": {"mapid": 3, "subid": "51", "site": "52 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37025842418034, "label_lat": 43.6914505}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.371082, 43.691607], [-88.370905, 43.691467], [-88.370944, 43.691441], [-88.371121, 43.691581], [-88.371082, 43.691607]]]}, "properties": {"mapid": 3, "subid": "45", "site": "45 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.371013, "label_lat": 43.691524}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.369999, 43.691493], [-88.370269, 43.691579], [-88.370244, 43.69162], [-88.369975, 43.691534], [-88.369999, 43.691493]]]}, "properties": {"mapid": 3, "subid": "52", "site": "54 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37012186918605, "label_lat": 43.6915565}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37094685818333, 43.69171962444455], [-88.370759, 43.691584], [-88.37081, 43.691547], [-88.37100498394524, 43.69168776889706], [-88.37094685818333, 43.69171962444455]]]}, "properties": {"mapid": 3, "subid": "47", "site": "47 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37088199197262, "label_lat": 43.69163588444853}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370684, 43.691619], [-88.370766, 43.691678], [-88.370579, 43.691813], [-88.370498, 43.691753], [-88.370684, 43.691619]]]}, "properties": {"mapid": 3, "subid": "55", "site": "59 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37063205389718, "label_lat": 43.6917155}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370223, 43.691759], [-88.369948, 43.691761], [-88.369947, 43.691672], [-88.370017, 43.691672], [-88.370018, 43.691711], [-88.370222, 43.691709], [-88.370223, 43.691759]]]}, "properties": {"mapid": 3, "subid": "53", "site": "56 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37008511393259, "label_lat": 43.691734999999994}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370219, 43.691819], [-88.370243, 43.69187], [-88.37001, 43.691928], [-88.369977, 43.691861], [-88.370085, 43.691834], [-88.370093, 43.69185], [-88.370219, 43.691819]]]}, "properties": {"mapid": 3, "subid": "54", "site": "58 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37006110820894, "label_lat": 43.691899}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370281, 43.691936], [-88.37031, 43.691996], [-88.370068, 43.692057], [-88.370039, 43.691996], [-88.370281, 43.691936]]]}, "properties": {"mapid": 3, "subid": "57", "site": "60 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37012125000001, "label_lat": 43.6920265}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370222, 43.692179], [-88.370195, 43.692135], [-88.370167, 43.692144], [-88.370125, 43.692074], [-88.370217, 43.692045], [-88.37026, 43.692116], [-88.370433, 43.692062], [-88.370459, 43.692105], [-88.370222, 43.692179]]]}, "properties": {"mapid": 3, "subid": "59", "site": "62 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37035950275276, "label_lat": 43.6921105}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.370321, 43.692303], [-88.370291, 43.692262], [-88.370551, 43.69216], [-88.370582, 43.692201], [-88.370321, 43.692303]]]}, "properties": {"mapid": 3, "subid": "60", "site": "64 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.3704363504902, "label_lat": 43.6922315}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37432898179203, 43.6897684225309], [-88.37432768476586, 43.68974865949757], [-88.37430205075711, 43.689749544826554], [-88.37429800828586, 43.68968793082254], [-88.37433325532248, 43.68968671315775], [-88.37432646611731, 43.689583246382334], [-88.37437933533862, 43.68958141986641], [-88.37438620034858, 43.68968604864013], [-88.374399017338, 43.68968560641692], [-88.37439970371922, 43.68969606893395], [-88.3743836827874, 43.68969662283817], [-88.37438825905818, 43.689766375352214], [-88.37432898179203, 43.6897684225309]]]}, "properties": {"mapid": 3, "subid": "17", "site": "2 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "label_lon": -88.37435631883334, "label_lat": 43.68963442639963}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37416858820411, 43.689796741424416], [-88.3741259137632, 43.689616658338416], [-88.3741733354792, 43.68961074075533], [-88.37421601005788, 43.68979082382399], [-88.37416858820411, 43.689796741424416]]]}, "properties": {"mapid": 3, "subid": "39", "site": "4 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "label_lon": -88.37417096187623, "label_lat": 43.6897037410812}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.3747270296415, 43.68997992893121], [-88.37459099092665, 43.6899770536204], [-88.374594424995, 43.68989150025978], [-88.37473046475509, 43.68989437646767], [-88.3747270296415, 43.68997992893121]]]}, "properties": {"mapid": 4, "subid": "17", "site": "2 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "secondary": true, "label_lon": -88.37466072757965, "label_lat": 43.68993571504404}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37261121415061, 43.690105078461094], [-88.37242675616434, 43.689939405181335], [-88.37246667923483, 43.689915999866315], [-88.37265113849988, 43.69008167308373], [-88.37261121415061, 43.690105078461094]]]}, "properties": {"mapid": 3, "subid": "18", "site": "20 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37253894704267, "label_lat": 43.69001053913253}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.3723140289609, 43.6899939731658], [-88.3724981749511, 43.69015228686391], [-88.37245650212594, 43.69017780976944], [-88.37227235616565, 43.69001949690495], [-88.3723140289609, 43.6899939731658]]]}, "properties": {"mapid": 3, "subid": "20", "site": "22 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37238526575544, "label_lat": 43.690085891884436}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37419857890788, 43.690098750721155], [-88.37416033955397, 43.690101957681016], [-88.3741734144904, 43.69018404524516], [-88.37412242737058, 43.69018832087607], [-88.3741005147648, 43.690050737712816], [-88.37417061956917, 43.6900448586125], [-88.37417374995874, 43.69006451296298], [-88.37419287024412, 43.69006290948303], [-88.37419857890788, 43.690098750721155]]]}, "properties": {"mapid": 3, "subid": "49", "site": "5 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37414104322852, "label_lat": 43.690143001463085}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37375813554506, 43.69026546769658], [-88.37375380307914, 43.690237511416484], [-88.37371714298732, 43.69024050306883], [-88.37371373729547, 43.69021852816642], [-88.37373924006774, 43.69021644670603], [-88.37371952178874, 43.690089224154775], [-88.37377530696403, 43.69008467139746], [-88.37377871391122, 43.69010664629993], [-88.37381537267815, 43.690103654626284], [-88.37382128833863, 43.69014182174747], [-88.37378462830843, 43.69014481342158], [-88.37380276774326, 43.69026185313485], [-88.37375813554506, 43.69026546769658]]]}, "properties": {"mapid": 3, "subid": "63", "site": "9 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37376193409602, "label_lat": 43.69018063006381}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37346442821917, 43.69033988215476], [-88.37345661053762, 43.69034155561392], [-88.37338808282122, 43.6901729944253], [-88.37338039064733, 43.690174641030524], [-88.37337176795252, 43.69015343075064], [-88.37338099880472, 43.690151455545255], [-88.37337600632823, 43.690139175624935], [-88.37343138894539, 43.690127320776504], [-88.37350807848877, 43.69031595983201], [-88.37346442821917, 43.69033988215476]]]}, "properties": {"mapid": 3, "subid": "10", "site": "13 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37344841550137, "label_lat": 43.69024530043127}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37266298626326, 43.69038052510481], [-88.37270429573832, 43.69036262123799], [-88.37283013420239, 43.6905154972614], [-88.37278882465773, 43.690533402073164], [-88.37266298626326, 43.69038052510481]]]}, "properties": {"mapid": 3, "subid": "19", "site": "21 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37274656004578, "label_lat": 43.69044801118311}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37259913336449, 43.690568054649994], [-88.37256212147106, 43.69053439247476], [-88.37257967493656, 43.6905242301861], [-88.3725556676106, 43.69050239518624], [-88.3725343538424, 43.6905147349118], [-88.37246433247793, 43.690451050128296], [-88.37250570696897, 43.690427096512636], [-88.37258473062982, 43.69049896973206], [-88.37257720878424, 43.69050332461478], [-88.37267323822533, 43.69059066456561], [-88.37263186244982, 43.690614617339776], [-88.3725878487238, 43.690574586973135], [-88.37259913336449, 43.690568054649994]]]}, "properties": {"mapid": 3, "subid": "21", "site": "23 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37258471462184, "label_lat": 43.69051948254895}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37261190731017, 43.69080710218611], [-88.37256897335526, 43.69076680079098], [-88.37260704201049, 43.69074544719462], [-88.3726503059044, 43.69078605801909], [-88.37261190731017, 43.69080710218611]]]}, "properties": {"mapid": 3, "subid": "23", "site": "25 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "secondary": true, "label_lon": -88.3726096395946, "label_lat": 43.690776429405034}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37097350990642, 43.69081081813677], [-88.3709995377817, 43.69079017239531], [-88.3711434716598, 43.69088571640338], [-88.37114806495717, 43.69088207292519], [-88.37121835875939, 43.690928733255795], [-88.37117855099784, 43.690960309485845], [-88.37105302695157, 43.690876985979386], [-88.37100403252401, 43.690915848197406], [-88.37090361451838, 43.69084918961095], [-88.3709449530377, 43.69081639928562], [-88.37096503637044, 43.69082973136255], [-88.37098187765372, 43.6908163725668], [-88.37097350990642, 43.69081081813677]]]}, "properties": {"mapid": 3, "subid": "40", "site": "40 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "label_lon": -88.37101696694373, "label_lat": 43.690863087795165}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37184938352706, 43.6909138802982], [-88.37181811446865, 43.69093209571833], [-88.37192656254092, 43.69103011267846], [-88.3718865394841, 43.691053428586756], [-88.3717248721357, 43.69090731094245], [-88.37176489515771, 43.690883995090125], [-88.37178899424751, 43.69090577635671], [-88.37182026330099, 43.690887560944425], [-88.37184938352706, 43.6909138802982]]]}, "properties": {"mapid": 3, "subid": "32", "site": "33 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "label_lon": -88.37183942845311, "label_lat": 43.6909811041984}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37158655640101, 43.69099119713204], [-88.37162901293017, 43.69097026909798], [-88.37179214588639, 43.69114452475078], [-88.37174968929268, 43.69116545194469], [-88.37158655640101, 43.69099119713204]]]}, "properties": {"mapid": 3, "subid": "34", "site": "35 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "label_lon": -88.37168935130252, "label_lat": 43.691067860941416}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.37120707186452, 43.691532068164136], [-88.3710232465316, 43.69136901871392], [-88.37106545561558, 43.6913439631484], [-88.37124928098855, 43.691507011631515], [-88.37120707186452, 43.691532068164136]]]}, "properties": {"mapid": 3, "subid": "43", "site": "43 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "label_lon": -88.37113626352092, "label_lat": 43.69143801517272}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.3706632320485, 43.691920146625996], [-88.37082099244245, 43.69181083025717], [-88.37085311718107, 43.69183523892673], [-88.37087631642537, 43.691819162990704], [-88.3709195192971, 43.69185199028261], [-88.3708360002182, 43.691909864019294], [-88.37083156823158, 43.69190649656023], [-88.37075268860946, 43.69196115522913], [-88.37074493418325, 43.69195526307182], [-88.37072637447027, 43.691968123979024], [-88.3706632320485, 43.691920146625996]]]}, "properties": {"mapid": 3, "subid": "58", "site": "61 MANOR HILL DR, Eden WI 53019", "owner": "", "salute": "Dear Neighbor", "sheet": "Main", "dnc": "", "note": "Approximate match", "label_lon": -88.37080122563873, "label_lat": 43.69187924342142}}]};
+var isApartment = true;
+var _TERRITORY = 'Apartment_288';
+var _BUILD_TS = '20260820_174033';
+var FIREBASE_CONFIG = {"apiKey": "AIzaSyAkP3qiXWwqWt9OgBPhmcCnk6OuaZKWi0w", "authDomain": "territory-master-sync.firebaseapp.com", "databaseURL": "https://territory-master-sync-default-rtdb.firebaseio.com", "projectId": "territory-master-sync", "storageBucket": "territory-master-sync.firebasestorage.app", "messagingSenderId": "558973947206", "appId": "1:558973947206:web:6cf0b1fc790387bfede947"};
+var tableData = [{"mapid": "8", "owner": "", "owner2": "", "site": "10 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "9", "owner": "", "owner2": "", "site": "12 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "10", "owner": "", "owner2": "", "site": "13 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "11", "owner": "", "owner2": "", "site": "14 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "12", "owner": "", "owner2": "", "site": "15 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "13", "owner": "", "owner2": "", "site": "16 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "14", "owner": "", "owner2": "", "site": "17 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "15", "owner": "", "owner2": "", "site": "18 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "16", "owner": "", "owner2": "", "site": "19 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "17", "owner": "", "owner2": "", "site": "2 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "18", "owner": "", "owner2": "", "site": "20 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "19", "owner": "", "owner2": "", "site": "21 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "20", "owner": "", "owner2": "", "site": "22 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "21", "owner": "", "owner2": "", "site": "23 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "22", "owner": "", "owner2": "", "site": "24 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "23", "owner": "", "owner2": "", "site": "25 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "24", "owner": "", "owner2": "", "site": "26 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "25", "owner": "", "owner2": "", "site": "27 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "26", "owner": "", "owner2": "", "site": "28 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "27", "owner": "", "owner2": "", "site": "29 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "28", "owner": "", "owner2": "", "site": "3 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "29", "owner": "", "owner2": "", "site": "30 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "30", "owner": "", "owner2": "", "site": "31 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "31", "owner": "", "owner2": "", "site": "32 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "32", "owner": "", "owner2": "", "site": "33 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "33", "owner": "", "owner2": "", "site": "34 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "34", "owner": "", "owner2": "", "site": "35 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "35", "owner": "", "owner2": "", "site": "36 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "36", "owner": "", "owner2": "", "site": "37 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "37", "owner": "", "owner2": "", "site": "38 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "38", "owner": "", "owner2": "", "site": "39 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "39", "owner": "", "owner2": "", "site": "4 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "40", "owner": "", "owner2": "", "site": "40 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "41", "owner": "", "owner2": "", "site": "41 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "42", "owner": "", "owner2": "", "site": "42 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "43", "owner": "", "owner2": "", "site": "43 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "44", "owner": "", "owner2": "", "site": "44 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "45", "owner": "", "owner2": "", "site": "45 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "46", "owner": "", "owner2": "", "site": "46 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "47", "owner": "", "owner2": "", "site": "47 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "48", "owner": "", "owner2": "", "site": "48 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "49", "owner": "", "owner2": "", "site": "5 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "50", "owner": "", "owner2": "", "site": "50 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "51", "owner": "", "owner2": "", "site": "52 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "52", "owner": "", "owner2": "", "site": "54 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "53", "owner": "", "owner2": "", "site": "56 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "54", "owner": "", "owner2": "", "site": "58 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "55", "owner": "", "owner2": "", "site": "59 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "56", "owner": "", "owner2": "", "site": "6 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "57", "owner": "", "owner2": "", "site": "60 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "58", "owner": "", "owner2": "", "site": "61 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "59", "owner": "", "owner2": "", "site": "62 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "60", "owner": "", "owner2": "", "site": "64 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "61", "owner": "", "owner2": "", "site": "7 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "62", "owner": "", "owner2": "", "site": "8 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}, {"mapid": "63", "owner": "", "owner2": "", "site": "9 MANOR HILL DR", "site_city": "Eden", "site_state": "WI", "site_zip": "53019", "mail": "31200 NORTHWESTERN HWY", "city": "Farmington Hills", "state": "MI", "zip": "48334", "btype": "Residential", "ownertype": "Person", "occupied": "Unknown", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Neighbor", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "sheet": "Main", "verified_name": "", "source": "Tax Record"}];
+
+if (boundaryData) {
+  var boundary = L.geoJSON(boundaryData, {
+    style: {
+      color: '#4CAF50', weight: 3, opacity: 1,
+      fillColor: '#4CAF50', fillOpacity: 0.04,
+      dashArray: '8,5'
+    }
+  }).addTo(map);
+  map.fitBounds(boundary.getBounds(), {padding: [30, 30]});
+  // Territory name label — centered on boundary, semi-transparent
+  var bounds = boundary.getBounds();
+  var center = bounds.getCenter();
+  L.marker(center, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:52px;font-weight:900;'
+           +'color:#1A3A6B;opacity:0.55;'
+           +'white-space:nowrap;pointer-events:none;'
+           +'position:relative;z-index:9999;'
+           +'text-shadow:2px 2px 0px white,-2px -2px 0px white,2px -2px 0px white,-2px 2px 0px white;'
+           +'transform:translate(-50%,-50%);">Apartment_288</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    }),
+    interactive: false
+  }).addTo(map);
+}
+
+var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.37034367927889, 43.692391853934566], [-88.37017634585466, 43.69238013454559], [-88.36984504801146, 43.69199550587881], [-88.36960351488996, 43.69157240189274], [-88.36955664131457, 43.69149028867226], [-88.37142680690184, 43.69023369259327], [-88.3715100603678, 43.690182799068786], [-88.371647531691, 43.690092056328375], [-88.37179087583438, 43.69000623181501], [-88.3718003578153, 43.690001091831924], [-88.37308046239909, 43.68951976309191], [-88.37318639352111, 43.689495251775504], [-88.37331714332552, 43.689468629802946], [-88.37347499842839, 43.689441270505576], [-88.37363426409519, 43.68941862141709], [-88.37375036777246, 43.68940446338869], [-88.37451797008471, 43.689376103198946], [-88.37451887595273, 43.68945339054192], [-88.37452765931555, 43.69020314741474], [-88.3735728263855, 43.69028047505502], [-88.37086915969849, 43.6917622067298], [-88.3709979057312, 43.69187081389427], [-88.37056875228882, 43.69207251239222], [-88.37077260017395, 43.692227664621335], [-88.37034367927889, 43.692391853934566]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved1", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "city": "", "state": "", "zip": ""}}]};
+
+var _parcelLayers={};
+
+// 2026-07-12: Google Maps sometimes can't geocode certain county-style
+// street-suffix abbreviations -- "LA" for Lane is the confirmed case
+// (Google appears to read it as the Louisiana state code instead), even
+// though the rest of the address is fine. Swap in the USPS-standard
+// abbreviation just for the directions/search links, leaving the
+// displayed/mailing address untouched. Add more replacements here if
+// other suffixes turn out to trip Google up too.
+function _mapsAddr(site) {
+  if (!site) return site;
+  return site.replace(/\bLA\b\.?/gi, 'Ln');
+}
+
+function getPopup(p) {
+  var badge = '';
+  if (p.dnc === 'YES') badge = '<span class="popup-badge badge-dnc">DO NOT CONTACT</span>';
+  else if (p.sheet === 'Institutions') badge = '<span class="popup-badge badge-inst">' + p.btype + '</span>';
+  else if (p.sheet === 'Vacant') badge = '<span class="popup-badge badge-vacant">Vacant</span>';
+  else if (p.btype === 'Commercial / Rental') badge = '<span class="popup-badge badge-biz">Business</span>';
+  else if (p.occupied === 'Yes') badge = '<span class="popup-badge badge-owner">Owner Occupied</span>';
+  if (p.research === 'Yes') badge += '<span class="popup-badge badge-research">Research Needed</span>';
+
+  var mailHtml = p.mail ? '<div class="popup-mail"> ' + p.mail + '</div>' : '';
+  var saluteHtml = p.salute && p.salute !== 'nan' ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+  // 2026-07-12: p.site is already the full "street, city state zip" address
+  // (built that way in refresh_html_map.py) -- appending ", Fond du Lac, WI"
+  // on top of that duplicated the city/state/zip and made Google Maps fail
+  // to find the address (confirmed by Steve). Use p.site as-is.
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+  var viewUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(_mapsAddr(p.site));
+  var mapsHtml = p.site ? '<div style="margin-top:6px"><a href="' + mapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>' : '';
+
+  return '<div class="popup-inner">' +
+    '<div class="popup-mapid">Parcel #' + p.mapid + '</div>' +
+    '<div class="popup-site">' + p.site + '</div>' +
+    '<div class="popup-owner">' + p.owner + '</div>' +
+    mailHtml + saluteHtml +
+    mapsHtml +
+    '<div style="margin-top:6px">' + badge + '</div>' +
+    '</div>';
+}
+
+function getParcelArea(feature) {
+  var coords = feature.geometry.coordinates;
+  var allPoints = [];
+  function collectPoints(c) {
+    if (typeof c[0] === 'number') { allPoints.push(c); }
+    else { c.forEach(collectPoints); }
+  }
+  collectPoints(coords);
+  if (allPoints.length < 2) return 0;
+  var lats = allPoints.map(function(p) { return p[1]; });
+  var lngs = allPoints.map(function(p) { return p[0]; });
+  return (Math.max.apply(null,lats)-Math.min.apply(null,lats)) * (Math.max.apply(null,lngs)-Math.min.apply(null,lngs));
+}
+var DEFAULT_FILL_OPACITY = 0.3;  // 2026-07-14: matches opacity-slider's value="30" -- getOpacity()
+                                  // previously always returned 1.0 regardless of the slider default,
+                                  // so parcels loaded fully opaque until the slider was touched by hand.
+function getOpacity(feature) {
+  return DEFAULT_FILL_OPACITY;
+}
+// Store per-parcel area for label sizing
+var parcelAreas = {};
+parcelsData.features.forEach(function(f) {
+  parcelAreas[f.properties.mapid] = getParcelArea(f);
+});
+
+L.geoJSON(parcelsData, {
+  style: function(feature) {
+    var p = feature.properties;
+    return {
+      fillColor: p.fill,
+      fillOpacity: getOpacity(feature),
+      color: 'rgba(0,0,0,0.65)',
+      weight: 2.0
+    };
+  },
+  onEachFeature: function(feature, layer) {
+    var p = feature.properties;
+    _parcelLayers[p.mapid]=layer;
+    layer._origStyle={
+      fillColor:layer.options.fillColor,
+      fillOpacity:layer.options.fillOpacity,
+      color:layer.options.color,
+      weight:layer.options.weight
+    };
+    layer.bindPopup(getPopup(p), {maxWidth: 300});
+    var area = getParcelArea(feature);
+    // Store area on tooltip element for zoom-aware sizing.
+    // 2026-07-11: skip the label entirely for placeholder mapids
+    // (prefixed "_dissolved" by refresh_html_map.py) -- these mark a
+    // parcel that was broken into individual buildings, kept only so the
+    // polygon/fill still shows; the placeholder name isn't a real MapID
+    // and showing it just confuses the map.
+    // 2026-07-14: also skip it for Multi_Occupant parcels (townhouse-style
+    // complexes with many individually-addressed units) -- each building
+    // footprint inside now gets its own real street-address label, so the
+    // parcel's plain container number (e.g. "64") just lands on top of
+    // whichever building happens to sit at the parcel's center and looks
+    // like doubled/confusing text, same reasoning as the _dissolved case.
+    // Only when isApartment is true, though -- that's the only case where
+    // buildings actually get their own labels to replace this one; for any
+    // other territory type the parcel's own number is still the only label
+    // that area would have, so it must stay.
+    if (!(p.mapid && String(p.mapid).indexOf('_dissolved') === 0) &&
+        !(isApartment && p.sheet === 'Multi_Occupant')) {
+      var tt = layer.bindTooltip(String(p.mapid), {
+        permanent: true, direction: 'center',
+        className: 'mapid-label',
+        offset: [0, 0]
+      });
+      layer.on('tooltipopen', function(e) {
+        e.tooltip.getElement().setAttribute('data-area', area);
+      });
+    }
+  }
+}).addTo(map);
+
+// 2026-07-12: building footprints used to be permanently solid black.
+// Now they default to grey and only turn black once the matching
+// mailing-list checkbox is marked done -- _buildingLayers is the
+// per-building lookup _updateParcel() (in the table-tracking script
+// below) uses to flip the color, same pattern as _parcelLayers.
+var _buildingLayers = {};
+var BUILDING_DEFAULT_FILL = '#C4C4C4';
+var BUILDING_DONE_FILL    = '#000000';
+
+if (buildingsData) {
+  L.geoJSON(buildingsData, {
+    style: function(feature) {
+      var p = feature.properties||{};
+      // 2026-08-16: excluded/DNC buildings get the same permanent red as
+      // their parcel -- set once here at load, never touched by
+      // _updateParcel() since _toggleDone() now skips these mapids entirely.
+      if (p.dnc === 'YES') {
+        return {fillColor: '#CC0000', fillOpacity: DEFAULT_FILL_OPACITY,
+                 color: '#660000', weight: 1.5};
+      }
+      return {
+        fillColor: BUILDING_DEFAULT_FILL,
+        fillOpacity: DEFAULT_FILL_OPACITY,
+        color: '#000000',
+        weight: 1.5,
+        // 2026-08-08: was "!p.secondary" alone -- Leaflet lets a per-feature
+        // style's interactive key override the geoJSON-level "interactive:
+        // isApartment" below, so non-apartment buildings (Town/R/Business)
+        // ended up interactive anyway with no popup ever bound to them
+        // (onEachFeature is a no-op below when !isApartment). That created
+        // an invisible dead zone right over each building's roofline that
+        // swallowed clicks meant for the parcel layer underneath -- Steve
+        // had to click around the building outline on Town_108 before a
+        // popup would open. Gating on isApartment here too makes the
+        // buildings layer genuinely click-through for non-apartment
+        // territories, matching the no-op onEachFeature's intent. No change
+        // for apartment territories -- isApartment && !p.secondary reduces
+        // to the same !p.secondary as before when isApartment is true.
+        interactive: isApartment && !p.secondary
+      };
+    },
+    interactive: isApartment,
+    onEachFeature: isApartment ? function(feature, layer) {
+      var p = feature.properties;
+      var isSecondary = !!p.secondary;
+      var bKey = p.subid ? p.subid : (p.mapid || '');
+      // Permanent sub-ID label on each building footprint.
+      // 2026-07-24: labels now anchor to a pre-computed "guaranteed inside
+      // the footprint" point (props.label_lon/label_lat, from Python's
+      // visual_center_of_geojson) instead of Leaflet's own getCenter(),
+      // which can land in a courtyard/gap or on a neighboring building for
+      // L-shaped, multi-wing, or tightly-packed buildings. Old bindTooltip
+      // behavior is kept as a fallback for any building missing that point.
+      // 2026-07-28: a secondary duplicate (garage/shed sharing another
+      // building's real address) still gets this SAME permanent label --
+      // just with an extra CSS class that renders it noticeably smaller,
+      // so it's clearly tied to the real building's address without
+      // being mistaken for an equally-important building of its own.
+      var label = p.subid ? p.subid.toUpperCase() : (p.mapid ? String(p.mapid) : '');
+      if (label) {
+        var _labelClass = 'mapid-label' + (typeof isSecondary !== 'undefined' && isSecondary ? ' mapid-label-sm' : '');
+        var _hasLabelPt = (typeof p.label_lat === 'number' && typeof p.label_lon === 'number');
+        if (_hasLabelPt) {
+          L.marker([p.label_lat, p.label_lon], {
+            icon: L.divIcon({
+              className: _labelClass,
+              html: '<span style="display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;">' + label + '</span>',
+              iconSize: [0, 0]
+            }),
+            interactive: false,
+            keyboard: false
+          }).addTo(map);
+        } else {
+          layer.bindTooltip(label, {
+            permanent: true, direction: 'center',
+            className: _labelClass, offset: [0, 0]
+          });
+        }
+      }
+      // 2026-07-28: a secondary duplicate (a smaller building sharing
+      // another building's address, e.g. a garage) never becomes "the
+      // responder" for that address's checkbox, and never gets a click
+      // popup -- only the largest footprint per address stays
+      // interactive. It still gets its own permanent on-map label (added
+      // by refresh_html_map.py's buildings-tooltip-label patch, same as
+      // every other building), just noticeably smaller -- see that
+      // script for the label-sizing logic. Deliberately NOT duplicating
+      // any label logic here -- that patch already handles every
+      // building's label correctly (including L-shaped/tightly-packed
+      // footprint anchoring), so this only controls click/checkbox
+      // behavior.
+      if (bKey !== '' && !isSecondary) {
+        _buildingLayers[bKey] = layer;
+        layer._origStyle = {
+          fillColor: layer.options.fillColor,
+          fillOpacity: layer.options.fillOpacity,
+          color: layer.options.color,
+          weight: layer.options.weight
+        };
+      }
+      if (p.site && p.site !== '' && !isSecondary) {
+        var subLabel = p.subid ? p.subid.toUpperCase() : ('Parcel #' + p.mapid);
+        var saluteHtml = p.salute && p.salute !== 'nan' && p.salute !== ''
+          ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+        // 2026-07-15: p.note is a short data-provenance flag ("Approximate
+        // match" / "From Fond du Lac County GIS") -- shown as its own line,
+        // kept OUT of p.site itself so the Get Directions link below still
+        // gets a clean, real address.
+        var noteHtml = p.note && p.note !== ''
+          ? '<div class="popup-mail" style="color:#888;font-style:italic">' + p.note + '</div>' : '';
+        var bMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+        var bMapsHtml = '<div style="margin-top:6px"><a href="' + bMapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>';
+        var html = '<div class="popup-inner">' +
+          '<div class="popup-mapid">Building ' + subLabel + '</div>' +
+          '<div class="popup-site">' + p.site + '</div>' +
+          '<div class="popup-owner">' + (p.owner || '') + '</div>' +
+          saluteHtml + noteHtml +
+          bMapsHtml +
+          '</div>';
+        layer.bindPopup(html, {maxWidth: 300});
+      }
+    } : function(feature, layer) {}
+  }).addTo(map);
+}
+
+// 2026-08-17: diagonal-hatch overlay for excluded/DNC parcels & buildings,
+// drawn in its own small SVG-rendered layer on top of the main map (which
+// uses preferCanvas for performance -- canvas fills can't reference the
+// dncHatch SVG pattern, but only the handful of dnc-flagged features go
+// through this extra layer, so there's no performance concern).
+// interactive:false so it never blocks popups/clicks on the real layer underneath.
+var _dncParcelFeatures = parcelsData.features.filter(function(f){return f.properties.dnc==='YES';});
+if (_dncParcelFeatures.length) {
+  L.geoJSON({type:'FeatureCollection', features:_dncParcelFeatures}, {
+    renderer: L.svg(),
+    interactive: false,
+    style: function(){return {fillColor:'url(#dncHatch)', fillOpacity:0.85, stroke:false};}
+  }).addTo(map);
+}
+if (buildingsData) {
+  var _dncBuildingFeatures = buildingsData.features.filter(function(f){return (f.properties||{}).dnc==='YES';});
+  if (_dncBuildingFeatures.length) {
+    L.geoJSON({type:'FeatureCollection', features:_dncBuildingFeatures}, {
+      renderer: L.svg(),
+      interactive: false,
+      style: function(){return {fillColor:'url(#dncHatch)', fillOpacity:0.85, stroke:false};}
+    }).addTo(map);
+  }
+}
+
+if (!boundaryData) {
+  map.setView([43.77, -88.43], 14);
+}
+
+// Scale MapID labels by zoom level AND parcel area
+function updateLabelSizes() {
+  var z = map.getZoom();
+  // Base size from zoom
+  var baseSize;
+  if      (z <= 13) baseSize = 11;
+  else if (z <= 14) baseSize = 15;
+  else if (z <= 15) baseSize = 19;
+  else if (z <= 16) baseSize = 24;
+  else              baseSize = 30;
+  document.querySelectorAll('.mapid-label').forEach(function(el) {
+    var area = parseFloat(el.getAttribute('data-area') || 0);
+    var scale = 1.0;
+    // Shrink labels for small parcels
+    if      (area < 0.000003) scale = 0.45;
+    else if (area < 0.000008) scale = 0.60;
+    else if (area < 0.00002)  scale = 0.75;
+    else if (area < 0.00006)  scale = 0.88;
+    var finalSize = Math.max(7, Math.round(baseSize * scale));
+    // 2026-07-28: a "secondary" duplicate building (e.g. a garage sharing
+    // an apartment building's address) gets a noticeably smaller label
+    // than the real/primary building at that address, at every zoom
+    // level -- computed here (rather than a flat CSS override) so it
+    // shrinks and grows proportionally with everything else instead of
+    // fighting the zoom-based sizing above.
+    if (el.classList.contains('mapid-label-sm')) {
+      finalSize = Math.max(6, Math.round(finalSize * 0.55));
+    }
+    el.style.fontSize = finalSize + 'px';
+  });
+}
+map.on('zoomend', updateLabelSizes);
+map.on('load', updateLabelSizes);
+setTimeout(updateLabelSizes, 500);
+</script>
+<style>
+.mapid-label {
+  background: transparent; border: none; box-shadow: none;
+  font-weight: bold; color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9);
+  pointer-events: none; transition: font-size 0.1s;
+}
+</style>
+<script>
+var _allRows=[];
+// 2026-07-27: sort state used to be one fixed entry per confidence bucket
+// (conf/ver/res/dnc). Now that the Mailing List tab groups by street within
+// each sheet section (Residential/Multi-Occupant/Institutions), each street
+// banner needs its own independent sort state -- clicking "sort by Owner"
+// on Viking Dr shouldn't touch Columbia Dr's order. Keyed lazily by
+// "<sec>|<STREET>" via _getSortState() below instead of a fixed object.
+var _sortState={};
+function _getSortState(key){
+  if(!_sortState[key]){_sortState[key]={col:-1,asc:true};}
+  return _sortState[key];}
+
+function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
+function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
+function _setDone(mid,done){if(done)localStorage.setItem(_doneKey(mid),'1');else localStorage.removeItem(_doneKey(mid));}
+
+function _toggleDone(mid){
+  // 2026-08-16: excluded/DNC rows are locked -- clicking the map polygon
+  // or the mailing-list checkbox (both funnel through here) does nothing,
+  // so the permanent red set at page load can never be accidentally
+  // toggled into the normal done/not-done black-or-gray scheme, and these
+  // rows never enter Done tracking or Firebase sync.
+  var row=tableData.filter(function(p){return String(p.mapid)===String(mid);})[0];
+  if(row&&row.dnc==='YES')return;
+  var done=!_isDone(mid);
+  _setDone(mid,done);
+  _updateParcel(mid,done);
+  _updateTableRow(mid,done);
+  _updateParentBuilding(mid);
+  _fbPush(mid,done);}
+
+// 2026-07-28: live cross-device Done-checkbox sync. Whenever this page's
+// own Firebase listener sees a change (from this page's own toggle, or
+// from anyone else's), it lands here and applies it locally -- it never
+// calls _fbPush() itself, so this can't turn into a feedback loop. If
+// Firebase never loads (no internet in the field, CDN blocked, etc.)
+// this quietly no-ops and every checkbox still works exactly as it
+// always has, purely locally via localStorage.
+var _fbTerRef=null;
+function _fbInit(){
+  try{
+    if(typeof firebase==='undefined'||!firebase.initializeApp||!FIREBASE_CONFIG)return;
+    if(!window._fbApp){window._fbApp=firebase.initializeApp(FIREBASE_CONFIG);}
+    _fbTerRef=firebase.database().ref('territories/'+_TERRITORY);
+    _fbTerRef.on('value', function(snap){
+      var vals=snap.val()||{};
+      Object.keys(vals).forEach(function(mid){
+        var done=!!vals[mid];
+        if(_isDone(mid)!==done){
+          _setDone(mid,done);
+          _updateParcel(mid,done);
+          _updateTableRow(mid,done);
+          _updateParentBuilding(mid);}});
+    });
+  }catch(e){ if(window.console)console.warn('Firebase sync unavailable:',e); }}
+function _fbPush(mid,done){
+  if(_fbTerRef){
+    try{ _fbTerRef.child(String(mid)).set(!!done); }catch(e){}}}
+setTimeout(_fbInit,600);
+
+function _updateParcel(mid,done){
+  var lyr=_parcelLayers[mid];
+  if(lyr){
+    if(done){lyr.setStyle({fillColor:'#222222',fillOpacity:0.9,color:'#FFFFFF',weight:4});}
+    else{lyr.setStyle(lyr._origStyle||{fillColor:'#AAAAAA',fillOpacity:0.4,color:'rgba(0,0,0,0.65)',weight:2.0});}}
+  var bld=_buildingLayers[mid];
+  if(bld){
+    if(done){bld.setStyle({fillColor:BUILDING_DONE_FILL,fillOpacity:0.9});}
+    else{bld.setStyle({fillColor:(bld._origStyle&&bld._origStyle.fillColor)||BUILDING_DEFAULT_FILL});}}}
+
+// 2026-07-28: apartment units each got their own checkbox/MapID (397-1,
+// 397-2, ...) so checking one unit wouldn't mark every unit in the
+// building done. Side effect: _updateParcel(mid,...) above only ever
+// matches _buildingLayers keyed by the building's OWN id ("397"), so no
+// individual unit's checkbox ever touched the building footprint's
+// black/done fill anymore -- checking every single unit in a building no
+// longer turned it black either. This restores that: whenever any row
+// with a parent_mapid is toggled, look at all of that same parent's
+// sibling rows and turn the building black only once every one of them
+// is checked (grey again the moment any one gets unchecked).
+function _updateParentBuilding(mid){
+  var row=null;
+  for(var i=0;i<tableData.length;i++){if(String(tableData[i].mapid)===String(mid)){row=tableData[i];break;}}
+  if(!row||!row.parent_mapid||String(row.parent_mapid)===String(mid))return;
+  var siblings=tableData.filter(function(p){return String(p.parent_mapid)===String(row.parent_mapid);});
+  if(!siblings.length)return;
+  var allDone=siblings.every(function(p){return _isDone(p.mapid);});
+  _updateParcel(row.parent_mapid,allDone);}
+
+function _updateTableRow(mid,done){
+  document.querySelectorAll('.ml-check[data-mid="'+mid+'"]').forEach(function(el){
+    el.textContent=done?'☑':'☐';});
+  document.querySelectorAll('.ml-row[data-mid="'+mid+'"]').forEach(function(el){
+    el.style.opacity=done?'0.45':'';});}
+
+function _applyDoneState(){
+  // Clear done state if this is a freshly generated map (build timestamp changed)
+  var buildKey='build_'+_TERRITORY;
+  var lastBuild=localStorage.getItem(buildKey);
+  if(lastBuild!==_BUILD_TS){
+    // New pipeline run - clear all done state for this territory
+    var toRemove=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('done_'+_TERRITORY+'_')===0)toRemove.push(k);}
+    toRemove.forEach(function(k){localStorage.removeItem(k);});
+    localStorage.setItem(buildKey,_BUILD_TS);}
+  tableData.forEach(function(p){if(_isDone(p.mapid))_updateParcel(p.mapid,true);});
+  // 2026-07-28: also reflect apartment building footprints on load, same
+  // rule _updateParentBuilding() applies live -- black only once every
+  // unit sharing that parent_mapid is already checked.
+  var parentGroups={};
+  tableData.forEach(function(p){
+    if(p.parent_mapid&&String(p.parent_mapid)!==String(p.mapid)){
+      var pk=String(p.parent_mapid);
+      if(!parentGroups[pk])parentGroups[pk]=[];
+      parentGroups[pk].push(p.mapid);}});
+  Object.keys(parentGroups).forEach(function(pk){
+    var allDone=parentGroups[pk].every(function(m){return _isDone(m);});
+    if(allDone)_updateParcel(pk,true);});
+  var m=window.location.hash.match(/done=([0-9,]+)/);
+  if(m){m[1].split(',').forEach(function(s){
+    var mid=parseInt(s);
+    if(!isNaN(mid)){_setDone(mid,true);_updateParcel(mid,true);}});}}
+setTimeout(_applyDoneState,400);
+
+// 2026-08-14: was clipboard-copy-then-alert -- Steve's intent for this
+// button was always to hand the progress link to someone else the same
+// way Share Territory does (open the email app directly), not a silent
+// clipboard copy. It also had no .catch() on the clipboard promise, so a
+// failed copy (which does happen on phones) showed nothing at all -- no
+// error, no fallback, button just appeared to do nothing. mailto: sidesteps
+// both problems: no clipboard permission involved, and if nothing happens
+// it's because the phone has no mail app configured, same as Share
+// Territory already assumes.
+function shareProgress(){
+  // 2026-08-17: Steve's call -- this now shares the map+mailing list in
+  // its current state at ANY time, checked-off or not (previously
+  // blocked with an alert if nothing was checked off yet). Also adds a
+  // readable "shared as of [now]" timestamp so whoever receives it knows
+  // exactly when the link was sent.
+  //
+  // 2026-08-18: was building the link from window.location.href, which
+  // is a file:///C:/... path whenever the map is opened the normal way
+  // (Territory Master's "Open HTML Map" button opens the local file, not
+  // the hosted copy). That produced a link only Steve's own PC could
+  // open -- caught on Town_108. Files get published to GitHub Pages
+  // automatically under the same territory-folder/filename layout as the
+  // local copy, so build the link from that fixed hosted address plus
+  // this page's own filename instead, the same way Share Territory
+  // already does for its (folder-only) link.
+  var done=[];
+  tableData.forEach(function(p){if(_isDone(p.mapid))done.push(p.mapid);});
+  var _filename=window.location.pathname.split('/').pop();
+  var url='https://spleaders.github.io/Territory-Maps-and-MailLists/'+_TERRITORY+'/'+_filename+(done.length?'#done='+done.join(','):'');
+  var now=new Date();
+  var stamp=now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' at '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  var s=encodeURIComponent(_TERRITORY+' Territory Map & Mailing List');
+  var progressLine=done.length
+    ? 'Here is my progress on the '+_TERRITORY+' territory -- '+done.length+' address(es) checked off so far:'
+    : 'Here is the '+_TERRITORY+' territory map and mailing list:';
+  var afterLink=done.length
+    ? 'Opening this link will show the current map and mailing list, with the same addresses marked as checked off for you too.'
+    : 'Opening this link will show the current map and mailing list.';
+  var b=encodeURIComponent('Hello,\n\n'+progressLine+'\n\n'+url+'\n\nShared as of '+stamp+'.\n\n'+afterLink+'\n\nThank you!');
+  window.location.href='mailto:?subject='+s+'&body='+b;}
+
+function _sortIndicator(key,idx){
+  if(idx===0)return '';
+  var s=_getSortState(key);
+  if(s.col!==idx)return ' ▸';
+  return s.asc?' ▲':' ▼';}
+
+// 2026-07-27: every section (Residential/Multi-Occupant/Institutions) now
+// uses the same 7-column layout and is independently sortable per street
+// banner (key = "<sec>|<STREET>"), matching the per-street Excel Tables
+// added to generate_mailing_list.py's banner sheets this session.
+// 2026-07-27: Steve's call -- the Multi-Occupant table should show the
+// exact same columns as the Excel Multi_Occupant sheet (MapID, NAME1,
+// NAME2, BLDG #, STREET, UNIT, CITY, STATE, ZIP, NOTES) instead of the
+// generic Owner 1/Owner 2/Site Address/Source layout Residential and
+// Institutions use. secKey==='mo' switches both the header and each row
+// to the Excel-matching column set; every other section is unchanged.
+function _colHdr(key,secKey){
+  var isMO=secKey==='mo';
+  // 2026-08-17: added Occupancy to both layouts (matches the Excel
+  // mailing list's new column), and added Source to the Multi-Occupant
+  // layout, which previously had no Source column at all in the HTML map
+  // even though the Excel Multi_Occupant sheet has carried one for a
+  // while -- a real gap, closed here in the same pass as Occupancy.
+  var cols=isMO
+    ? ['','MapID','NAME1','NAME2','BLDG #','STREET','UNIT','CITY','STATE','ZIP','Occupancy','NOTES','SOURCE']
+    : ['','MapID','Owner 1','Owner 2','Site Address','Occupancy','Source','Reason/Notes'];
+  var grid=isMO
+    ? '30px 60px 150px 150px 70px 150px 55px 110px 45px 55px 190px 220px 150px'
+    : '30px 60px 170px 170px 250px 190px 130px 200px';
+  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+';background:#FFA000;color:#3a2800;">';
+  cols.forEach(function(c,i){
+    if(i===0){h+='<span></span>';return;}
+    h+='<span data-key="'+key+'" data-col="'+i+'" onclick="_sortSection(this.dataset.key,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(key,i)+'</span>';
+  });
+  h+='</div>';
+  return h;}
+
+function _sortSection(key,col){
+  if(col===0)return;
+  var s=_getSortState(key);
+  if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
+  renderTable(_allRows);}
+
+function _sortRows(arr,key,secKey){
+  var s=_getSortState(key);
+  if(s.col<=0){
+    // No column chosen yet -- default to building-number order (numeric
+    // first, then alphabetic), same default the Excel banner sheets use
+    // within each street group.
+    return arr.slice().sort(function(a,b){
+      var an=_bnumOf(a.site),bn=_bnumOf(b.site);
+      var ai=parseInt(an,10),bi=parseInt(bn,10);
+      var aNum=!isNaN(ai)&&String(ai)===an, bNum=!isNaN(bi)&&String(bi)===bn;
+      if(aNum&&bNum)return ai-bi;
+      if(aNum!==bNum)return aNum?-1:1;
+      return an.localeCompare(bn);});}
+  var cols=secKey==='mo'
+    ? ['','mapid','owner','owner2','bldg','street','unit','site_city','site_state','site_zip','occupancy','notes','source']
+    : ['','mapid','owner','owner2','site_full','occupancy','source','notes'];
+  var sortKey=cols[s.col]||'mapid';
+  return arr.slice().sort(function(a,b){
+    var av,bv;
+    if(sortKey==='site_full'){
+      av=((a.site||'')+(a.site_city||'')+(a.site_state||'')+(a.site_zip||'')).toLowerCase();
+      bv=((b.site||'')+(b.site_city||'')+(b.site_state||'')+(b.site_zip||'')).toLowerCase();}
+    else if(sortKey==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
+    else if(sortKey==='unit'){
+      var au=parseInt(a.unit,10),bu=parseInt(b.unit,10);
+      if(!isNaN(au)&&!isNaN(bu)){av=au;bv=bu;}
+      else{av=String(a.unit||'').toLowerCase();bv=String(b.unit||'').toLowerCase();}}
+    else{av=String(a[sortKey]||'').toLowerCase();bv=String(b[sortKey]||'').toLowerCase();}
+    if(av<bv)return s.asc?-1:1;
+    if(av>bv)return s.asc?1:-1;
+    return 0;});}
+
+// 2026-07-27: clicking a mailing-list row (anywhere except the checkbox,
+// which stops its own click from bubbling up here) pans/zooms the map to
+// that address's building and switches to the Map tab. New feature Steve
+// asked for alongside the street-banner layout.
+function _rowClickZoom(mid){
+  var target=_buildingLayers[mid]||_parcelLayers[mid];
+  if(!target||!target.getBounds)return;
+  showTab('map');
+  setTimeout(function(){map.fitBounds(target.getBounds(),{maxZoom:18});},150);}
+
+function _row(p,cls,secKey){
+  var mid=p.mapid;
+  // 2026-08-17: DNC/excluded rows show checked here without ever touching
+  // localStorage/_isDone -- keeps them permanently ticked-looking without
+  // pulling them into Done tracking or Firebase sync.
+  var done=_isDone(mid)||p.dnc==='YES';
+  var isMO=secKey==='mo';
+  // 2026-08-17: widened both grids to add Occupancy (both layouts) and
+  // Source (Multi-Occupant only) -- see the matching note on _colHdr().
+  var grid=isMO
+    ? '30px 60px 150px 150px 70px 150px 55px 110px 45px 55px 190px 220px 150px'
+    : '30px 60px 170px 170px 250px 190px 130px 200px';
+  var rowStyle=(done?'opacity:0.45;':'')+'cursor:pointer;';
+  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" onclick="_rowClickZoom(\''+mid+'\')" style="grid-template-columns:'+grid+';'+rowStyle+'">';
+  r+='<span class="ml-check" data-mid="'+mid+'" onclick="event.stopPropagation();_toggleDone(\''+mid+'\')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'☑':'☐')+'</span>';
+  r+='<span>'+mid+'</span>';
+  if(isMO){
+    r+='<span>'+(p.owner||'')+'</span>';
+    r+='<span>'+(p.owner2||'')+'</span>';
+    r+='<span>'+(p.bldg||'')+'</span>';
+    r+='<span>'+(p.street||'')+'</span>';
+    r+='<span>'+(p.unit||'')+'</span>';
+    r+='<span>'+(p.site_city||'')+'</span>';
+    r+='<span>'+(p.site_state||'')+'</span>';
+    r+='<span>'+(p.site_zip||'')+'</span>';
+    r+='<span class="ml-wrap">'+(p.occupancy||'')+'</span>';
+    r+='<span>'+(p.notes||'')+'</span>';
+    r+='<span>'+(p.source||'')+'</span>';
+  } else {
+    var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
+    r+='<span>'+(p.owner||'')+'</span>';
+    r+='<span>'+(p.owner2||'')+'</span>';
+    r+='<span>'+sf+'</span>';
+    r+='<span class="ml-wrap">'+(p.occupancy||'')+'</span>';
+    r+='<span>'+(p.source||'')+'</span>';
+    r+='<span>'+(p.notes||'')+'</span>';
+  }
+  r+='</div>';
+  return r;}
+
+function setParcelOpacity(val){
+  document.getElementById('opacity-val').textContent=Math.round(val*100)+'%';
+  // 2026-08-20: the Fill slider faded the parcels and buildings below but never
+  // touched the Legend swatches, so the legend's colors stopped matching what
+  // was on the map as soon as the slider moved. Keep them in step.
+  document.querySelectorAll('.legend-swatch').forEach(function(sw){sw.style.opacity=val;});
+  Object.keys(_parcelLayers).forEach(function(mid){
+    var lyr=_parcelLayers[mid];
+    if(lyr&&!_isDone(parseInt(mid))){
+      lyr.setStyle({fillOpacity:val});}});
+  // 2026-07-14: buildings were never wired into the slider at all, so
+  // building footprints stayed opaque no matter what the slider showed.
+  // 2026-07-24: that fix applied the slider to EVERY building with no
+  // done-state guard at all (the parcel loop above always had one) -- so
+  // a building already checked off on the mailing list, locked to solid
+  // black by _updateParcel(), got its opacity overwritten right back to
+  // the slider's value on the very next drag, fading out again as the
+  // slider moved left. Buildings use their subid (e.g. "30") as their
+  // _isDone key directly -- same string _toggleDone() already stores it
+  // under -- no parseInt needed here the way the numeric parcel mids need.
+  Object.keys(_buildingLayers).forEach(function(bid){
+    var bld=_buildingLayers[bid];
+    if(bld&&!_isDone(bid)){
+      bld.setStyle({fillOpacity:val});}});}
+
+function buildTable(){_allRows=tableData.slice();renderTable(_allRows);}
+
+function filterTable(){
+  var q=document.getElementById('search-box').value.toLowerCase();
+  renderTable(_allRows.filter(function(p){
+    var sf=(p.site||'')+(p.site_city||'')+(p.site_state||'')+(p.site_zip||'');
+    return [p.mapid,p.owner,p.owner2,sf,p.notes,p.source].join(' ').toLowerCase().indexOf(q)>=0;}));}
+
+// 2026-07-24: pull the street name (or the full remainder after a rural
+// N/S/E/W route number) off a site-address string, same logic as fill_
+// addresses.py/generate_mailing_list.py's split_site_address() use on the
+// Python side -- used to group Multi_Occupant rows by street the same way
+// the Excel Multi_Occupant sheet's banners do.
+function _streetOf(site){
+  var s=String(site||'').trim();
+  var parts=s.split(/\s+/);
+  if(parts.length && /^\d+$/.test(parts[0])){parts.shift();}
+  else if(parts.length && /^[NSEWnsew]\d+$/.test(parts[0])){parts.shift();}
+  return parts.join(' ');}
+function _bnumOf(site){
+  var s=String(site||'').trim();
+  var parts=s.split(/\s+/);
+  if(!parts.length)return '';
+  if(/^\d+$/.test(parts[0]))return parts[0];
+  if(/^[NSEWnsew]\d+$/.test(parts[0]))return parts[0].toUpperCase();
+  return '';}
+
+// 2026-07-27: replaces the old flat Confident/Needs Research/Do Not Call
+// buckets. Every section (Residential, Multi-Occupant, Institutions) now
+// uses this same banner-per-street layout, matching the Excel mailing
+// list's look (navy section title, blue street banner, green stats line,
+// amber column header) instead of segregating rows by confidence into
+// separate top-level lists. colorByConfidence controls whether individual
+// rows are colored green/yellow/red by status (Residential, Institutions --
+// these have a real mix of confirmed/unconfirmed/DNC rows, same as their
+// Excel sheets) or left with the simple alternating green/white look
+// Multi_Occupant already had (its rows are all "current resident or
+// Melissa lookup" until proven otherwise, same reasoning the Excel side
+// used to skip confidence coloring on that sheet).
+function _confidenceClass(p){
+  if(p.dnc==='YES')return 'ml-dnc';
+  if(p.occupied==='Yes'&&p.confidence==='High'&&p.research!=='Yes')return 'ml-even-g';
+  return 'ml-even-y';}
+
+// 2026-07-27: Multi-Occupant street groups can mean two very different
+// things -- a street of individually-addressed properties (e.g. Apartment
+// 471's Stone Castle Dr, each address its own unit -- Steve's 2026-07-24
+// call was ONE banner per street there, not one per address, since one-
+// per-address was "too busy and non-functional") vs. a street with a
+// handful of REAL apartment buildings that each hold many units (e.g.
+// Apartment_412's 397/407/417 Harrison St, matching the Excel Multi_
+// Occupant sheet's own one-banner-per-building layout). Both cases group
+// by street first; this only decides whether to split that street group
+// further. The test: if any exact site address repeats within the street
+// (multiple unit rows sharing one building's address), it's the real-
+// building case -- split into one banner per site. If every site is
+// unique, it's the individually-addressed case -- leave it as the single
+// combined street banner, unchanged from before. Residential/Institutions
+// are untouched either way.
+function _bannersForStreetGroup(secKey,rows){
+  if(secKey!=='mo')return [{label:null,rows:rows}];
+  var bySite={},order=[];
+  rows.forEach(function(p){
+    var k=String(p.site||'').toUpperCase();
+    if(!(k in bySite)){bySite[k]=[];order.push(k);}
+    bySite[k].push(p);});
+  var hasRepeat=order.some(function(k){return bySite[k].length>1;});
+  if(!hasRepeat)return [{label:null,rows:rows}];
+  return order.map(function(k){return {label:bySite[k][0].site,rows:bySite[k]};});}
+function _renderBannerSection(secKey,title,rows,colorByConfidence){
+  if(!rows.length)return '';
+  var groups={},order=[];
+  rows.forEach(function(p){
+    var key=_streetOf(p.site).toUpperCase();
+    if(!(key in groups)){groups[key]=[];order.push(key);}
+    groups[key].push(p);});
+  order.sort();
+  var h='<div class=ml-hdr style="background:#1A3A6B">■ '+title+' ('+rows.length+' total)</div>';
+  order.forEach(function(streetKey){
+    var banners=_bannersForStreetGroup(secKey,groups[streetKey]);
+    banners.forEach(function(b){
+    var sortKey=secKey+'|'+streetKey+(b.label?('|'+b.label):'');
+    var grp=_sortRows(b.rows,sortKey,secKey);
+    var first=grp[0];
+    var addrLine=(b.label||_streetOf(first.site))+(first.site_city?', '+first.site_city:'')+(first.site_state?' '+first.site_state:'')+(first.site_zip?' '+first.site_zip:'');
+    h+='<div class=ml-hdr style="background:#2E5496;font-size:13px;">'+addrLine+'</div>';
+    var btype=first.btype||'';
+    h+='<div class=ml-hdr style="background:#1B5E20;font-size:11px;font-weight:normal;">'+grp.length+' address(es) on file'+(btype?' &nbsp;|&nbsp; Type: '+btype:'')+'</div>';
+    h+=_colHdr(sortKey,secKey);
+    grp.forEach(function(p,i){
+      var cls=colorByConfidence?_confidenceClass(p):(i%2===0?'ml-even-g':'ml-odd');
+      h+=_row(p,cls,secKey);});});});
+  return h;}
+
+function renderTable(rows){
+  var res=[],mo=[],inst=[];
+  rows.forEach(function(p){
+    if(p.sheet==='Multi_Occupant'){mo.push(p);}
+    else if(p.sheet==='Institutions'){inst.push(p);}
+    else{res.push(p);}});
+  var sections=[
+    _renderBannerSection('res','RESIDENTIAL',res,true),
+    _renderBannerSection('mo','MULTI-OCCUPANT ADDRESSES',mo,false),
+    _renderBannerSection('inst','INSTITUTIONS',inst,true)
+  ].filter(function(s){return s;});
+  var h=sections.length?sections.join('<div class=ml-gap></div>'):'<div class=ml-none>No addresses found for this territory.</div>';
+  document.getElementById('table-body').innerHTML=h;}
+
+function showTab(tab){
+  document.getElementById('map').style.display=tab==='map'?'block':'none';
+  document.getElementById('table-view').style.display=tab==='table'?'block':'none';
+  /* 2026-08-14: #btn-bar (MapID search + Fill slider) only applies to the
+     map -- hide it on the Mailing List tab instead of leaving it floating
+     over the table underneath. */
+  document.getElementById('btn-bar').style.display=tab==='map'?'flex':'none';
+  if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});
+  if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}
+  /* 2026-08-14: on some phones, inserting the (much wider than the screen)
+     Multi-Occupant table into #table-view for the first time leaves the
+     container scrolled a couple hundred px to the right instead of at its
+     left edge -- MapID/Name columns and the left half of every banner get
+     scrolled out of view. Nothing in this file ever sets scrollLeft, so
+     it looks like the browser doing this on its own while laying out the
+     new wide content; forcing it back to 0 right after the table is built
+     fixes it regardless of the cause. */
+  var tv=document.getElementById('table-view');
+  if(tv)tv.scrollLeft=0;}
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_288 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_288 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_288/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var target=String(val).trim().toUpperCase();if(!target)return;var found=null;parcelsData.features.forEach(function(f){if(String(f.properties.mapid).toUpperCase()===target){found=f;}});if(!found && typeof buildingsData!=='undefined' && buildingsData){buildingsData.features.forEach(function(f){var subid=f.properties.subid?String(f.properties.subid).toUpperCase():'';var mapid=(f.properties.mapid!==undefined&&f.properties.mapid!=='')?String(f.properties.mapid).toUpperCase():'';if(subid===target || (!subid && mapid===target)){found=f;}});}if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function _fixLayout(){var tb=document.getElementById('tab-bar');if(!tb)return;var offset=Math.round(tb.getBoundingClientRect().bottom);var mapEl=document.getElementById('map');if(mapEl)mapEl.style.height='calc(100vh - '+offset+'px)';var tv=document.getElementById('table-view');if(tv)tv.style.height='calc(100vh - '+offset+'px)';var bb=document.getElementById('btn-bar');if(bb)bb.style.top=offset+'px';}window.addEventListener('load',_fixLayout);window.addEventListener('resize',_fixLayout);_fixLayout();</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script></body>
+</html>
