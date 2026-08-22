@@ -6,6 +6,8 @@
 <title>Letter_4 Territory Map</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: Arial, sans-serif; background: #f0f0f0; }
@@ -322,11 +324,12 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 }).addTo(map);
 
 var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.44472646713257, 43.779592103573655], [-88.44398617744446, 43.779599849864816], [-88.4440290927887, 43.778856201337135], [-88.44467282295227, 43.7788949332596], [-88.44472646713257, 43.779592103573655], [-88.44472646713257, 43.779592103573655]]], "type": "Polygon"}, "properties": {}}]};
-var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444129, 43.779296], [-88.444042, 43.7793], [-88.444034, 43.779195], [-88.444121, 43.779191], [-88.444129, 43.779296]]]}, "properties": {"mapid": 5, "subid": "5", "site": "15 N MARR ST, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "Approximate match", "secondary": true, "label_lon": -88.4440815, "label_lat": 43.7792455}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444451, 43.779267], [-88.444516, 43.779287], [-88.444501, 43.779312], [-88.444435, 43.779292], [-88.444451, 43.779267]]]}, "properties": {"mapid": 5, "subid": "5", "site": "15 N MARR ST, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "secondary": true, "label_lon": -88.44447554999999, "label_lat": 43.7792895}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444121, 43.779073], [-88.44431, 43.779031], [-88.444513, 43.77951], [-88.444324, 43.779551], [-88.444121, 43.779073]]]}, "properties": {"mapid": 5, "subid": "5", "site": "15 N MARR ST, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "Approximate match", "label_lon": -88.44431709686214, "label_lat": 43.7792915}}]};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444129, 43.779296], [-88.444042, 43.7793], [-88.444034, 43.779195], [-88.444121, 43.779191], [-88.444129, 43.779296]]]}, "properties": {"mapid": 5, "subid": "5", "site": "15 N MARR ST, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "Approximate match", "label_lon": -88.4440815, "label_lat": 43.7792455, "secondary": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444451, 43.779267], [-88.444516, 43.779287], [-88.444501, 43.779312], [-88.444435, 43.779292], [-88.444451, 43.779267]]]}, "properties": {"mapid": 5, "subid": "5", "site": "15 N MARR ST, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "label_lon": -88.44447554999999, "label_lat": 43.7792895, "secondary": true}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444121, 43.779073], [-88.44431, 43.779031], [-88.444513, 43.77951], [-88.444324, 43.779551], [-88.444121, 43.779073]]]}, "properties": {"mapid": 5, "subid": "5", "site": "15 N MARR ST, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "note": "Approximate match", "label_lon": -88.44431709686214, "label_lat": 43.7792915}}]};
 var isApartment = true;
 var _TERRITORY = 'Letter_4';
 var _BUILD_TS = '20260822_135307';
-var tableData = [{"mapid": "5", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}];
+var FIREBASE_CONFIG = {"apiKey": "AIzaSyAkP3qiXWwqWt9OgBPhmcCnk6OuaZKWi0w", "authDomain": "territory-master-sync.firebaseapp.com", "databaseURL": "https://territory-master-sync-default-rtdb.firebaseio.com", "projectId": "territory-master-sync", "storageBucket": "territory-master-sync.firebasestorage.app", "messagingSenderId": "558973947206", "appId": "1:558973947206:web:6cf0b1fc790387bfede947"};
+var tableData = [{"mapid": "15-201", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Person", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Melissa \u2014 unconfirmed, may be stale", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "201", "parent_mapid": "5"}, {"mapid": "15-203", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Person", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Melissa \u2014 unconfirmed, may be stale", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "203", "parent_mapid": "5"}, {"mapid": "15-204", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Person", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Melissa \u2014 unconfirmed, may be stale", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "204", "parent_mapid": "5"}, {"mapid": "15-205", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "205", "parent_mapid": "5"}, {"mapid": "15-206", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "206", "parent_mapid": "5"}, {"mapid": "15-207", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "207", "parent_mapid": "5"}, {"mapid": "15-208", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "208", "parent_mapid": "5"}, {"mapid": "15-210", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Vacant (AS16) \u2014 verify before mailing", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "210", "parent_mapid": "5"}, {"mapid": "15-211", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "211", "parent_mapid": "5"}, {"mapid": "15-212", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "212", "parent_mapid": "5"}, {"mapid": "15-213", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "213", "parent_mapid": "5"}, {"mapid": "15-214", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "214", "parent_mapid": "5"}, {"mapid": "15-215", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "215", "parent_mapid": "5"}, {"mapid": "15-216", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "216", "parent_mapid": "5"}, {"mapid": "15-217", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "217", "parent_mapid": "5"}, {"mapid": "15-301", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "301", "parent_mapid": "5"}, {"mapid": "15-303", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "303", "parent_mapid": "5"}, {"mapid": "15-304", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "304", "parent_mapid": "5"}, {"mapid": "15-305", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "305", "parent_mapid": "5"}, {"mapid": "15-306", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "306", "parent_mapid": "5"}, {"mapid": "15-307", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "307", "parent_mapid": "5"}, {"mapid": "15-308", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "308", "parent_mapid": "5"}, {"mapid": "15-310", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "310", "parent_mapid": "5"}, {"mapid": "15-311", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "311", "parent_mapid": "5"}, {"mapid": "15-312", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "312", "parent_mapid": "5"}, {"mapid": "15-313", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "313", "parent_mapid": "5"}, {"mapid": "15-314", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "314", "parent_mapid": "5"}, {"mapid": "15-315", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "315", "parent_mapid": "5"}, {"mapid": "15-316", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "316", "parent_mapid": "5"}, {"mapid": "15-317", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "317", "parent_mapid": "5"}, {"mapid": "15-401", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "401", "parent_mapid": "5"}, {"mapid": "15-403", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "403", "parent_mapid": "5"}, {"mapid": "15-404", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "404", "parent_mapid": "5"}, {"mapid": "15-405", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "405", "parent_mapid": "5"}, {"mapid": "15-406", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "406", "parent_mapid": "5"}, {"mapid": "15-407", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "407", "parent_mapid": "5"}, {"mapid": "15-408", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "408", "parent_mapid": "5"}, {"mapid": "15-410", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "410", "parent_mapid": "5"}, {"mapid": "15-411", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "411", "parent_mapid": "5"}, {"mapid": "15-412", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "412", "parent_mapid": "5"}, {"mapid": "15-413", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "413", "parent_mapid": "5"}, {"mapid": "15-414", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "414", "parent_mapid": "5"}, {"mapid": "15-415", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "415", "parent_mapid": "5"}, {"mapid": "15-416", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "416", "parent_mapid": "5"}, {"mapid": "15-417", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Known senior apartment building \u2014 run Melissa units script for individual unit mailing list \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "417", "parent_mapid": "5"}, {"mapid": "15-418", "owner": "Current Resident", "owner2": "", "site": "15 N MARR ST", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "15 N MARR ST", "city": "Fond du Lac", "state": "WI", "zip": "54935", "btype": "Senior-Apt", "ownertype": "Business / Rental", "occupied": "No", "confidence": "High", "addressas": "City Of Fond Du Lac Housing Authority", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Vacant (AS16) \u2014 verify before mailing", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed", "bldg": "15", "street": "N MARR ST", "unit": "418", "parent_mapid": "5"}];
 
 if (boundaryData) {
   var boundary = L.geoJSON(boundaryData, {
@@ -528,16 +531,26 @@ var BUILDING_DONE_FILL    = '#000000';
 if (buildingsData) {
   L.geoJSON(buildingsData, {
     style: function(feature) {
+      var p = feature.properties||{};
       return {
         fillColor: BUILDING_DEFAULT_FILL,
-        fillOpacity: 1.0,
+        fillOpacity: DEFAULT_FILL_OPACITY,
         color: '#000000',
-        weight: 1.5
+        weight: 1.5,
+        // 2026-08-08: same fix as export_html_map.py -- a per-feature
+        // "interactive" in the style function overrides the geoJSON-level
+        // "interactive: isApartment" below, so non-apartment buildings were
+        // interactive anyway with no popup ever bound (onEachFeature is a
+        // no-op when !isApartment), creating an invisible dead zone over
+        // each building's roofline. Gating on isApartment here too fixes
+        // it; no behavior change for apartment territories.
+        interactive: isApartment && !p.secondary
       };
     },
     interactive: isApartment,
     onEachFeature: isApartment ? function(feature, layer) {
       var p = feature.properties;
+      var isSecondary = !!p.secondary;
       var bKey = p.subid ? p.subid : (p.mapid || '');
       // Permanent sub-ID label on each building footprint.
       // 2026-07-24: labels now anchor to a pre-computed "guaranteed inside
@@ -572,7 +585,19 @@ if (buildingsData) {
           });
         }
       }
-      if (bKey !== '') {
+      // 2026-07-28: a secondary duplicate (a smaller building sharing
+      // another building's address, e.g. a garage) never becomes "the
+      // responder" for that address's checkbox, and never gets a click
+      // popup -- only the largest footprint per address stays
+      // interactive. It still gets its own permanent on-map label (added
+      // by refresh_html_map.py's buildings-tooltip-label patch, same as
+      // every other building), just noticeably smaller -- see that
+      // script for the label-sizing logic. Deliberately NOT duplicating
+      // any label logic here -- that patch already handles every
+      // building's label correctly (including L-shaped/tightly-packed
+      // footprint anchoring), so this only controls click/checkbox
+      // behavior.
+      if (bKey !== '' && !isSecondary) {
         _buildingLayers[bKey] = layer;
         layer._origStyle = {
           fillColor: layer.options.fillColor,
@@ -581,33 +606,26 @@ if (buildingsData) {
           weight: layer.options.weight
         };
       }
-      if (p.site && p.site !== '') {
+      if (p.site && p.site !== '' && !isSecondary) {
         var subLabel = p.subid ? p.subid.toUpperCase() : ('Parcel #' + p.mapid);
         var saluteHtml = p.salute && p.salute !== 'nan' && p.salute !== ''
           ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+        // 2026-07-15: p.note is a short data-provenance flag ("Approximate
+        // match" / "From Fond du Lac County GIS") -- shown as its own line,
+        // kept OUT of p.site itself so the Get Directions link below still
+        // gets a clean, real address.
+        var noteHtml = p.note && p.note !== ''
+          ? '<div class="popup-mail" style="color:#888;font-style:italic">' + p.note + '</div>' : '';
         var bMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
         var bMapsHtml = '<div style="margin-top:6px"><a href="' + bMapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>';
-        // 2026-08-21: same "Mark as Worked" button as the regular parcel
-        // popup above, keyed by bKey (subid when this building has its own
-        // unit, otherwise the parent mapid) -- matches how _buildingLayers
-        // is keyed, so it lights up/darkens the correct footprint. Also
-        // bound as a function for the same lazy/fresh-state reason.
-        layer.bindPopup(function(){
-          var doneNow = (typeof _isDone === 'function') ? _isDone(bKey) : false;
-          var doneHtml = '<div style="margin-top:8px">' +
-            '<button class="popup-done-btn" data-key="' + bKey + '" onclick="_toggleDoneFromPopup(this.dataset.key)" ' +
-            'style="padding:7px 16px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:' + (doneNow ? '#e0e0e0' : 'white') + ';font-weight:bold;width:100%;">' +
-            (doneNow ? '&#x2611; Worked &mdash; tap to undo' : '&#x2610; Mark as Worked') +
-            '</button></div>';
-          return '<div class="popup-inner">' +
-            '<div class="popup-mapid">Building ' + subLabel + '</div>' +
-            '<div class="popup-site">' + p.site + '</div>' +
-            '<div class="popup-owner">' + (p.owner || '') + '</div>' +
-            saluteHtml +
-            bMapsHtml +
-            doneHtml +
-            '</div>';
-        }, {maxWidth: 300});
+        var html = '<div class="popup-inner">' +
+          '<div class="popup-mapid">Building ' + subLabel + '</div>' +
+          '<div class="popup-site">' + p.site + '</div>' +
+          '<div class="popup-owner">' + (p.owner || '') + '</div>' +
+          saluteHtml + noteHtml +
+          bMapsHtml +
+          '</div>';
+        layer.bindPopup(html, {maxWidth: 300});
       }
     } : function(feature, layer) {}
   }).addTo(map);
@@ -618,25 +636,25 @@ if (!boundaryData) {
 }
 
 // Scale MapID labels by zoom level AND parcel area
-function updateLabelSizes() {
-  var z = map.getZoom();
-  // Base size from zoom
+function updateLabelSizes(){
+  var z=map.getZoom();
   var baseSize;
-  if      (z <= 13) baseSize = 11;
-  else if (z <= 14) baseSize = 15;
-  else if (z <= 15) baseSize = 19;
-  else if (z <= 16) baseSize = 24;
-  else              baseSize = 30;
-  document.querySelectorAll('.mapid-label').forEach(function(el) {
-    var area = parseFloat(el.getAttribute('data-area') || 0);
-    var scale = 1.0;
-    // Shrink labels for small parcels
-    if      (area < 0.000003) scale = 0.45;
-    else if (area < 0.000008) scale = 0.60;
-    else if (area < 0.00002)  scale = 0.75;
-    else if (area < 0.00006)  scale = 0.88;
-    var finalSize = Math.max(7, Math.round(baseSize * scale));
-    el.style.fontSize = finalSize + 'px';
+  if(z<=13)baseSize=11;
+  else if(z<=14)baseSize=15;
+  else if(z<=15)baseSize=19;
+  else if(z<=16)baseSize=24;
+  else baseSize=30;
+  document.querySelectorAll('.mapid-label').forEach(function(el){
+    var area=parseFloat(el.getAttribute('data-area')||0);
+    var scale=1.0;
+    if(area<0.000003)scale=0.45;
+    else if(area<0.000008)scale=0.60;
+    else if(area<0.00002)scale=0.75;
+    else if(area<0.00006)scale=0.88;
+    var finalSize=Math.max(7,Math.round(baseSize*scale));
+    if(el.classList.contains('mapid-label-sm')){
+      finalSize=Math.max(6,Math.round(finalSize*0.55));}
+    el.style.fontSize=finalSize+'px';
   });
 }
 map.on('zoomend', updateLabelSizes);
@@ -659,11 +677,34 @@ function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
 function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
 function _setDone(mid,done){if(done)localStorage.setItem(_doneKey(mid),'1');else localStorage.removeItem(_doneKey(mid));}
 
+var _fbTerRef=null;
+function _fbInit(){
+  try{
+    if(typeof firebase==='undefined'||!firebase.initializeApp||!FIREBASE_CONFIG)return;
+    if(!window._fbApp){window._fbApp=firebase.initializeApp(FIREBASE_CONFIG);}
+    _fbTerRef=firebase.database().ref('territories/'+_TERRITORY);
+    _fbTerRef.on('value', function(snap){
+      var vals=snap.val()||{};
+      Object.keys(vals).forEach(function(mid){
+        var done=!!vals[mid];
+        if(_isDone(mid)!==done){
+          _setDone(mid,done);
+          _updateParcel(mid,done);
+          _updateTableRow(mid,done);
+          _updateParentBuilding(mid);}});
+    });
+  }catch(e){ if(window.console)console.warn('Firebase sync unavailable:',e); }}
+function _fbPush(mid,done){
+  if(_fbTerRef){
+    try{ _fbTerRef.child(String(mid)).set(!!done); }catch(e){}}}
+setTimeout(_fbInit,600);
 function _toggleDone(mid){
   var done=!_isDone(mid);
   _setDone(mid,done);
   _updateParcel(mid,done);
-  _updateTableRow(mid,done);}
+  _updateTableRow(mid,done);
+  _updateParentBuilding(mid);
+  _fbPush(mid,done);}
 
 // 2026-08-21: called by the "Mark as Worked" button inside a map popup.
 // Same toggle as the Mailing List checkbox -- this is just a second place
@@ -676,25 +717,22 @@ function _toggleDoneFromPopup(key){
 
 function _updateParcel(mid,done){
   var lyr=_parcelLayers[mid];
-  // 2026-08-22: DNC parcels keep their red hatch look no matter what --
-  // skip the map color change entirely for them (the checkbox/table row
-  // still updates normally below via _updateTableRow).
-  if(lyr && !_dncSet.has(String(mid))){
-    if(done){
-      lyr.setStyle({fillColor:'#000000',fillOpacity:1.0,color:'#FFFFFF',weight:4});
-    } else {
-      // 2026-08-22: restore using the Fill slider's CURRENT position, not
-      // the stale opacity captured once at page load in _origStyle -- that
-      // was the "loses opacity when un-marked" bug.
-      var base=lyr._origStyle||{fillColor:'#AAAAAA',color:'rgba(0,0,0,0.65)',weight:2.0};
-      lyr.setStyle({fillColor:base.fillColor,fillOpacity:_currentFillOpacity,color:base.color,weight:base.weight});
-    }
-  }
+  if(lyr){
+    if(done){lyr.setStyle({fillColor:'#222222',fillOpacity:0.9,color:'#FFFFFF',weight:4});}
+    else{lyr.setStyle(lyr._origStyle||{fillColor:'#AAAAAA',fillOpacity:0.4,color:'rgba(0,0,0,0.65)',weight:2.0});}}
   var bld=_buildingLayers[mid];
   if(bld){
-    if(done){bld.setStyle({fillColor:BUILDING_DONE_FILL});}
+    if(done){bld.setStyle({fillColor:BUILDING_DONE_FILL,fillOpacity:0.9});}
     else{bld.setStyle({fillColor:(bld._origStyle&&bld._origStyle.fillColor)||BUILDING_DEFAULT_FILL});}}}
 
+function _updateParentBuilding(mid){
+  var row=null;
+  for(var i=0;i<tableData.length;i++){if(String(tableData[i].mapid)===String(mid)){row=tableData[i];break;}}
+  if(!row||!row.parent_mapid||String(row.parent_mapid)===String(mid))return;
+  var siblings=tableData.filter(function(p){return String(p.parent_mapid)===String(row.parent_mapid);});
+  if(!siblings.length)return;
+  var allDone=siblings.every(function(p){return _isDone(p.mapid);});
+  _updateParcel(row.parent_mapid,allDone);}
 function _updateTableRow(mid,done){
   document.querySelectorAll('.ml-check[data-mid="'+mid+'"]').forEach(function(el){
     el.textContent=done?'☑':'☐';});
@@ -702,11 +740,9 @@ function _updateTableRow(mid,done){
     el.style.opacity=done?'0.45':'';});}
 
 function _applyDoneState(){
-  // Clear done state if this is a freshly generated map (build timestamp changed)
   var buildKey='build_'+_TERRITORY;
   var lastBuild=localStorage.getItem(buildKey);
   if(lastBuild!==_BUILD_TS){
-    // New pipeline run - clear all done state for this territory
     var toRemove=[];
     for(var i=0;i<localStorage.length;i++){
       var k=localStorage.key(i);
@@ -714,6 +750,15 @@ function _applyDoneState(){
     toRemove.forEach(function(k){localStorage.removeItem(k);});
     localStorage.setItem(buildKey,_BUILD_TS);}
   tableData.forEach(function(p){if(_isDone(p.mapid))_updateParcel(p.mapid,true);});
+  var parentGroups={};
+  tableData.forEach(function(p){
+    if(p.parent_mapid&&String(p.parent_mapid)!==String(p.mapid)){
+      var pk=String(p.parent_mapid);
+      if(!parentGroups[pk])parentGroups[pk]=[];
+      parentGroups[pk].push(p.mapid);}});
+  Object.keys(parentGroups).forEach(function(pk){
+    var allDone=parentGroups[pk].every(function(m){return _isDone(m);});
+    if(allDone)_updateParcel(pk,true);});
   var m=window.location.hash.match(/done=([0-9,]+)/);
   if(m){m[1].split(',').forEach(function(s){
     var mid=parseInt(s);
@@ -739,16 +784,19 @@ function _sortIndicator(sec,idx){
   if(s.col!==idx)return ' ▸';
   return s.asc?' ▲':' ▼';}
 
-function _colHdr(sec){
-  var isConf=(sec==='conf');
-  var cols=isConf
-    ?['','MapID','Owner 1','Owner 2','Site Address']
-    :['','MapID','Owner 1','Owner 2','Site Address','Reason/Notes'];
-  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
-  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+'">';
+function _colHdr(key,secKey){
+  var isMO=secKey==='mo';
+  var cols=isMO
+    ? ['','MapID','NAME1','NAME2','BLDG #','STREET','UNIT','CITY','STATE','ZIP','NOTES']
+    : ['','MapID','Owner 1','Owner 2','Site Address','Source','Reason/Notes'];
+  var grid=isMO
+    ? '30px 60px 150px 150px 70px 150px 55px 110px 45px 55px 260px'
+    : '30px 60px 170px 170px 250px 130px 200px';
+  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+';background:#FFA000;color:#3a2800;">';
   cols.forEach(function(c,i){
     if(i===0){h+='<span></span>';return;}
-    h+='<span data-sec="'+sec+'" data-col="'+i+'" onclick="_sortSection(this.dataset.sec,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(sec,i)+'</span>';});
+    h+='<span data-key="'+key+'" data-col="'+i+'" onclick="_sortSection(this.dataset.key,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(key,i)+'</span>';
+  });
   h+='</div>';
   return h;}
 
@@ -758,38 +806,64 @@ function _sortSection(sec,col){
   if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
   renderTable(_allRows);}
 
-function _sortRows(arr,sec){
-  var s=_sortState[sec];
-  if(s.col<=0)return arr.slice();
-  var cols=(sec==='conf')
-    ?['','mapid','owner','owner2','site_full']
-    :['','mapid','owner','owner2','site_full','notes'];
-  var key=cols[s.col]||'mapid';
+function _sortRows(arr,key,secKey){
+  var s=_getSortState(key);
+  if(s.col<=0){
+    return arr.slice().sort(function(a,b){
+      var an=_bnumOf(a.site),bn=_bnumOf(b.site);
+      var ai=parseInt(an,10),bi=parseInt(bn,10);
+      var aNum=!isNaN(ai)&&String(ai)===an, bNum=!isNaN(bi)&&String(bi)===bn;
+      if(aNum&&bNum)return ai-bi;
+      if(aNum!==bNum)return aNum?-1:1;
+      return an.localeCompare(bn);});}
+  var cols=secKey==='mo'
+    ? ['','mapid','owner','owner2','bldg','street','unit','site_city','site_state','site_zip','notes']
+    : ['','mapid','owner','owner2','site_full','source','notes'];
+  var sortKey=cols[s.col]||'mapid';
   return arr.slice().sort(function(a,b){
     var av,bv;
-    if(key==='site_full'){
+    if(sortKey==='site_full'){
       av=((a.site||'')+(a.site_city||'')+(a.site_state||'')+(a.site_zip||'')).toLowerCase();
       bv=((b.site||'')+(b.site_city||'')+(b.site_state||'')+(b.site_zip||'')).toLowerCase();}
-    else if(key==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
-    else{av=String(a[key]||'').toLowerCase();bv=String(b[key]||'').toLowerCase();}
+    else if(sortKey==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
+    else if(sortKey==='unit'){
+      var au=parseInt(a.unit,10),bu=parseInt(b.unit,10);
+      if(!isNaN(au)&&!isNaN(bu)){av=au;bv=bu;}
+      else{av=String(a.unit||'').toLowerCase();bv=String(b.unit||'').toLowerCase();}}
+    else{av=String(a[sortKey]||'').toLowerCase();bv=String(b[sortKey]||'').toLowerCase();}
     if(av<bv)return s.asc?-1:1;
     if(av>bv)return s.asc?1:-1;
     return 0;});}
 
-function _row(p,cls,sec){
-  var isConf=(sec==='conf');
+function _row(p,cls,secKey){
   var mid=p.mapid;
   var done=_isDone(mid);
-  var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
-  var grid=isConf?'30px 60px 200px 200px 380px':'30px 60px 180px 180px 300px 220px';
-  var rowStyle=done?'opacity:0.45;':'';
-  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" style="grid-template-columns:'+grid+';'+rowStyle+'">';
-  r+='<span class="ml-check" data-mid="'+mid+'" onclick="_toggleDone('+mid+')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'☑':'☐')+'</span>';
+  var isMO=secKey==='mo';
+  var grid=isMO
+    ? '30px 60px 150px 150px 70px 150px 55px 110px 45px 55px 260px'
+    : '30px 60px 170px 170px 250px 130px 200px';
+  var rowStyle=(done?'opacity:0.45;':'')+'cursor:pointer;';
+  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" onclick="_rowClickZoom(\''+mid+'\')" style="grid-template-columns:'+grid+';'+rowStyle+'">';
+  r+='<span class="ml-check" data-mid="'+mid+'" onclick="event.stopPropagation();_toggleDone(\''+mid+'\')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'\u2611':'\u2610')+'</span>';
   r+='<span>'+mid+'</span>';
-  r+='<span>'+(p.owner||'')+'</span>';
-  r+='<span>'+(p.owner2||'')+'</span>';
-  r+='<span>'+sf+'</span>';
-  if(!isConf){r+='<span>'+(p.notes||'')+'</span>';}
+  if(isMO){
+    r+='<span>'+(p.owner||'')+'</span>';
+    r+='<span>'+(p.owner2||'')+'</span>';
+    r+='<span>'+(p.bldg||'')+'</span>';
+    r+='<span>'+(p.street||'')+'</span>';
+    r+='<span>'+(p.unit||'')+'</span>';
+    r+='<span>'+(p.site_city||'')+'</span>';
+    r+='<span>'+(p.site_state||'')+'</span>';
+    r+='<span>'+(p.site_zip||'')+'</span>';
+    r+='<span>'+(p.notes||'')+'</span>';
+  } else {
+    var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
+    r+='<span>'+(p.owner||'')+'</span>';
+    r+='<span>'+(p.owner2||'')+'</span>';
+    r+='<span>'+sf+'</span>';
+    r+='<span>'+(p.source||'')+'</span>';
+    r+='<span>'+(p.notes||'')+'</span>';
+  }
   r+='</div>';
   return r;}
 
