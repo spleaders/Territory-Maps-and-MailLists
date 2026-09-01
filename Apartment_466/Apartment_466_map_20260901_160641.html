@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Apartment_466 Territory Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f0f0; }
+#header {
+  background: #4CAF50; color: white;
+  padding: 8px 16px; display: flex;
+  align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 4px; min-height: 56px; box-sizing: border-box;
+}
+#header h1 { font-size: 17px; font-weight: bold; margin: 0; line-height: 1.2; }
+#header .subtitle { font-size: 10px; opacity: 0.75; margin-top: 1px; }
+#header .stats { font-size: 12px; opacity: 0.9; }
+#map { height: calc(100vh - 96px); width: 100%; display: block; }
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  border-left: 6px solid #4CAF50;
+  padding: 0;
+}
+.leaflet-popup-content { margin: 0; width: 360px !important; }
+.popup-inner { padding: 18px 22px; }
+.popup-mapid {
+  font-size: 14px; color: #888; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+.popup-site {
+  font-size: 20px; font-weight: bold; color: #4CAF50;
+  margin-bottom: 7px; line-height: 1.3;
+}
+.popup-owner { font-size: 17px; color: #222; margin-bottom: 4px; }
+.popup-mail { font-size: 17px; color: #555; margin-bottom: 10px; }
+.popup-badge {
+  display: inline-block; padding: 5px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: bold; color: white; margin-right: 4px;
+}
+.badge-owner  { background: #4CAF50; }
+.badge-vacant { background: #808080; }
+.badge-inst   { background: #548235; }
+.badge-biz    { background: #7B2D8B; }
+.badge-dnc    { background: #cc0000; }
+.badge-research { background: #FFFF00; color: #333; }
+.legend-resizer{position:absolute;bottom:4px;right:4px;width:14px;height:14px;cursor:se-resize;opacity:0.4;z-index:10;background:linear-gradient(135deg,transparent 50%,#888 50%,#888 60%,transparent 60%,transparent 70%,#888 70%,#888 80%,transparent 80%);}.legend-resizer:hover{opacity:0.8;}#legend {
+  position: absolute; bottom: 24px; right: 10px; z-index: 1000;
+  background: white; border-radius: 12px; padding: 16px 22px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2); font-size: 17px;
+  min-width: 224px; cursor: move; user-select: none;
+}
+#legend h4 {
+  font-size: 18px; margin-bottom: 12px; color: #333;
+  border-bottom: 2px solid #eee; padding-bottom: 6px;
+}
+#legend-close {
+  float: right; cursor: pointer; font-size: 16px; color: #aaa;
+}
+#legend-close:hover { color: #333; }
+.legend-row { display: flex; align-items: center; margin-bottom: 10px; }
+.legend-swatch {
+  width: 20px; height: 20px; border-radius: 4px;
+  margin-right: 12px; flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.25);
+  display: inline-block !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  transition: opacity 0.15s;
+}
+/* 2026-08-22: initial opacity for .legend-slidable swatches is set by the
+   startup setParcelOpacity(0.30) call (matching the Fill slider's default),
+   not hardcoded here -- DNC and Completed swatches (no .legend-slidable
+   class) are intentionally left at full opacity always, matching their
+   always-opaque map behavior. */
+#notes-bar {
+  display: none; position: absolute; top: 58px; left: 10px;
+  right: 10px; z-index: 1000;
+  background: #FFF8E1; border-left: 4px solid #F5A623;
+  border-radius: 6px; padding: 8px 12px;
+  font-size: 12px; color: #555; max-width: 500px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#tab-bar {
+  display: flex; background: #4CAF50;
+  padding: 0 12px; height: 40px; box-sizing: border-box;
+}
+.tab-btn {
+  padding: 8px 20px; cursor: pointer; color: rgba(255,255,255,0.7);
+  font-size: 13px; font-weight: bold; border: none;
+  background: transparent; border-bottom: 3px solid transparent;
+}
+.tab-btn.active {
+  color: white; border-bottom: 3px solid white;
+}
+
+#table-view {
+  display: none; height: calc(100vh - 90px);
+  overflow-x: scroll; overflow-y: auto; padding: 16px; background: #f5f5f5;
+  /* 2026-08-14: paired with the scrollLeft=0 reset in showTab() -- stops
+     the browser's own scroll-anchoring from nudging this container
+     sideways again (e.g. on rotation) once the wide table is built. */
+  overflow-anchor: none;
+}
+#table-view::-webkit-scrollbar {
+  height: 12px; width: 12px;
+}
+#table-view::-webkit-scrollbar-track {
+  background: #ddd; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb {
+  background: #888; border-radius: 6px;
+}
+#table-view::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+#search-box {
+  width: 100%; max-width: 400px; padding: 8px 12px;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: 14px; margin-bottom: 12px;
+}
+#data-table {
+  width: 1480px; border-collapse: collapse;
+  table-layout: fixed;
+  background: white; font-size: 13px;
+}
+#table-wrapper {
+  display: block; overflow-x: auto;
+  border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#data-table th {
+  background: #4CAF50; color: white;
+  padding: 10px 12px; text-align: left;
+  cursor: pointer; white-space: nowrap;
+  user-select: none; position: sticky;
+  top: 0; z-index: 10; min-width: 60px;
+}
+#data-table th:hover { opacity: 0.85; }
+#data-table th.sort-asc::after { content: " "; font-size: 10px; }
+#data-table th.sort-desc::after { content: " "; font-size: 10px; }
+#data-table td {
+  padding: 8px 12px; border-bottom: 1px solid #eee;
+  vertical-align: top; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  max-width: 0;
+}
+#data-table td:hover {
+  white-space: normal; overflow: visible;
+  background: #fffde7; position: relative; z-index: 5;
+}
+#data-table th {
+  position: sticky; top: 0; z-index: 10;
+  resize: horizontal; overflow: auto;
+  min-width: 40px;
+}
+#data-table tr:hover td { background: #f0f4ff; }
+.badge-res   { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-biz2  { background: #7B2D8B; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-inst2 { background: #548235; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-vac2  { background: #808080; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-dnc2  { background: #cc0000; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-res2  { background: #E65100; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+#btn-bar {
+  /* 2026-08-13: top moved from 56px (bottom of #header only) to 96px
+     (bottom of #header + #tab-bar, same 96 used in #map's height calc
+     below) -- once this wraps to multiple rows on a narrow phone, 56px
+     let it float down over the Map/Mailing List tabs, covering part of
+     the Mailing List tab. Starting below the tabs means it only ever
+     floats over the map area, no matter how tall it wraps. */
+  position: absolute; top: 96px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; gap: 8px; align-items: center;
+  /* 2026-08-13: was a single un-wrapped row -- wider than a phone screen,
+     so Share Territory (leftmost) got pushed off-screen with no way to
+     scroll a floating/absolute element back into view. Wrapping onto
+     multiple centered rows keeps every control reachable on narrow
+     screens; no change on desktop, where it already fit on one line. */
+  flex-wrap: wrap; justify-content: center; max-width: 94vw;
+}
+#header #share-btn {
+  /* 2026-08-14: moved out of the floating #btn-bar and into the header's
+     own flex row so it takes up real layout space instead of floating on
+     top of the page -- it can no longer cover the Mailing List table (or
+     anything else) underneath it. Print Map was removed at the same time
+     (rarely used, and window.print() output wasn't reliable). */
+  background: rgba(255,255,255,0.95); border: 1px solid #ccc;
+  border-radius: 8px; padding: 5px 12px;
+  font-size: 12px; font-weight: bold; color: #333;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#header #share-btn:hover { background: #f0f0f0; }
+@media print {
+  @page { margin: 0; size: auto; }
+  #header, #tab-bar, #btn-bar, #mapid-search,
+  #notes-bar, #table-view,
+  .leaflet-control-container { display: none !important; }
+  html, body { margin: 0 !important; padding: 0 !important;
+                overflow: hidden !important; }
+  #map { position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 100vw !important; height: 100vh !important;
+          z-index: 1 !important; }
+  #legend { z-index: 2 !important;
+             max-width: 200px !important;
+             right: 10px !important;
+             bottom: 10px !important;
+             left: auto !important;
+             top: auto !important;
+             font-size: 13px !important; }
+}
+#mapid-search {
+  background: rgba(255,255,255,0.97); border: 1px solid #ccc;
+  border-radius: 8px; padding: 6px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex; align-items: center; gap: 8px;
+}
+#mapid-search input {
+  border: none; outline: none; font-size: 13px;
+  width: 80px; background: transparent;
+}
+#mapid-search label {
+  font-size: 12px; color: #666; white-space: nowrap;
+}
+#mapid-search-clear {
+  cursor: pointer; color: #aaa; font-size: 14px;
+  display: none;
+}
+#mapid-search-clear:hover { color: #333; }
+#table-body{
+  /* 2026-08-14: the .ml-hdr banner strips (street address / building-type
+     bars) are plain divs, not grids -- they can't size themselves to
+     match their sibling .ml-row/.ml-col-header's 1135px-wide grid content
+     the way width:max-content works on those. Fixing #table-body itself
+     to its content's real width instead makes every plain-div child
+     (which defaults to filling 100% of ITS parent) stretch to match,
+     same fix family as the .ml-row/.ml-col-header width rules below. */
+  width: max-content; min-width: 100%;
+}
+.ml-hdr{padding:10px 16px;font-weight:bold;font-size:13px;color:white;letter-spacing:0.5px;}
+/* 2026-08-14: without an explicit width, a grid row/header only sizes
+   itself to the *viewport's* width (its containing block), even though
+   its grid-template-columns add up to something much wider (the
+   Multi-Occupant table's 11 columns run ~1135px). The extra columns still
+   render -- that's why scrolling right shows the data -- but the row's
+   own background paint stops at its (viewport-width) box edge, so every
+   column past that point looks blank/white on a phone. On a desktop
+   window wider than 1135px this never showed up, since the row's
+   viewport-constrained width already covered the whole table. max-content
+   makes the row/header size itself to its actual grid content instead;
+   min-width:100% keeps it filling the full width on screens wider than
+   the table itself, same as before. */
+.ml-col-header{display:grid;width:max-content;min-width:100%;background:#4472C4;color:white;font-size:12px;font-weight:bold;}
+/* 2026-08-18: Steve's call -- visible gridlines on both the column header
+   and every data row, spreadsheet-style. Header's divider was already
+   there but very faint (white-on-blue); data rows had no vertical divider
+   at all, just a bottom line on the whole row. */
+.ml-col-header span{padding:6px 8px;white-space:nowrap;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.45);cursor:pointer;user-select:none;}
+.ml-col-header span:hover{background:rgba(255,255,255,0.15);}
+.ml-row{display:grid;width:max-content;min-width:100%;font-size:12px;border-bottom:1px solid #ccc;}
+.ml-row span{padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  border-right:1px solid #ddd;}
+.ml-row span:last-child{border-right:none;}
+.ml-row:hover span{white-space:normal;overflow:visible;background:#fffde7;
+  position:relative;z-index:5;}
+/* 2026-08-17: Occupancy carries a full sentence now, not a short tag --
+   wrap it permanently (not just on hover like other columns) so it's
+   readable without needing to mouse over every row. */
+.ml-wrap{white-space:normal !important;overflow:visible !important;
+  text-overflow:clip !important;word-break:break-word;line-height:1.3;}
+.check-icon{font-size:16px;cursor:pointer;background:rgba(255,255,255,0.85);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  line-height:1;border:none!important;box-shadow:none!important;}
+.check-icon:hover{background:rgba(255,255,255,1);}
+.ml-even-g{background:#E2EFDA;}
+.ml-odd{background:#FFFFFF;}
+.ml-even-y{background:#FFF2CC;}
+.ml-dnc{background:#FFB3B3;}
+.ml-gap{height:12px;background:#e8e8e8;}
+.ml-none{padding:8px 16px;color:#888;font-size:12px;font-style:italic;}
+.popup-done-btn{transition:background 0.15s;}
+.popup-done-btn:hover{background:#f0f0f0 !important;}
+</style>
+</head>
+<body>
+<!-- 2026-08-17: diagonal-hatch pattern for excluded/DNC parcels & buildings,
+     Steve's request to make them stand out beyond just red fill. Referenced
+     via fillColor:'url(#dncHatch)' by a small SVG-rendered overlay layer
+     added on top of the main canvas-rendered map (the main layer uses
+     preferCanvas for performance, and canvas fills can't reference an SVG
+     pattern -- so the hatch draws in its own tiny SVG layer instead, just
+     for the handful of excluded features, not the whole parcel set). -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <pattern id="dncHatch" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
+      <rect width="10" height="10" fill="#CC0000"></rect>
+      <line x1="0" y1="0" x2="0" y2="10" stroke="#660000" stroke-width="4"></line>
+    </pattern>
+  </defs>
+</svg>
+<div id="header">
+  <div>
+    <h1>Apartment_466 Territory</h1>
+    <div class="subtitle">Apartment_466_20260901_1606.xlsx</div>
+  </div>
+  <div class="stats">
+    1 parcels &nbsp;&nbsp;
+    0 owner occupied &nbsp;&nbsp;
+    0 need research &nbsp;&nbsp;
+    0 vacant
+    
+  </div>
+  <button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+</div>
+<div id="notes-bar">Before working apartment territories.  Please review the following:  KM 12/08 pg. 3-4 and KM 11/85 Pg. 3-6 | The Elms Trailer Park.  Located near the corner of East Pioneer Rd. and Main St. | Address: | 871 S Main St Trlr #131- #213</div>
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="showTab('map')">&#x1F5FA; Map</button>
+  <button class="tab-btn" onclick="showTab('table')">&#x1F4CB; Mailing List</button>
+</div>
+<div id="map"></div>
+<div id="table-view">
+  <!-- 2026-08-18: Steve's call -- pin the search/Share Progress row to the
+       top of the Mailing List tab so it stays visible while scrolling
+       through a long territory, instead of scrolling away with the table. -->
+  <div style="padding:10px 16px 6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:20;background:#f5f5f5;">
+    <input type="text" id="search-box" placeholder="Search by name, address, MapID..." oninput="filterTable()"
+      style="padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;width:300px;">
+    <button onclick="shareProgress()" style="padding:7px 14px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:white;font-weight:bold;">&#x1F4CB; Share Progress</button>
+  </div>
+  <div id="table-body"></div>
+</div>
+<div id="btn-bar">
+<div id="mapid-search">
+  <label>&#x1F50D; MapID</label>
+  <input type="number" id="mapid-input" placeholder="e.g. 42" min="1"
+    oninput="searchMapID(this.value)"
+    onkeydown="if(event.key==='Escape'){clearMapID();}" />
+  <span id="mapid-search-clear" onclick="clearMapID()">&#x2715;</span>
+</div>
+<div id="opacity-ctrl" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.97);border:1px solid #ccc;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+  <label style="font-size:12px;color:#666;white-space:nowrap;">&#x1F3A8; Fill</label>
+  <input type="range" id="opacity-slider" min="0" max="100" value="30"
+    style="width:80px;cursor:pointer;"
+    oninput="setParcelOpacity(this.value/100)" />
+  <span id="opacity-val" style="font-size:12px;color:#666;width:32px;">30%</span>
+</div>
+</div>
+<div id="legend">
+  <h4>Legend <span id="legend-close" onclick="document.getElementById('legend').style.display='none'">&#x2715;</span></h4>
+  <div class="legend-row">
+    <div class="legend-swatch legend-slidable" style="background:#2E5496"></div>Confident Resident
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch legend-slidable" style="background:#FFFF00"></div>Needs Research
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch legend-slidable" style="background:#228B22"></div>Verified
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch legend-slidable" style="background:#E65100"></div>Suspect — verify before mailing
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch legend-slidable" style="background:#8B4513"></div>Institution
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch legend-slidable" style="background:#7B2D8B"></div>Business
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch legend-slidable" style="background:#808080"></div>Vacant
+  </div>
+  <div class="legend-row">
+    <!-- 2026-08-22: hatch-pattern swatch (not a plain fade-able solid) --
+         matches the map's own DNC hatch overlay, and stays this way
+         regardless of the Fill slider, same as the map. -->
+    <div class="legend-swatch" style="background:repeating-linear-gradient(45deg,#CC0000,#CC0000 3px,#7a0000 3px,#7a0000 6px)"></div>Do Not Contact
+  </div>
+  <div class="legend-row">
+    <div class="legend-swatch" style="background:#000000;border:2px solid #FFFFFF;box-sizing:border-box"></div>Completed
+  </div>
+  <div class="legend-resizer" id="legend-resizer"></div>
+</div>
+<script>
+var map = L.map('map', {zoomControl: true, preferCanvas: true, scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.25});
+document.getElementById('map').addEventListener('wheel', function(e){ e.preventDefault(); var delta = e.deltaY > 0 ? -0.25 : 0.25; var mousePos = map.mouseEventToLatLng(e); map.setZoomAround(mousePos, map.getZoom() + delta); }, {passive: false});
+var _osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: ' OpenStreetMap contributors', maxZoom: 19, subdomains: 'abc'
+});
+var _cartoKey = "cb1_26eq_1_38b9fa4d14df49a77af04ee5";
+var _cartoLayer = _cartoKey ? L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=' + _cartoKey, {
+  attribution: ' OpenStreetMap contributors | CartoDB', maxZoom: 20, subdomains: 'abcd'
+}) : null;
+var _osmFailCount = 0;
+var _osmSwappedToBackup = false;
+_osmLayer.on('tileerror', function() {
+  _osmFailCount++;
+  if (_osmFailCount >= 4 && !_osmSwappedToBackup && _cartoLayer) {
+    _osmSwappedToBackup = true;
+    map.removeLayer(_osmLayer);
+    _cartoLayer.addTo(map);
+    var _backupNote = document.createElement('div');
+    _backupNote.textContent = 'Using backup map service';
+    _backupNote.style.cssText = 'position:absolute;bottom:6px;left:6px;background:rgba(255,255,255,0.85);padding:2px 7px;font-size:11px;color:#555;border-radius:3px;z-index:1000;pointer-events:none;';
+    document.getElementById('map').appendChild(_backupNote);
+  }
+});
+_osmLayer.addTo(map);
+
+var boundaryData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[-88.44459235668182, 43.75538004182676], [-88.44346582889557, 43.75535679353873], [-88.44348728656769, 43.754360983389184], [-88.44259679317474, 43.75435517121905], [-88.44189941883087, 43.7541091221655], [-88.44192087650299, 43.75327603518154], [-88.44229638576508, 43.75272967881617], [-88.44415783882141, 43.75280330159591], [-88.44413638114929, 43.75335740697939], [-88.44480156898499, 43.75338065604419], [-88.4447854757309, 43.75437260772778], [-88.4447854757309, 43.75493832280973], [-88.44461381435394, 43.755070063910395], [-88.44459235668182, 43.75538004182676], [-88.44459235668182, 43.75538004182676]]], "type": "Polygon"}, "properties": {}}]};
+var buildingsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442836, 43.752979], [-88.443099, 43.752985], [-88.443095, 43.753057], [-88.442988, 43.753054], [-88.44299, 43.753027], [-88.442834, 43.753023], [-88.442836, 43.752979]]]}, "properties": {"mapid": 2, "subid": "130", "site": "871 S MAIN ST #130, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4429664040404, "label_lat": 43.753004000000004}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443383, 43.753024], [-88.443605, 43.753024], [-88.443605, 43.753106], [-88.443383, 43.753106], [-88.443383, 43.753024]]]}, "properties": {"mapid": 2, "subid": "137", "site": "871 S MAIN ST #137, Fond du Lac WI 54935", "owner": "Nicole M Wellman or Current Resident", "salute": "Dear Nicole", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.443494, "label_lat": 43.75306500000001}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443809, 43.753074], [-88.443715, 43.753074], [-88.443715, 43.753031], [-88.443924, 43.753031], [-88.443924, 43.75311], [-88.443808, 43.75311], [-88.443809, 43.753074]]]}, "properties": {"mapid": 2, "subid": "138", "site": "871 S MAIN ST #138, Fond du Lac WI 54935", "owner": "Marisa J Salaja or Current Resident", "salute": "Dear Marisa", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44381949999999, "label_lat": 43.753052499999995}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442481, 43.75309], [-88.442774, 43.75309], [-88.442774, 43.753137], [-88.442481, 43.753137], [-88.442481, 43.75309]]]}, "properties": {"mapid": 2, "subid": "155", "site": "871 S MAIN ST #155, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4426275, "label_lat": 43.7531135}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44285, 43.7531], [-88.443111, 43.753105], [-88.44311, 43.753148], [-88.442848, 43.753142], [-88.44285, 43.7531]]]}, "properties": {"mapid": 2, "subid": "131", "site": "871 S MAIN ST #131, Fond du Lac WI 54935", "owner": "Thomas J Witt or Current Resident", "salute": "Dear Thomas", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44297972535992, "label_lat": 43.7531235}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443981, 43.753135], [-88.443981, 43.753181], [-88.443683, 43.753181], [-88.443683, 43.753135], [-88.443981, 43.753135]]]}, "properties": {"mapid": 2, "subid": "139", "site": "871 S MAIN ST #139, Fond du Lac WI 54935", "owner": "Juan L Chimalhua or Current Resident", "salute": "Dear Juan", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44383199999999, "label_lat": 43.753158}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44277, 43.753186], [-88.44277, 43.753248], [-88.442475, 43.753248], [-88.442475, 43.753186], [-88.44277, 43.753186]]]}, "properties": {"mapid": 2, "subid": "154", "site": "871 S MAIN ST #154, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4426225, "label_lat": 43.753217}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443074, 43.75322], [-88.443074, 43.753266], [-88.442838, 43.753266], [-88.442838, 43.75322], [-88.443074, 43.75322]]]}, "properties": {"mapid": 2, "subid": "132", "site": "871 S MAIN ST #132, Fond du Lac WI 54935", "owner": "Daina R Galbraith or Current Resident", "salute": "Dear Daina", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.442956, "label_lat": 43.753243}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442768, 43.753311], [-88.442768, 43.753354], [-88.442476, 43.753354], [-88.442476, 43.753282], [-88.442605, 43.753282], [-88.442605, 43.753311], [-88.442768, 43.753311]]]}, "properties": {"mapid": 2, "subid": "153", "site": "871 S MAIN ST #153, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.442622, "label_lat": 43.7533325}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443721, 43.753344], [-88.443981, 43.753344], [-88.443981, 43.753386], [-88.443721, 43.753386], [-88.443721, 43.753344]]]}, "properties": {"mapid": 2, "subid": "141", "site": "871 S MAIN ST #141, Fond du Lac WI 54935", "owner": "Todd A Halverson or Current Resident", "salute": "Dear Todd", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.443851, "label_lat": 43.753365}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443155, 43.753417], [-88.442935, 43.753417], [-88.442935, 43.753334], [-88.443155, 43.753334], [-88.443155, 43.753417]]]}, "properties": {"mapid": 2, "subid": "133", "site": "871 S MAIN ST #133, Fond du Lac WI 54935", "owner": "Jonathan Morales or Current Resident", "salute": "Dear Jonathan", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44304500000001, "label_lat": 43.753375500000004}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443447, 43.753417], [-88.443222, 43.753417], [-88.443222, 43.753357], [-88.443447, 43.753357], [-88.443447, 43.753417]]]}, "properties": {"mapid": 2, "subid": "134", "site": "871 S MAIN ST #134, Fond du Lac WI 54935", "owner": "Patricia M Wirtz or Current Resident", "salute": "Dear Patricia", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4433345, "label_lat": 43.753387000000004}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442248, 43.753452], [-88.442025, 43.753452], [-88.442025, 43.753375], [-88.442248, 43.753375], [-88.442248, 43.753452]]]}, "properties": {"mapid": 2, "subid": "158", "site": "871 S MAIN ST #158, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4421365, "label_lat": 43.7534135}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442473, 43.753416], [-88.442768, 43.753416], [-88.442768, 43.753466], [-88.442473, 43.753466], [-88.442473, 43.753416]]]}, "properties": {"mapid": 2, "subid": "152", "site": "871 S MAIN ST #152, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4426205, "label_lat": 43.753441}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443884, 43.753497], [-88.443941, 43.753497], [-88.443941, 43.753602], [-88.443884, 43.753602], [-88.443884, 43.753497]]]}, "properties": {"mapid": 2, "subid": "142", "site": "871 S MAIN ST #142, Fond du Lac WI 54935", "owner": "Isabel I Clark or Current Resident", "salute": "Dear Isabel", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4439125, "label_lat": 43.753549500000005}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442468, 43.753528], [-88.442766, 43.753528], [-88.442766, 43.753574], [-88.442468, 43.753574], [-88.442468, 43.753528]]]}, "properties": {"mapid": 2, "subid": "151", "site": "871 S MAIN ST #151, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44261700000001, "label_lat": 43.753551}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.441988, 43.753541], [-88.44228, 43.753541], [-88.44228, 43.753588], [-88.441988, 43.753588], [-88.441988, 43.753541]]]}, "properties": {"mapid": 2, "subid": "159", "site": "871 S MAIN ST #159, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.442134, "label_lat": 43.753564499999996}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44313, 43.75359], [-88.443173, 43.753591], [-88.443174, 43.753468], [-88.443241, 43.753468], [-88.443238, 43.753682], [-88.443128, 43.753681], [-88.44313, 43.75359]]]}, "properties": {"mapid": 2, "subid": "147", "site": "871 S MAIN ST #147, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44320682446244, "label_lat": 43.753529}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443672, 43.753683], [-88.443611, 43.753683], [-88.443611, 43.753468], [-88.443672, 43.753468], [-88.443672, 43.753683]]]}, "properties": {"mapid": 2, "subid": "144", "site": "871 S MAIN ST #144, Fond du Lac WI 54935", "owner": "Chris J Klapperich or Current Resident", "salute": "Dear Chris", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44364150000001, "label_lat": 43.7535755}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443745, 43.753468], [-88.443815, 43.753468], [-88.443815, 43.753683], [-88.443745, 43.753683], [-88.443745, 43.753468]]]}, "properties": {"mapid": 2, "subid": "143", "site": "871 S MAIN ST #143, Fond du Lac WI 54935", "owner": "Shirley A Willis or Current Resident", "salute": "Dear Shirley", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44378, "label_lat": 43.7535755}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443088, 43.753683], [-88.443015, 43.753683], [-88.443015, 43.753468], [-88.443088, 43.753468], [-88.443088, 43.753683]]]}, "properties": {"mapid": 2, "subid": "148", "site": "871 S MAIN ST #148, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4430515, "label_lat": 43.7535755}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443391, 43.753685], [-88.443313, 43.753684], [-88.443314, 43.75347], [-88.443392, 43.753471], [-88.443391, 43.753685]]]}, "properties": {"mapid": 2, "subid": "146", "site": "871 S MAIN ST #146, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4433525, "label_lat": 43.7535775}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444289, 43.753656], [-88.444179, 43.753656], [-88.444179, 43.753503], [-88.444289, 43.753503], [-88.444289, 43.753656]]]}, "properties": {"mapid": 2, "subid": "200", "site": "871 S MAIN ST #200, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "secondary": true, "label_lon": -88.444234, "label_lat": 43.7535795}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444367, 43.753519], [-88.444473, 43.753519], [-88.444472, 43.753647], [-88.444366, 43.753647], [-88.444367, 43.753519]]]}, "properties": {"mapid": 2, "subid": "200", "site": "871 S MAIN ST #200, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "secondary": true, "label_lon": -88.44441950000001, "label_lat": 43.753583}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443533, 43.753679], [-88.443477, 43.753679], [-88.443477, 43.753487], [-88.443533, 43.753487], [-88.443533, 43.753679]]]}, "properties": {"mapid": 2, "subid": "145", "site": "871 S MAIN ST #145, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.443505, "label_lat": 43.753583}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444549, 43.753687], [-88.444549, 43.75352], [-88.444662, 43.75352], [-88.444662, 43.753665], [-88.444603, 43.753665], [-88.444603, 43.753687], [-88.444549, 43.753687]]]}, "properties": {"mapid": 2, "subid": "201", "site": "871 S MAIN ST #201, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4446055, "label_lat": 43.753592499999996}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442793, 43.753631], [-88.442793, 43.753675], [-88.442532, 43.753675], [-88.442532, 43.753631], [-88.442793, 43.753631]]]}, "properties": {"mapid": 2, "subid": "150", "site": "871 S MAIN ST #150, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4426625, "label_lat": 43.753653}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.441985, 43.753648], [-88.442278, 43.753648], [-88.442278, 43.753696], [-88.441985, 43.753696], [-88.441985, 43.753648]]]}, "properties": {"mapid": 2, "subid": "160", "site": "871 S MAIN ST #160, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4421315, "label_lat": 43.753671999999995}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444238, 43.753696], [-88.444238, 43.753716], [-88.44434, 43.753716], [-88.44434, 43.753797], [-88.444118, 43.753797], [-88.444118, 43.753696], [-88.444238, 43.753696]]]}, "properties": {"mapid": 2, "subid": "200", "site": "871 S MAIN ST #200, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "label_lon": -88.444229, "label_lat": 43.753756499999994}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442316, 43.753832], [-88.442112, 43.753894], [-88.442067, 43.753817], [-88.442271, 43.753755], [-88.442316, 43.753832]]]}, "properties": {"mapid": 2, "subid": "161", "site": "871 S MAIN ST #161, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4421915, "label_lat": 43.7538245}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444338, 43.753904], [-88.44404, 43.753904], [-88.44404, 43.753859], [-88.444338, 43.753859], [-88.444338, 43.753904]]]}, "properties": {"mapid": 2, "subid": "204", "site": "871 S MAIN ST #204, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "label_lon": -88.444189, "label_lat": 43.7538815}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443739, 43.753819], [-88.443739, 43.753993], [-88.443624, 43.753993], [-88.443624, 43.753819], [-88.443739, 43.753819]]]}, "properties": {"mapid": 2, "subid": "170", "site": "871 S MAIN ST #170, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4436815, "label_lat": 43.753906}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443171, 43.753815], [-88.443232, 43.753815], [-88.443232, 43.754032], [-88.443171, 43.754032], [-88.443171, 43.753815]]]}, "properties": {"mapid": 2, "subid": "167", "site": "871 S MAIN ST #167, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4432015, "label_lat": 43.7539235}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442402, 43.753834], [-88.442496, 43.753878], [-88.442375, 43.754013], [-88.442281, 43.753969], [-88.442402, 43.753834]]]}, "properties": {"mapid": 2, "subid": "162", "site": "871 S MAIN ST #162, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44238849999999, "label_lat": 43.7539235}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443125, 43.753906], [-88.443085, 43.753906], [-88.443085, 43.754032], [-88.443021, 43.754032], [-88.443021, 43.753819], [-88.443125, 43.753819], [-88.443125, 43.753906]]]}, "properties": {"mapid": 2, "subid": "166", "site": "871 S MAIN ST #166, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44305299999999, "label_lat": 43.753969}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442822, 43.7539], [-88.442777, 43.7539], [-88.442777, 43.754034], [-88.442715, 43.754034], [-88.442715, 43.753819], [-88.442779, 43.753819], [-88.442779, 43.753861], [-88.442822, 43.753861], [-88.442822, 43.7539]]]}, "properties": {"mapid": 2, "subid": "164", "site": "871 S MAIN ST #164, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.442746, "label_lat": 43.753967}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442937, 43.754034], [-88.442865, 43.754034], [-88.442865, 43.753819], [-88.442937, 43.753819], [-88.442937, 43.754034]]]}, "properties": {"mapid": 2, "subid": "165", "site": "871 S MAIN ST #165, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.442901, "label_lat": 43.7539265}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.442632, 43.75382], [-88.442632, 43.754036], [-88.442567, 43.754036], [-88.442567, 43.75382], [-88.442632, 43.75382]]]}, "properties": {"mapid": 2, "subid": "163", "site": "871 S MAIN ST #163, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4425995, "label_lat": 43.753928}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444321, 43.754014], [-88.444018, 43.754014], [-88.444018, 43.753968], [-88.444321, 43.753968], [-88.444321, 43.754014]]]}, "properties": {"mapid": 2, "subid": "171", "site": "871 S MAIN ST #171, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "secondary": true, "label_lon": -88.4441695, "label_lat": 43.753991}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444713, 43.754065], [-88.444415, 43.754065], [-88.444415, 43.75402], [-88.444713, 43.75402], [-88.444713, 43.754065]]]}, "properties": {"mapid": 2, "subid": "205", "site": "871 S MAIN ST #205, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.444564, "label_lat": 43.7540425}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443528, 43.754061], [-88.443825, 43.754061], [-88.443825, 43.754107], [-88.443528, 43.754107], [-88.443528, 43.754061]]]}, "properties": {"mapid": 2, "subid": "171", "site": "871 S MAIN ST #171, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "secondary": true, "label_lon": -88.44367650000001, "label_lat": 43.754084}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44431, 43.754123], [-88.444015, 43.754124], [-88.444015, 43.754052], [-88.444157, 43.754052], [-88.444157, 43.754085], [-88.44431, 43.754084], [-88.44431, 43.754123]]]}, "properties": {"mapid": 2, "subid": "171", "site": "871 S MAIN ST #171, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "label_lon": -88.4441625, "label_lat": 43.754104}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444418, 43.754127], [-88.444713, 43.754127], [-88.444713, 43.754173], [-88.444418, 43.754173], [-88.444418, 43.754127]]]}, "properties": {"mapid": 2, "subid": "206", "site": "871 S MAIN ST #206, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4445655, "label_lat": 43.754149999999996}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443525, 43.754167], [-88.443825, 43.754167], [-88.443825, 43.75421], [-88.443525, 43.75421], [-88.443525, 43.754167]]]}, "properties": {"mapid": 2, "subid": "172", "site": "871 S MAIN ST #172, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "secondary": true, "label_lon": -88.443675, "label_lat": 43.7541885}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444011, 43.75419], [-88.444059, 43.75419], [-88.444059, 43.754157], [-88.444147, 43.754157], [-88.444147, 43.75419], [-88.444311, 43.75419], [-88.444311, 43.754231], [-88.444011, 43.754232], [-88.444011, 43.75419]]]}, "properties": {"mapid": 2, "subid": "172", "site": "871 S MAIN ST #172, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "label_lon": -88.44416100000001, "label_lat": 43.7542105}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444711, 43.754235], [-88.44471, 43.754279], [-88.444627, 43.754278], [-88.444627, 43.754303], [-88.444581, 43.754303], [-88.444581, 43.754278], [-88.444415, 43.754276], [-88.444416, 43.754233], [-88.444711, 43.754235]]]}, "properties": {"mapid": 2, "subid": "207", "site": "871 S MAIN ST #207, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44456300541755, "label_lat": 43.7542555}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44353, 43.754274], [-88.443825, 43.754274], [-88.443825, 43.754318], [-88.44353, 43.754318], [-88.44353, 43.754274]]]}, "properties": {"mapid": 2, "subid": "173", "site": "871 S MAIN ST #173, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "secondary": true, "label_lon": -88.4436775, "label_lat": 43.754296}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444311, 43.754338], [-88.44401, 43.754338], [-88.44401, 43.754293], [-88.444311, 43.754293], [-88.444311, 43.754338]]]}, "properties": {"mapid": 2, "subid": "173", "site": "871 S MAIN ST #173, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "label_lon": -88.44416050000001, "label_lat": 43.7543155}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444708, 43.754394], [-88.444437, 43.754394], [-88.444437, 43.754342], [-88.444708, 43.754342], [-88.444708, 43.754394]]]}, "properties": {"mapid": 2, "subid": "208", "site": "871 S MAIN ST #208, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44457249999999, "label_lat": 43.754368}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443525, 43.754382], [-88.443823, 43.754382], [-88.443823, 43.754427], [-88.443525, 43.754427], [-88.443525, 43.754382]]]}, "properties": {"mapid": 2, "subid": "174", "site": "871 S MAIN ST #174, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "secondary": true, "label_lon": -88.44367399999999, "label_lat": 43.7544045}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444008, 43.754402], [-88.444308, 43.754402], [-88.444308, 43.754448], [-88.444008, 43.754448], [-88.444008, 43.754402]]]}, "properties": {"mapid": 2, "subid": "174", "site": "871 S MAIN ST #174, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "label_lon": -88.444158, "label_lat": 43.754425}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44471, 43.75445], [-88.44471, 43.754497], [-88.44441, 43.754497], [-88.44441, 43.75445], [-88.44471, 43.75445]]]}, "properties": {"mapid": 2, "subid": "209", "site": "871 S MAIN ST #209, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44456, "label_lat": 43.7544735}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444308, 43.754553], [-88.444008, 43.754553], [-88.444008, 43.754508], [-88.444308, 43.754508], [-88.444308, 43.754553]]]}, "properties": {"mapid": 2, "subid": "175", "site": "871 S MAIN ST #175, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "secondary": true, "label_lon": -88.444158, "label_lat": 43.7545305}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44471, 43.754605], [-88.44441, 43.754605], [-88.44441, 43.754561], [-88.44471, 43.754561], [-88.44471, 43.754605]]]}, "properties": {"mapid": 2, "subid": "210", "site": "871 S MAIN ST #210, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44456, "label_lat": 43.754583}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443522, 43.754601], [-88.44382, 43.754601], [-88.44382, 43.754646], [-88.443522, 43.754646], [-88.443522, 43.754601]]]}, "properties": {"mapid": 2, "subid": "176", "site": "871 S MAIN ST #176, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.443671, "label_lat": 43.7546235}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444013, 43.754615], [-88.444308, 43.754615], [-88.444308, 43.754659], [-88.444013, 43.754659], [-88.444013, 43.754615]]]}, "properties": {"mapid": 2, "subid": "176", "site": "871 S MAIN ST #176, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "secondary": true, "label_lon": -88.44416050000001, "label_lat": 43.754637}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44441, 43.754669], [-88.44471, 43.754669], [-88.44471, 43.754716], [-88.44441, 43.754716], [-88.44441, 43.754669]]]}, "properties": {"mapid": 2, "subid": "211", "site": "871 S MAIN ST #211, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44456, "label_lat": 43.754692500000004}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44382, 43.754712], [-88.44382, 43.754756], [-88.443519, 43.754756], [-88.443519, 43.754712], [-88.44382, 43.754712]]]}, "properties": {"mapid": 2, "subid": "177", "site": "871 S MAIN ST #177, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "secondary": true, "label_lon": -88.4436695, "label_lat": 43.754734}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444012, 43.754721], [-88.444307, 43.754718], [-88.444308, 43.754765], [-88.444013, 43.754767], [-88.444012, 43.754721]]]}, "properties": {"mapid": 2, "subid": "177", "site": "871 S MAIN ST #177, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "label_lon": -88.4441600050879, "label_lat": 43.754743000000005}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44441, 43.754779], [-88.44471, 43.754779], [-88.44471, 43.754824], [-88.44441, 43.754824], [-88.44441, 43.754779]]]}, "properties": {"mapid": 2, "subid": "212", "site": "871 S MAIN ST #212, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44456, "label_lat": 43.7548015}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443528, 43.754823], [-88.443823, 43.754822], [-88.443823, 43.754868], [-88.443528, 43.754868], [-88.443528, 43.754823]]]}, "properties": {"mapid": 2, "subid": "178", "site": "871 S MAIN ST #178, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4436755, "label_lat": 43.7548455}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444306, 43.754829], [-88.444306, 43.754876], [-88.444011, 43.754876], [-88.444011, 43.754828], [-88.444306, 43.754829]]]}, "properties": {"mapid": 2, "subid": "183", "site": "871 S MAIN ST #183, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "label_lon": -88.4441585, "label_lat": 43.7548525}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444426, 43.75489], [-88.444616, 43.75489], [-88.444616, 43.754967], [-88.444426, 43.754967], [-88.444426, 43.75489]]]}, "properties": {"mapid": 2, "subid": "213", "site": "871 S MAIN ST #213, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44452100000001, "label_lat": 43.754928500000005}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444217, 43.754903], [-88.444217, 43.754929], [-88.444335, 43.754929], [-88.444335, 43.754975], [-88.444069, 43.754975], [-88.444069, 43.754903], [-88.444217, 43.754903]]]}, "properties": {"mapid": 2, "subid": "182", "site": "871 S MAIN ST #182, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44420199999999, "label_lat": 43.754952}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443696, 43.75501], [-88.443536, 43.75501], [-88.443536, 43.754931], [-88.443696, 43.754931], [-88.443696, 43.75501]]]}, "properties": {"mapid": 2, "subid": "179", "site": "871 S MAIN ST #179, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44361599999999, "label_lat": 43.7549705}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.443761, 43.755047], [-88.443806, 43.755118], [-88.443605, 43.755185], [-88.443559, 43.755114], [-88.443761, 43.755047]]]}, "properties": {"mapid": 2, "subid": "180", "site": "871 S MAIN ST #180, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4436825140845, "label_lat": 43.755116}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444252, 43.755304], [-88.444187, 43.755304], [-88.444187, 43.755115], [-88.444252, 43.755115], [-88.444252, 43.755304]]]}, "properties": {"mapid": 2, "subid": "183", "site": "871 S MAIN ST #183, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "secondary": true, "label_lon": -88.4442195, "label_lat": 43.75520950000001}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.444495, 43.755117], [-88.444604, 43.755119], [-88.444602, 43.7552], [-88.444559, 43.755199], [-88.444557, 43.755304], [-88.444491, 43.755303], [-88.444495, 43.755117]]]}, "properties": {"mapid": 2, "subid": "185", "site": "871 S MAIN ST #185, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44452505376344, "label_lat": 43.7552515}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44285645966765, 43.75362608474544], [-88.44286576225525, 43.75345998285803], [-88.44292021326157, 43.75346158507051], [-88.44290860949873, 43.75366880159477], [-88.4428609634621, 43.75366739987978], [-88.44286326606185, 43.75362628524896], [-88.44285645966765, 43.75362608474544]]]}, "properties": {"mapid": 2, "subid": "149", "site": "871 S MAIN ST #149, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.4428883367549, "label_lat": 43.75354383490797}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44470059280597, 43.7539477406572], [-88.44440997612861, 43.75394695347953], [-88.44441019246503, 43.753905055701395], [-88.44457396555802, 43.753905499738025], [-88.44457394139586, 43.7539101545467], [-88.44470078478646, 43.75391049858713], [-88.44470059280597, 43.7539477406572]]]}, "properties": {"mapid": 2, "subid": "204", "site": "871 S MAIN ST #204, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "secondary": true, "label_lon": -88.44455538053498, "label_lat": 43.75392872603333}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44336584008757, 43.75402340022025], [-88.44331366451878, 43.754021748948496], [-88.4433263427987, 43.75381127041433], [-88.44338305620009, 43.753813066128856], [-88.4433778063729, 43.753900217210635], [-88.44337326959199, 43.753900073662464], [-88.44336584008757, 43.75402340022025]]]}, "properties": {"mapid": 2, "subid": "168", "site": "871 S MAIN ST #168, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44334346251782, "label_lat": 43.753960983079565}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44351881985027, 43.754480763393246], [-88.44380941617422, 43.75448349233515], [-88.44380858417513, 43.75453004192506], [-88.44351798762511, 43.754527313880956], [-88.44351881985027, 43.754480763393246]]]}, "properties": {"mapid": 2, "subid": "175", "site": "871 S MAIN ST #175, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "note": "Approximate match", "label_lon": -88.44366370194909, "label_lat": 43.754505403108055}}, {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-88.44384276673377, 43.75515396025447], [-88.44391856326925, 43.75519023792057], [-88.44383347954243, 43.755283636329075], [-88.44375768294056, 43.75524735860707], [-88.44384276673377, 43.75515396025447]]]}, "properties": {"mapid": 2, "subid": "181", "site": "871 S MAIN ST #181, Fond du Lac WI 54935", "owner": "Current Resident", "salute": "Dear Resident", "sheet": "Multi_Occupant", "dnc": "", "label_lon": -88.44383812312284, "label_lat": 43.755218798263826}}]};
+var isApartment = true;
+var _TERRITORY = 'Apartment_466';
+var _BUILD_TS = '20260901_160641';
+var FIREBASE_CONFIG = {"apiKey": "AIzaSyAkP3qiXWwqWt9OgBPhmcCnk6OuaZKWi0w", "authDomain": "territory-master-sync.firebaseapp.com", "databaseURL": "https://territory-master-sync-default-rtdb.firebaseio.com", "projectId": "territory-master-sync", "storageBucket": "territory-master-sync.firebasestorage.app", "messagingSenderId": "558973947206", "appId": "1:558973947206:web:6cf0b1fc790387bfede947"};
+var tableData = [{"mapid": "185", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #185", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "184", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #184", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "183", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #183", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "182", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #182", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "181", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #181", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "180", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #180", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "179", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #179", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "176", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #176", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "178", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #178", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "177", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #177", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "175", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #175", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "174", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #174", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "173", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #173", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "172", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #172", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "171", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #171", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "170", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #170", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "169", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #169", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "168", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #168", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "167", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #167", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "166", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #166", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "165", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #165", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "164", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #164", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "163", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #163", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "162", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #162", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "161", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #161", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "213", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #213", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "212", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #212", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "211", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #211", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "210", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #210", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "209", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #209", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "208", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #208", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "207", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #207", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "206", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #206", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "205", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #205", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "204", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #204", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "203", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #203", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "202", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #202", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "201", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #201", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "200", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #200", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "160", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #160", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "159", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #159", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "158", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #158", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "157", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #157", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "150", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #150", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "151", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #151", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "152", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #152", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "153", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #153", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "154", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #154", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "155", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #155", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "156", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #156", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "130", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #130", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "131", "owner": "Thomas J Witt or Current Resident", "owner2": "", "site": "871 S MAIN ST #131", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Thomas", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "132", "owner": "Daina R Galbraith or Current Resident", "owner2": "", "site": "871 S MAIN ST #132", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Daina", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "133", "owner": "Jonathan Morales or Current Resident", "owner2": "", "site": "871 S MAIN ST #133", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Jonathan", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "134", "owner": "Patricia M Wirtz or Current Resident", "owner2": "", "site": "871 S MAIN ST #134", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Patricia", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "137", "owner": "Nicole M Wellman or Current Resident", "owner2": "", "site": "871 S MAIN ST #137", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Nicole", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "135", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #135", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "136", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #136", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "138", "owner": "Marisa J Salaja or Current Resident", "owner2": "", "site": "871 S MAIN ST #138", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Marisa", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "139", "owner": "Juan L Chimalhua or Current Resident", "owner2": "", "site": "871 S MAIN ST #139", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Juan", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "140", "owner": "Karen A Benedict or Current Resident", "owner2": "", "site": "871 S MAIN ST #140", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Karen", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "141", "owner": "Todd A Halverson or Current Resident", "owner2": "", "site": "871 S MAIN ST #141", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Todd", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "142", "owner": "Isabel I Clark or Current Resident", "owner2": "", "site": "871 S MAIN ST #142", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Isabel", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "143", "owner": "Shirley A Willis or Current Resident", "owner2": "", "site": "871 S MAIN ST #143", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Shirley", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "144", "owner": "Chris J Klapperich or Current Resident", "owner2": "", "site": "871 S MAIN ST #144", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Chris", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "145", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #145", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "146", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #146", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "147", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #147", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "148", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #148", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}, {"mapid": "149", "owner": "Current Resident", "owner2": "", "site": "871 S MAIN ST #149", "site_city": "Fond du Lac", "site_state": "WI", "site_zip": "54935", "mail": "5050 S SYRACUSE ST STE 1200", "city": "Denver", "state": "CO", "zip": "80237", "btype": "Mobile Home Park", "ownertype": "Business / Rental", "occupied": "No", "confidence": "Low", "addressas": "Current Resident", "salute": "Dear Resident", "dnc": "", "research": "Yes", "notes": "Mobile Home Park -- Melissa Lookup Helper for resident names \u2014 ADD INDIVIDUAL UNIT ROWS BELOW", "occupancy": "Business / Rental Property \u2014 owned by a business or managed as a rental", "sheet": "Multi_Occupant", "verified_name": "", "source": "Tax Record \u2014 resident unconfirmed"}];
+
+if (boundaryData) {
+  var boundary = L.geoJSON(boundaryData, {
+    style: {
+      color: '#4CAF50', weight: 3, opacity: 1,
+      fillColor: '#4CAF50', fillOpacity: 0.04,
+      dashArray: '8,5'
+    }
+  }).addTo(map);
+  map.fitBounds(boundary.getBounds(), {padding: [30, 30]});
+  // Territory name label — centered on boundary, semi-transparent
+  var bounds = boundary.getBounds();
+  var center = bounds.getCenter();
+  L.marker(center, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:52px;font-weight:900;'
+           +'color:#1A3A6B;opacity:0.55;'
+           +'white-space:nowrap;pointer-events:none;'
+           +'position:relative;z-index:9999;'
+           +'text-shadow:2px 2px 0px white,-2px -2px 0px white,2px -2px 0px white,-2px 2px 0px white;'
+           +'transform:translate(-50%,-50%);">Apartment_466</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    }),
+    interactive: false
+  }).addTo(map);
+}
+
+var parcelsData = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"coordinates": [[[[-88.44346582889557, 43.75535679353873], [-88.44348728656769, 43.754360983389184], [-88.44339650240954, 43.754360390849165], [-88.44339857269475, 43.754121194182275], [-88.44192315817139, 43.75411749792856], [-88.44189941883087, 43.7541091221655], [-88.44192022569354, 43.75330130264234], [-88.44192332596066, 43.75327247128334], [-88.44199127550587, 43.753173606434174], [-88.44228110640077, 43.75318059993496], [-88.44229125904575, 43.75273713806158], [-88.44229638576508, 43.75272967881617], [-88.44305659512229, 43.7527597460402], [-88.44378422202834, 43.752801353806284], [-88.44401507671593, 43.75281455317598], [-88.44415708870504, 43.752822671988014], [-88.44413638114929, 43.75335740697939], [-88.44480156898499, 43.75338065604419], [-88.4447854757309, 43.75437260772778], [-88.4447854757309, 43.75493832280973], [-88.44461381435394, 43.755070063910395], [-88.44459235668182, 43.75538004182676], [-88.44346582889557, 43.75535679353873]]]], "type": "MultiPolygon"}, "properties": {"mapid": "_dissolved1", "owner": "Unknown Owner", "site": "No address on file", "mail": "", "sheet": "Unknown", "occupied": "Unknown", "btype": "Unknown", "research": "", "salute": "", "dnc": "", "fill": "#FFFF00", "owner2": "", "ownertype": "", "confidence": "", "addressas": "", "notes": "", "occupancy": "Unknown \u2014 not enough information to determine occupancy", "city": "", "state": "", "zip": ""}}]};
+
+// 2026-08-22: mapids of DNC parcels, used to keep DNC parcels always solid
+// opaque red (the dncHatch overlay below draws on top) -- excluded from both
+// the Fill slider's fade effect and from the black "done" look, per Steve's
+// rule that the DNC hatch always wins visually. _dncBuildingSet is the same
+// idea for DNC building footprints (keyed by subid/bKey, same as
+// _buildingLayers below) -- populated once the buildings layer is built.
+var _dncSet = new Set();
+parcelsData.features.forEach(function(f) {
+  if (f.properties.dnc === 'YES') _dncSet.add(String(f.properties.mapid));
+});
+var _dncBuildingSet = new Set();
+// 2026-08-22: literal 0.30 here, not DEFAULT_FILL_OPACITY -- that constant
+// isn't declared until further down this same script (just above
+// getOpacity()), and this line runs before that point. Keep this in sync
+// with DEFAULT_FILL_OPACITY and the Fill slider's own value="30" default if
+// either ever changes. setParcelOpacity() keeps this updated live afterward.
+var _currentFillOpacity = 0.30;
+
+var _parcelLayers={};
+
+// 2026-07-12: Google Maps sometimes can't geocode certain county-style
+// street-suffix abbreviations -- "LA" for Lane is the confirmed case
+// (Google appears to read it as the Louisiana state code instead), even
+// though the rest of the address is fine. Swap in the USPS-standard
+// abbreviation just for the directions/search links, leaving the
+// displayed/mailing address untouched. Add more replacements here if
+// other suffixes turn out to trip Google up too.
+function _mapsAddr(site) {
+  if (!site) return site;
+  return site.replace(/\bLA\b\.?/gi, 'Ln');
+}
+
+function getPopup(p) {
+  var badge = '';
+  if (p.dnc === 'YES') badge = '<span class="popup-badge badge-dnc">DO NOT CONTACT</span>';
+  else if (p.sheet === 'Institutions') badge = '<span class="popup-badge badge-inst">' + p.btype + '</span>';
+  else if (p.sheet === 'Vacant') badge = '<span class="popup-badge badge-vacant">Vacant</span>';
+  else if (p.btype === 'Commercial / Rental') badge = '<span class="popup-badge badge-biz">Business</span>';
+  else if (p.occupied === 'Yes') badge = '<span class="popup-badge badge-owner">Owner Occupied</span>';
+  if (p.research === 'Yes') badge += '<span class="popup-badge badge-research">Research Needed</span>';
+
+  var mailHtml = p.mail ? '<div class="popup-mail"> ' + p.mail + '</div>' : '';
+  var saluteHtml = p.salute && p.salute !== 'nan' ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+  // 2026-07-12: p.site is already the full "street, city state zip" address
+  // (built that way in refresh_html_map.py) -- appending ", Fond du Lac, WI"
+  // on top of that duplicated the city/state/zip and made Google Maps fail
+  // to find the address (confirmed by Steve). Use p.site as-is.
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+  var viewUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(_mapsAddr(p.site));
+  var mapsHtml = p.site ? '<div style="margin-top:6px"><a href="' + mapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>' : '';
+
+  // 2026-08-22: "Mark as Worked" button, right inside the popup that already
+  // opens on a normal tap -- second entry point into the SAME _toggleDone()/
+  // localStorage state the Mailing List checkbox already drives (not a new
+  // mechanism). Uses a data-attribute + fixed onclick handler (not a string
+  // built with the mapid embedded in a JS literal) so there's no quoting to
+  // get wrong, and works the same whether mapid is a number or a string.
+  var doneNow = (typeof _isDone === 'function') ? _isDone(p.mapid) : false;
+  var doneHtml = '<div style="margin-top:8px">' +
+    '<button class="popup-done-btn" data-key="' + p.mapid + '" onclick="_toggleDoneFromPopup(this.dataset.key)" ' +
+    'style="padding:7px 16px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:' + (doneNow ? '#e0e0e0' : 'white') + ';font-weight:bold;width:100%;">' +
+    (doneNow ? '&#x2611; Worked &mdash; tap to undo' : '&#x2610; Mark as Worked') +
+    '</button></div>';
+
+  return '<div class="popup-inner">' +
+    '<div class="popup-mapid">Parcel #' + p.mapid + '</div>' +
+    '<div class="popup-site">' + p.site + '</div>' +
+    '<div class="popup-owner">' + p.owner + '</div>' +
+    mailHtml + saluteHtml +
+    mapsHtml +
+    '<div style="margin-top:6px">' + badge + '</div>' +
+    doneHtml +
+    '</div>';
+}
+
+function getParcelArea(feature) {
+  var coords = feature.geometry.coordinates;
+  var allPoints = [];
+  function collectPoints(c) {
+    if (typeof c[0] === 'number') { allPoints.push(c); }
+    else { c.forEach(collectPoints); }
+  }
+  collectPoints(coords);
+  if (allPoints.length < 2) return 0;
+  var lats = allPoints.map(function(p) { return p[1]; });
+  var lngs = allPoints.map(function(p) { return p[0]; });
+  return (Math.max.apply(null,lats)-Math.min.apply(null,lats)) * (Math.max.apply(null,lngs)-Math.min.apply(null,lngs));
+}
+var DEFAULT_FILL_OPACITY = 0.3;  // 2026-07-14: matches opacity-slider's value="30" -- getOpacity()
+                                  // previously always returned 1.0 regardless of the slider default,
+                                  // so parcels loaded fully opaque until the slider was touched by hand.
+function getOpacity(feature) {
+  return DEFAULT_FILL_OPACITY;
+}
+// Store per-parcel area for label sizing
+var parcelAreas = {};
+parcelsData.features.forEach(function(f) {
+  parcelAreas[f.properties.mapid] = getParcelArea(f);
+});
+
+L.geoJSON(parcelsData, {
+  style: function(feature) {
+    var p = feature.properties;
+    return {
+      fillColor: p.fill,
+      fillOpacity: getOpacity(feature),
+      color: 'rgba(0,0,0,0.65)',
+      weight: 2.0
+    };
+  },
+  onEachFeature: function(feature, layer) {
+    var p = feature.properties;
+    _parcelLayers[p.mapid]=layer;
+    layer._origStyle={
+      fillColor:layer.options.fillColor,
+      fillOpacity:layer.options.fillOpacity,
+      color:layer.options.color,
+      weight:layer.options.weight
+    };
+    // 2026-08-22: bind a FUNCTION, not a plain string, so the popup is
+    // rebuilt fresh every time it opens (picks up the current done/undone
+    // state even if it changed from the Mailing List tab in between).
+    layer.bindPopup(function(){ return getPopup(p); }, {maxWidth: 300});
+    var area = getParcelArea(feature);
+    // Store area on tooltip element for zoom-aware sizing.
+    // 2026-07-11: skip the label entirely for placeholder mapids
+    // (prefixed "_dissolved" by refresh_html_map.py) -- these mark a
+    // parcel that was broken into individual buildings, kept only so the
+    // polygon/fill still shows; the placeholder name isn't a real MapID
+    // and showing it just confuses the map.
+    // 2026-07-14: also skip it for Multi_Occupant parcels (townhouse-style
+    // complexes with many individually-addressed units) -- each building
+    // footprint inside now gets its own real street-address label, so the
+    // parcel's plain container number (e.g. "64") just lands on top of
+    // whichever building happens to sit at the parcel's center and looks
+    // like doubled/confusing text, same reasoning as the _dissolved case.
+    // Only when isApartment is true, though -- that's the only case where
+    // buildings actually get their own labels to replace this one; for any
+    // other territory type the parcel's own number is still the only label
+    // that area would have, so it must stay.
+    if (!(p.mapid && String(p.mapid).indexOf('_dissolved') === 0) &&
+        !(isApartment && p.sheet === 'Multi_Occupant')) {
+      var tt = layer.bindTooltip(String(p.mapid), {
+        permanent: true, direction: 'center',
+        className: 'mapid-label',
+        offset: [0, 0]
+      });
+      layer.on('tooltipopen', function(e) {
+        e.tooltip.getElement().setAttribute('data-area', area);
+      });
+    }
+  }
+}).addTo(map);
+
+// 2026-07-12: building footprints used to be permanently solid black.
+// Now they default to grey and only turn black once the matching
+// mailing-list checkbox is marked done -- _buildingLayers is the
+// per-building lookup _updateParcel() (in the table-tracking script
+// below) uses to flip the color, same pattern as _parcelLayers.
+var _buildingLayers = {};
+var BUILDING_DEFAULT_FILL = '#C4C4C4';
+var BUILDING_DONE_FILL    = '#000000';
+
+if (buildingsData) {
+  L.geoJSON(buildingsData, {
+    style: function(feature) {
+      var p = feature.properties||{};
+      // 2026-08-16: excluded/DNC buildings get the same permanent red as
+      // their parcel -- set once here at load, never touched by
+      // _updateParcel() since _toggleDone() now skips these mapids entirely.
+      if (p.dnc === 'YES') {
+        return {fillColor: '#CC0000', fillOpacity: DEFAULT_FILL_OPACITY,
+                 color: '#660000', weight: 1.5};
+      }
+      return {
+        fillColor: BUILDING_DEFAULT_FILL,
+        fillOpacity: DEFAULT_FILL_OPACITY,
+        color: '#000000',
+        weight: 1.5,
+        // 2026-08-08: was "!p.secondary" alone -- Leaflet lets a per-feature
+        // style's interactive key override the geoJSON-level "interactive:
+        // isApartment" below, so non-apartment buildings (Town/R/Business)
+        // ended up interactive anyway with no popup ever bound to them
+        // (onEachFeature is a no-op below when !isApartment). That created
+        // an invisible dead zone right over each building's roofline that
+        // swallowed clicks meant for the parcel layer underneath -- Steve
+        // had to click around the building outline on Town_108 before a
+        // popup would open. Gating on isApartment here too makes the
+        // buildings layer genuinely click-through for non-apartment
+        // territories, matching the no-op onEachFeature's intent. No change
+        // for apartment territories -- isApartment && !p.secondary reduces
+        // to the same !p.secondary as before when isApartment is true.
+        interactive: isApartment && !p.secondary
+      };
+    },
+    interactive: isApartment,
+    onEachFeature: isApartment ? function(feature, layer) {
+      var p = feature.properties;
+      var isSecondary = !!p.secondary;
+      var bKey = p.subid ? p.subid : (p.mapid || '');
+      // Permanent sub-ID label on each building footprint.
+      // 2026-07-24: labels now anchor to a pre-computed "guaranteed inside
+      // the footprint" point (props.label_lon/label_lat, from Python's
+      // visual_center_of_geojson) instead of Leaflet's own getCenter(),
+      // which can land in a courtyard/gap or on a neighboring building for
+      // L-shaped, multi-wing, or tightly-packed buildings. Old bindTooltip
+      // behavior is kept as a fallback for any building missing that point.
+      // 2026-07-28: a secondary duplicate (garage/shed sharing another
+      // building's real address) still gets this SAME permanent label --
+      // just with an extra CSS class that renders it noticeably smaller,
+      // so it's clearly tied to the real building's address without
+      // being mistaken for an equally-important building of its own.
+      var label = p.subid ? p.subid.toUpperCase() : (p.mapid ? String(p.mapid) : '');
+      if (label) {
+        var _labelClass = 'mapid-label' + (typeof isSecondary !== 'undefined' && isSecondary ? ' mapid-label-sm' : '');
+        var _hasLabelPt = (typeof p.label_lat === 'number' && typeof p.label_lon === 'number');
+        if (_hasLabelPt) {
+          L.marker([p.label_lat, p.label_lon], {
+            icon: L.divIcon({
+              className: _labelClass,
+              html: '<span style="display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;">' + label + '</span>',
+              iconSize: [0, 0]
+            }),
+            interactive: false,
+            keyboard: false
+          }).addTo(map);
+        } else {
+          layer.bindTooltip(label, {
+            permanent: true, direction: 'center',
+            className: _labelClass, offset: [0, 0]
+          });
+        }
+      }
+      // 2026-07-28: a secondary duplicate (a smaller building sharing
+      // another building's address, e.g. a garage) never becomes "the
+      // responder" for that address's checkbox, and never gets a click
+      // popup -- only the largest footprint per address stays
+      // interactive. It still gets its own permanent on-map label (added
+      // by refresh_html_map.py's buildings-tooltip-label patch, same as
+      // every other building), just noticeably smaller -- see that
+      // script for the label-sizing logic. Deliberately NOT duplicating
+      // any label logic here -- that patch already handles every
+      // building's label correctly (including L-shaped/tightly-packed
+      // footprint anchoring), so this only controls click/checkbox
+      // behavior.
+      if (bKey !== '' && !isSecondary) {
+        _buildingLayers[bKey] = layer;
+        layer._origStyle = {
+          fillColor: layer.options.fillColor,
+          fillOpacity: layer.options.fillOpacity,
+          color: layer.options.color,
+          weight: layer.options.weight
+        };
+        // 2026-08-22: same DNC-always-wins tracking as _dncSet does for
+        // parcels, keyed the same way _buildingLayers itself is keyed.
+        if (p.dnc === 'YES') { _dncBuildingSet.add(String(bKey)); }
+      }
+      if (p.site && p.site !== '' && !isSecondary) {
+        var subLabel = p.subid ? p.subid.toUpperCase() : ('Parcel #' + p.mapid);
+        var saluteHtml = p.salute && p.salute !== 'nan' && p.salute !== ''
+          ? '<div class="popup-mail" style="color:#888">Salutation: ' + p.salute + '</div>' : '';
+        // 2026-07-15: p.note is a short data-provenance flag ("Approximate
+        // match" / "From Fond du Lac County GIS") -- shown as its own line,
+        // kept OUT of p.site itself so the Get Directions link below still
+        // gets a clean, real address.
+        var noteHtml = p.note && p.note !== ''
+          ? '<div class="popup-mail" style="color:#888;font-style:italic">' + p.note + '</div>' : '';
+        var bMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(_mapsAddr(p.site));
+        var bMapsHtml = '<div style="margin-top:6px"><a href="' + bMapsUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">&#x1F4CD; Get Directions</a></div>';
+        // 2026-08-22: same "Mark as Worked" button as the regular parcel
+        // popup above, keyed by bKey (subid when this building has its own
+        // unit, otherwise the parent mapid) -- matches how _buildingLayers
+        // is keyed, so it lights up/darkens the correct footprint. Also
+        // bound as a function (not a static string) for the same lazy/
+        // fresh-state reason as the parcel popup above.
+        layer.bindPopup(function(){
+          var doneNow = (typeof _isDone === 'function') ? _isDone(bKey) : false;
+          var doneHtml = '<div style="margin-top:8px">' +
+            '<button class="popup-done-btn" data-key="' + bKey + '" onclick="_toggleDoneFromPopup(this.dataset.key)" ' +
+            'style="padding:7px 16px;border:1px solid #ccc;border-radius:6px;font-size:13px;cursor:pointer;background:' + (doneNow ? '#e0e0e0' : 'white') + ';font-weight:bold;width:100%;">' +
+            (doneNow ? '&#x2611; Worked &mdash; tap to undo' : '&#x2610; Mark as Worked') +
+            '</button></div>';
+          return '<div class="popup-inner">' +
+            '<div class="popup-mapid">Building ' + subLabel + '</div>' +
+            '<div class="popup-site">' + p.site + '</div>' +
+            '<div class="popup-owner">' + (p.owner || '') + '</div>' +
+            saluteHtml + noteHtml +
+            bMapsHtml +
+            doneHtml +
+            '</div>';
+        }, {maxWidth: 300});
+      }
+    } : function(feature, layer) {}
+  }).addTo(map);
+}
+
+// 2026-08-17: diagonal-hatch overlay for excluded/DNC parcels & buildings,
+// drawn in its own small SVG-rendered layer on top of the main map (which
+// uses preferCanvas for performance -- canvas fills can't reference the
+// dncHatch SVG pattern, but only the handful of dnc-flagged features go
+// through this extra layer, so there's no performance concern).
+// interactive:false so it never blocks popups/clicks on the real layer underneath.
+var _dncParcelFeatures = parcelsData.features.filter(function(f){return f.properties.dnc==='YES';});
+if (_dncParcelFeatures.length) {
+  L.geoJSON({type:'FeatureCollection', features:_dncParcelFeatures}, {
+    renderer: L.svg(),
+    interactive: false,
+    style: function(){return {fillColor:'url(#dncHatch)', fillOpacity:0.85, stroke:false};}
+  }).addTo(map);
+}
+if (buildingsData) {
+  var _dncBuildingFeatures = buildingsData.features.filter(function(f){return (f.properties||{}).dnc==='YES';});
+  if (_dncBuildingFeatures.length) {
+    L.geoJSON({type:'FeatureCollection', features:_dncBuildingFeatures}, {
+      renderer: L.svg(),
+      interactive: false,
+      style: function(){return {fillColor:'url(#dncHatch)', fillOpacity:0.85, stroke:false};}
+    }).addTo(map);
+  }
+}
+
+if (!boundaryData) {
+  map.setView([43.77, -88.43], 14);
+}
+
+// Scale MapID labels by zoom level AND parcel area
+function updateLabelSizes() {
+  var z = map.getZoom();
+  // Base size from zoom
+  var baseSize;
+  if      (z <= 13) baseSize = 11;
+  else if (z <= 14) baseSize = 15;
+  else if (z <= 15) baseSize = 19;
+  else if (z <= 16) baseSize = 24;
+  else              baseSize = 30;
+  document.querySelectorAll('.mapid-label').forEach(function(el) {
+    var area = parseFloat(el.getAttribute('data-area') || 0);
+    var scale = 1.0;
+    // Shrink labels for small parcels
+    if      (area < 0.000003) scale = 0.45;
+    else if (area < 0.000008) scale = 0.60;
+    else if (area < 0.00002)  scale = 0.75;
+    else if (area < 0.00006)  scale = 0.88;
+    var finalSize = Math.max(7, Math.round(baseSize * scale));
+    // 2026-07-28: a "secondary" duplicate building (e.g. a garage sharing
+    // an apartment building's address) gets a noticeably smaller label
+    // than the real/primary building at that address, at every zoom
+    // level -- computed here (rather than a flat CSS override) so it
+    // shrinks and grows proportionally with everything else instead of
+    // fighting the zoom-based sizing above.
+    if (el.classList.contains('mapid-label-sm')) {
+      finalSize = Math.max(6, Math.round(finalSize * 0.55));
+    }
+    el.style.fontSize = finalSize + 'px';
+  });
+}
+map.on('zoomend', updateLabelSizes);
+map.on('load', updateLabelSizes);
+setTimeout(updateLabelSizes, 500);
+</script>
+<style>
+.mapid-label {
+  background: transparent; border: none; box-shadow: none;
+  font-weight: bold; color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.9);
+  pointer-events: none; transition: font-size 0.1s;
+}
+</style>
+<script>
+var _allRows=[];
+// 2026-07-27: sort state used to be one fixed entry per confidence bucket
+// (conf/ver/res/dnc). Now that the Mailing List tab groups by street within
+// each sheet section (Residential/Multi-Occupant/Institutions), each street
+// banner needs its own independent sort state -- clicking "sort by Owner"
+// on Viking Dr shouldn't touch Columbia Dr's order. Keyed lazily by
+// "<sec>|<STREET>" via _getSortState() below instead of a fixed object.
+var _sortState={};
+function _getSortState(key){
+  if(!_sortState[key]){_sortState[key]={col:-1,asc:true};}
+  return _sortState[key];}
+
+function _doneKey(mid){return 'done_'+_TERRITORY+'_'+mid;}
+function _isDone(mid){return localStorage.getItem(_doneKey(mid))==='1';}
+function _setDone(mid,done){if(done)localStorage.setItem(_doneKey(mid),'1');else localStorage.removeItem(_doneKey(mid));}
+
+function _toggleDone(mid){
+  // 2026-08-16: excluded/DNC rows are locked -- clicking the map polygon
+  // or the mailing-list checkbox (both funnel through here) does nothing,
+  // so the permanent red set at page load can never be accidentally
+  // toggled into the normal done/not-done black-or-gray scheme, and these
+  // rows never enter Done tracking or Firebase sync.
+  var row=tableData.filter(function(p){return String(p.mapid)===String(mid);})[0];
+  if(row&&row.dnc==='YES')return;
+  var done=!_isDone(mid);
+  _setDone(mid,done);
+  _updateParcel(mid,done);
+  _updateTableRow(mid,done);
+  _updateParentBuilding(mid);
+  _fbPush(mid,done);}
+
+// 2026-08-22: called by the "Mark as Worked" button inside a map popup
+// (both the regular parcel popup and the apartment/MHP building popup).
+// Same toggle as the Mailing List checkbox -- this is just a second place
+// to trigger it from, so it goes through the exact same DNC-lock and
+// Firebase-push logic in _toggleDone() above, nothing duplicated. Closes
+// the popup right after so the parcel's/building's new color is
+// immediately visible instead of hiding behind the still-open popup.
+function _toggleDoneFromPopup(key){
+  _toggleDone(key);
+  if(typeof map!=='undefined'&&map.closePopup)map.closePopup();}
+
+// 2026-07-28: live cross-device Done-checkbox sync. Whenever this page's
+// own Firebase listener sees a change (from this page's own toggle, or
+// from anyone else's), it lands here and applies it locally -- it never
+// calls _fbPush() itself, so this can't turn into a feedback loop. If
+// Firebase never loads (no internet in the field, CDN blocked, etc.)
+// this quietly no-ops and every checkbox still works exactly as it
+// always has, purely locally via localStorage.
+var _fbTerRef=null;
+function _fbInit(){
+  try{
+    if(typeof firebase==='undefined'||!firebase.initializeApp||!FIREBASE_CONFIG)return;
+    if(!window._fbApp){window._fbApp=firebase.initializeApp(FIREBASE_CONFIG);}
+    _fbTerRef=firebase.database().ref('territories/'+_TERRITORY);
+    _fbTerRef.on('value', function(snap){
+      var vals=snap.val()||{};
+      Object.keys(vals).forEach(function(mid){
+        var done=!!vals[mid];
+        if(_isDone(mid)!==done){
+          _setDone(mid,done);
+          _updateParcel(mid,done);
+          _updateTableRow(mid,done);
+          _updateParentBuilding(mid);}});
+    });
+  }catch(e){ if(window.console)console.warn('Firebase sync unavailable:',e); }}
+function _fbPush(mid,done){
+  if(_fbTerRef){
+    try{ _fbTerRef.child(String(mid)).set(!!done); }catch(e){}}}
+setTimeout(_fbInit,600);
+
+function _updateParcel(mid,done){
+  var lyr=_parcelLayers[mid];
+  // 2026-08-22: DNC parcels keep their red hatch look no matter what --
+  // skip the map color change entirely for them (the checkbox/table row
+  // still updates normally via _updateTableRow(); _toggleDone() also never
+  // reaches here with done=true for a DNC row in the first place, since it
+  // returns early, but this guard also covers the Firebase-sync call path
+  // in _fbInit()'s listener above, which calls _updateParcel() directly).
+  if(lyr && !_dncSet.has(String(mid))){
+    if(done){
+      // 2026-08-22: solid opaque black (was translucent #222222 @ 0.9) so a
+      // completed parcel reads as unambiguously done rather than blending
+      // toward the map underneath.
+      lyr.setStyle({fillColor:'#000000',fillOpacity:1.0,color:'#FFFFFF',weight:4});
+    } else {
+      // 2026-08-22: restore using the Fill slider's CURRENT position
+      // (_currentFillOpacity), not the DEFAULT_FILL_OPACITY snapshot
+      // captured once at page load in _origStyle -- previously un-marking a
+      // parcel as Worked always reset it to the slider's startup value
+      // (30%) even if the slider had since been moved elsewhere.
+      var base=lyr._origStyle||{fillColor:'#AAAAAA',color:'rgba(0,0,0,0.65)',weight:2.0};
+      lyr.setStyle({fillColor:base.fillColor,fillOpacity:_currentFillOpacity,color:base.color,weight:base.weight});
+    }}
+  var bld=_buildingLayers[mid];
+  // 2026-08-22: same DNC-always-wins and live-opacity fixes as the parcel
+  // branch above, applied to building footprints -- buildings are wired to
+  // the Fill slider the same way parcels are (see setParcelOpacity()), so
+  // they're subject to the exact same stale-opacity-on-undo bug.
+  if(bld && !_dncBuildingSet.has(String(mid))){
+    if(done){bld.setStyle({fillColor:BUILDING_DONE_FILL,fillOpacity:1.0});}
+    else{bld.setStyle({fillColor:(bld._origStyle&&bld._origStyle.fillColor)||BUILDING_DEFAULT_FILL,fillOpacity:_currentFillOpacity});}}}
+
+// 2026-07-28: apartment units each got their own checkbox/MapID (397-1,
+// 397-2, ...) so checking one unit wouldn't mark every unit in the
+// building done. Side effect: _updateParcel(mid,...) above only ever
+// matches _buildingLayers keyed by the building's OWN id ("397"), so no
+// individual unit's checkbox ever touched the building footprint's
+// black/done fill anymore -- checking every single unit in a building no
+// longer turned it black either. This restores that: whenever any row
+// with a parent_mapid is toggled, look at all of that same parent's
+// sibling rows and turn the building black only once every one of them
+// is checked (grey again the moment any one gets unchecked).
+function _updateParentBuilding(mid){
+  var row=null;
+  for(var i=0;i<tableData.length;i++){if(String(tableData[i].mapid)===String(mid)){row=tableData[i];break;}}
+  if(!row||!row.parent_mapid||String(row.parent_mapid)===String(mid))return;
+  var siblings=tableData.filter(function(p){return String(p.parent_mapid)===String(row.parent_mapid);});
+  if(!siblings.length)return;
+  var allDone=siblings.every(function(p){return _isDone(p.mapid);});
+  _updateParcel(row.parent_mapid,allDone);}
+
+function _updateTableRow(mid,done){
+  document.querySelectorAll('.ml-check[data-mid="'+mid+'"]').forEach(function(el){
+    el.textContent=done?'☑':'☐';});
+  document.querySelectorAll('.ml-row[data-mid="'+mid+'"]').forEach(function(el){
+    el.style.opacity=done?'0.45':'';});}
+
+function _applyDoneState(){
+  // Clear done state if this is a freshly generated map (build timestamp changed)
+  var buildKey='build_'+_TERRITORY;
+  var lastBuild=localStorage.getItem(buildKey);
+  if(lastBuild!==_BUILD_TS){
+    // New pipeline run - clear all done state for this territory
+    var toRemove=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('done_'+_TERRITORY+'_')===0)toRemove.push(k);}
+    toRemove.forEach(function(k){localStorage.removeItem(k);});
+    localStorage.setItem(buildKey,_BUILD_TS);}
+  tableData.forEach(function(p){if(_isDone(p.mapid))_updateParcel(p.mapid,true);});
+  // 2026-07-28: also reflect apartment building footprints on load, same
+  // rule _updateParentBuilding() applies live -- black only once every
+  // unit sharing that parent_mapid is already checked.
+  var parentGroups={};
+  tableData.forEach(function(p){
+    if(p.parent_mapid&&String(p.parent_mapid)!==String(p.mapid)){
+      var pk=String(p.parent_mapid);
+      if(!parentGroups[pk])parentGroups[pk]=[];
+      parentGroups[pk].push(p.mapid);}});
+  Object.keys(parentGroups).forEach(function(pk){
+    var allDone=parentGroups[pk].every(function(m){return _isDone(m);});
+    if(allDone)_updateParcel(pk,true);});
+  var m=window.location.hash.match(/done=([0-9,]+)/);
+  if(m){m[1].split(',').forEach(function(s){
+    var mid=parseInt(s);
+    if(!isNaN(mid)){_setDone(mid,true);_updateParcel(mid,true);}});}}
+// 2026-08-22: prime _currentFillOpacity (and the legend/parcel/building
+// opacity) at the slider's own startup value BEFORE restoring done-state,
+// so the slider label, the parcels, and the legend all agree from the very
+// first paint, and any later un-mark-as-Worked restores the right value.
+setTimeout(function(){setParcelOpacity(0.30);_applyDoneState();},400);
+
+// 2026-08-14: was clipboard-copy-then-alert -- Steve's intent for this
+// button was always to hand the progress link to someone else the same
+// way Share Territory does (open the email app directly), not a silent
+// clipboard copy. It also had no .catch() on the clipboard promise, so a
+// failed copy (which does happen on phones) showed nothing at all -- no
+// error, no fallback, button just appeared to do nothing. mailto: sidesteps
+// both problems: no clipboard permission involved, and if nothing happens
+// it's because the phone has no mail app configured, same as Share
+// Territory already assumes.
+function shareProgress(){
+  // 2026-08-17: Steve's call -- this now shares the map+mailing list in
+  // its current state at ANY time, checked-off or not (previously
+  // blocked with an alert if nothing was checked off yet). Also adds a
+  // readable "shared as of [now]" timestamp so whoever receives it knows
+  // exactly when the link was sent.
+  //
+  // 2026-08-18: was building the link from window.location.href, which
+  // is a file:///C:/... path whenever the map is opened the normal way
+  // (Territory Master's "Open HTML Map" button opens the local file, not
+  // the hosted copy). That produced a link only Steve's own PC could
+  // open -- caught on Town_108. Files get published to GitHub Pages
+  // automatically under the same territory-folder/filename layout as the
+  // local copy, so build the link from that fixed hosted address plus
+  // this page's own filename instead, the same way Share Territory
+  // already does for its (folder-only) link.
+  var done=[];
+  tableData.forEach(function(p){if(_isDone(p.mapid))done.push(p.mapid);});
+  var _filename=window.location.pathname.split('/').pop();
+  var url='https://spleaders.github.io/Territory-Maps-and-MailLists/'+_TERRITORY+'/'+_filename+(done.length?'#done='+done.join(','):'');
+  var now=new Date();
+  var stamp=now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' at '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  var s=encodeURIComponent(_TERRITORY+' Territory Map & Mailing List');
+  var progressLine=done.length
+    ? 'Here is my progress on the '+_TERRITORY+' territory -- '+done.length+' address(es) checked off so far:'
+    : 'Here is the '+_TERRITORY+' territory map and mailing list:';
+  var afterLink=done.length
+    ? 'Opening this link will show the current map and mailing list, with the same addresses marked as checked off for you too.'
+    : 'Opening this link will show the current map and mailing list.';
+  var b=encodeURIComponent('Hello,\n\n'+progressLine+'\n\n'+url+'\n\nShared as of '+stamp+'.\n\n'+afterLink+'\n\nThank you!');
+  window.location.href='mailto:?subject='+s+'&body='+b;}
+
+function _sortIndicator(key,idx){
+  if(idx===0)return '';
+  var s=_getSortState(key);
+  if(s.col!==idx)return ' ▸';
+  return s.asc?' ▲':' ▼';}
+
+// 2026-07-27: every section (Residential/Multi-Occupant/Institutions) now
+// uses the same 7-column layout and is independently sortable per street
+// banner (key = "<sec>|<STREET>"), matching the per-street Excel Tables
+// added to generate_mailing_list.py's banner sheets this session.
+// 2026-07-27: Steve's call -- the Multi-Occupant table should show the
+// exact same columns as the Excel Multi_Occupant sheet (MapID, NAME1,
+// NAME2, BLDG #, STREET, UNIT, CITY, STATE, ZIP, NOTES) instead of the
+// generic Owner 1/Owner 2/Site Address/Source layout Residential and
+// Institutions use. secKey==='mo' switches both the header and each row
+// to the Excel-matching column set; every other section is unchanged.
+function _colHdr(key,secKey){
+  var isMO=secKey==='mo';
+  // 2026-08-17: added Occupancy to both layouts (matches the Excel
+  // mailing list's new column), and added Source to the Multi-Occupant
+  // layout, which previously had no Source column at all in the HTML map
+  // even though the Excel Multi_Occupant sheet has carried one for a
+  // while -- a real gap, closed here in the same pass as Occupancy.
+  var cols=isMO
+    ? ['','MapID','NAME1','NAME2','BLDG #','STREET','UNIT','CITY','STATE','ZIP','Occupancy','NOTES','SOURCE']
+    : ['','MapID','Owner 1','Owner 2','Site Address','Occupancy','Source','Reason/Notes'];
+  var grid=isMO
+    ? '30px 60px 150px 150px 70px 150px 55px 110px 45px 55px 190px 220px 150px'
+    : '30px 60px 170px 170px 250px 190px 130px 200px';
+  var h='<div class="ml-col-header" style="grid-template-columns:'+grid+';background:#FFA000;color:#3a2800;">';
+  cols.forEach(function(c,i){
+    if(i===0){h+='<span></span>';return;}
+    h+='<span data-key="'+key+'" data-col="'+i+'" onclick="_sortSection(this.dataset.key,parseInt(this.dataset.col))" title="Sort by '+c+'">'+c+_sortIndicator(key,i)+'</span>';
+  });
+  h+='</div>';
+  return h;}
+
+function _sortSection(key,col){
+  if(col===0)return;
+  var s=_getSortState(key);
+  if(s.col===col){s.asc=!s.asc;}else{s.col=col;s.asc=true;}
+  renderTable(_allRows);}
+
+function _sortRows(arr,key,secKey){
+  var s=_getSortState(key);
+  if(s.col<=0){
+    // No column chosen yet -- default to building-number order (numeric
+    // first, then alphabetic), same default the Excel banner sheets use
+    // within each street group.
+    return arr.slice().sort(function(a,b){
+      var an=_bnumOf(a.site),bn=_bnumOf(b.site);
+      var ai=parseInt(an,10),bi=parseInt(bn,10);
+      var aNum=!isNaN(ai)&&String(ai)===an, bNum=!isNaN(bi)&&String(bi)===bn;
+      if(aNum&&bNum)return ai-bi;
+      if(aNum!==bNum)return aNum?-1:1;
+      return an.localeCompare(bn);});}
+  var cols=secKey==='mo'
+    ? ['','mapid','owner','owner2','bldg','street','unit','site_city','site_state','site_zip','occupancy','notes','source']
+    : ['','mapid','owner','owner2','site_full','occupancy','source','notes'];
+  var sortKey=cols[s.col]||'mapid';
+  return arr.slice().sort(function(a,b){
+    var av,bv;
+    if(sortKey==='site_full'){
+      av=((a.site||'')+(a.site_city||'')+(a.site_state||'')+(a.site_zip||'')).toLowerCase();
+      bv=((b.site||'')+(b.site_city||'')+(b.site_state||'')+(b.site_zip||'')).toLowerCase();}
+    else if(sortKey==='mapid'){av=parseInt(a.mapid||0);bv=parseInt(b.mapid||0);}
+    else if(sortKey==='unit'){
+      var au=parseInt(a.unit,10),bu=parseInt(b.unit,10);
+      if(!isNaN(au)&&!isNaN(bu)){av=au;bv=bu;}
+      else{av=String(a.unit||'').toLowerCase();bv=String(b.unit||'').toLowerCase();}}
+    else{av=String(a[sortKey]||'').toLowerCase();bv=String(b[sortKey]||'').toLowerCase();}
+    if(av<bv)return s.asc?-1:1;
+    if(av>bv)return s.asc?1:-1;
+    return 0;});}
+
+// 2026-07-27: clicking a mailing-list row (anywhere except the checkbox,
+// which stops its own click from bubbling up here) pans/zooms the map to
+// that address's building and switches to the Map tab. New feature Steve
+// asked for alongside the street-banner layout.
+function _rowClickZoom(mid){
+  var target=_buildingLayers[mid]||_parcelLayers[mid];
+  if(!target||!target.getBounds)return;
+  showTab('map');
+  setTimeout(function(){map.fitBounds(target.getBounds(),{maxZoom:18});},150);}
+
+function _row(p,cls,secKey){
+  var mid=p.mapid;
+  // 2026-08-17: DNC/excluded rows show checked here without ever touching
+  // localStorage/_isDone -- keeps them permanently ticked-looking without
+  // pulling them into Done tracking or Firebase sync.
+  var done=_isDone(mid)||p.dnc==='YES';
+  var isMO=secKey==='mo';
+  // 2026-08-17: widened both grids to add Occupancy (both layouts) and
+  // Source (Multi-Occupant only) -- see the matching note on _colHdr().
+  var grid=isMO
+    ? '30px 60px 150px 150px 70px 150px 55px 110px 45px 55px 190px 220px 150px'
+    : '30px 60px 170px 170px 250px 190px 130px 200px';
+  var rowStyle=(done?'opacity:0.45;':'')+'cursor:pointer;';
+  var r='<div class="ml-row '+cls+'" data-mid="'+mid+'" onclick="_rowClickZoom(\''+mid+'\')" style="grid-template-columns:'+grid+';'+rowStyle+'">';
+  r+='<span class="ml-check" data-mid="'+mid+'" onclick="event.stopPropagation();_toggleDone(\''+mid+'\')" style="cursor:pointer;text-align:center;font-size:15px;user-select:none;">'+(done?'☑':'☐')+'</span>';
+  r+='<span>'+mid+'</span>';
+  if(isMO){
+    r+='<span>'+(p.owner||'')+'</span>';
+    r+='<span>'+(p.owner2||'')+'</span>';
+    r+='<span>'+(p.bldg||'')+'</span>';
+    r+='<span>'+(p.street||'')+'</span>';
+    r+='<span>'+(p.unit||'')+'</span>';
+    r+='<span>'+(p.site_city||'')+'</span>';
+    r+='<span>'+(p.site_state||'')+'</span>';
+    r+='<span>'+(p.site_zip||'')+'</span>';
+    r+='<span class="ml-wrap">'+(p.occupancy||'')+'</span>';
+    r+='<span>'+(p.notes||'')+'</span>';
+    r+='<span>'+(p.source||'')+'</span>';
+  } else {
+    var sf=(p.site||'')+(p.site_city?', '+p.site_city:'')+(p.site_state?' '+p.site_state:'')+(p.site_zip?' '+p.site_zip:'');
+    r+='<span>'+(p.owner||'')+'</span>';
+    r+='<span>'+(p.owner2||'')+'</span>';
+    r+='<span>'+sf+'</span>';
+    r+='<span class="ml-wrap">'+(p.occupancy||'')+'</span>';
+    r+='<span>'+(p.source||'')+'</span>';
+    r+='<span>'+(p.notes||'')+'</span>';
+  }
+  r+='</div>';
+  return r;}
+
+function setParcelOpacity(val){
+  // 2026-08-22: track the slider's live value so _updateParcel() can restore
+  // it correctly when a parcel/building is un-marked as Worked, instead of
+  // falling back to the DEFAULT_FILL_OPACITY snapshot taken once at page load.
+  _currentFillOpacity=val;
+  document.getElementById('opacity-val').textContent=Math.round(val*100)+'%';
+  // 2026-08-20: the Fill slider faded the parcels and buildings below but never
+  // touched the Legend swatches, so the legend's colors stopped matching what
+  // was on the map as soon as the slider moved. Keep them in step.
+  // 2026-08-22: only .legend-slidable swatches fade -- DNC and Completed stay
+  // solid, matching their always-opaque map behavior (same rule as the
+  // parcel/building loops below, which already exempt DNC/done from fading).
+  document.querySelectorAll('.legend-slidable').forEach(function(sw){sw.style.opacity=val;});
+  Object.keys(_parcelLayers).forEach(function(mid){
+    var lyr=_parcelLayers[mid];
+    // 2026-08-22: DNC parcels stay solid opaque red -- the slider never
+    // fades them, same as it never fades a marked-Worked parcel.
+    if(lyr&&!_isDone(parseInt(mid))&&!_dncSet.has(String(mid))){
+      lyr.setStyle({fillOpacity:val});}});
+  // 2026-07-14: buildings were never wired into the slider at all, so
+  // building footprints stayed opaque no matter what the slider showed.
+  // 2026-07-24: that fix applied the slider to EVERY building with no
+  // done-state guard at all (the parcel loop above always had one) -- so
+  // a building already checked off on the mailing list, locked to solid
+  // black by _updateParcel(), got its opacity overwritten right back to
+  // the slider's value on the very next drag, fading out again as the
+  // slider moved left. Buildings use their subid (e.g. "30") as their
+  // _isDone key directly -- same string _toggleDone() already stores it
+  // under -- no parseInt needed here the way the numeric parcel mids need.
+  Object.keys(_buildingLayers).forEach(function(bid){
+    var bld=_buildingLayers[bid];
+    // 2026-08-22: DNC buildings stay solid opaque red -- same slider
+    // exemption as DNC parcels above.
+    if(bld&&!_isDone(bid)&&!_dncBuildingSet.has(String(bid))){
+      bld.setStyle({fillOpacity:val});}});}
+
+function buildTable(){_allRows=tableData.slice();renderTable(_allRows);}
+
+function filterTable(){
+  var q=document.getElementById('search-box').value.toLowerCase();
+  renderTable(_allRows.filter(function(p){
+    var sf=(p.site||'')+(p.site_city||'')+(p.site_state||'')+(p.site_zip||'');
+    return [p.mapid,p.owner,p.owner2,sf,p.notes,p.source].join(' ').toLowerCase().indexOf(q)>=0;}));}
+
+// 2026-07-24: pull the street name (or the full remainder after a rural
+// N/S/E/W route number) off a site-address string, same logic as fill_
+// addresses.py/generate_mailing_list.py's split_site_address() use on the
+// Python side -- used to group Multi_Occupant rows by street the same way
+// the Excel Multi_Occupant sheet's banners do.
+function _streetOf(site){
+  var s=String(site||'').trim();
+  var parts=s.split(/\s+/);
+  if(parts.length && /^\d+$/.test(parts[0])){parts.shift();}
+  else if(parts.length && /^[NSEWnsew]\d+$/.test(parts[0])){parts.shift();}
+  return parts.join(' ');}
+function _bnumOf(site){
+  var s=String(site||'').trim();
+  var parts=s.split(/\s+/);
+  if(!parts.length)return '';
+  if(/^\d+$/.test(parts[0]))return parts[0];
+  if(/^[NSEWnsew]\d+$/.test(parts[0]))return parts[0].toUpperCase();
+  return '';}
+
+// 2026-07-27: replaces the old flat Confident/Needs Research/Do Not Call
+// buckets. Every section (Residential, Multi-Occupant, Institutions) now
+// uses this same banner-per-street layout, matching the Excel mailing
+// list's look (navy section title, blue street banner, green stats line,
+// amber column header) instead of segregating rows by confidence into
+// separate top-level lists. colorByConfidence controls whether individual
+// rows are colored green/yellow/red by status (Residential, Institutions --
+// these have a real mix of confirmed/unconfirmed/DNC rows, same as their
+// Excel sheets) or left with the simple alternating green/white look
+// Multi_Occupant already had (its rows are all "current resident or
+// Melissa lookup" until proven otherwise, same reasoning the Excel side
+// used to skip confidence coloring on that sheet).
+function _confidenceClass(p){
+  if(p.dnc==='YES')return 'ml-dnc';
+  if(p.occupied==='Yes'&&p.confidence==='High'&&p.research!=='Yes')return 'ml-even-g';
+  return 'ml-even-y';}
+
+// 2026-07-27: Multi-Occupant street groups can mean two very different
+// things -- a street of individually-addressed properties (e.g. Apartment
+// 471's Stone Castle Dr, each address its own unit -- Steve's 2026-07-24
+// call was ONE banner per street there, not one per address, since one-
+// per-address was "too busy and non-functional") vs. a street with a
+// handful of REAL apartment buildings that each hold many units (e.g.
+// Apartment_412's 397/407/417 Harrison St, matching the Excel Multi_
+// Occupant sheet's own one-banner-per-building layout). Both cases group
+// by street first; this only decides whether to split that street group
+// further. The test: if any exact site address repeats within the street
+// (multiple unit rows sharing one building's address), it's the real-
+// building case -- split into one banner per site. If every site is
+// unique, it's the individually-addressed case -- leave it as the single
+// combined street banner, unchanged from before. Residential/Institutions
+// are untouched either way.
+function _bannersForStreetGroup(secKey,rows){
+  if(secKey!=='mo')return [{label:null,rows:rows}];
+  var bySite={},order=[];
+  rows.forEach(function(p){
+    var k=String(p.site||'').toUpperCase();
+    if(!(k in bySite)){bySite[k]=[];order.push(k);}
+    bySite[k].push(p);});
+  var hasRepeat=order.some(function(k){return bySite[k].length>1;});
+  if(!hasRepeat)return [{label:null,rows:rows}];
+  return order.map(function(k){return {label:bySite[k][0].site,rows:bySite[k]};});}
+function _renderBannerSection(secKey,title,rows,colorByConfidence){
+  if(!rows.length)return '';
+  var groups={},order=[];
+  rows.forEach(function(p){
+    var key=_streetOf(p.site).toUpperCase();
+    if(!(key in groups)){groups[key]=[];order.push(key);}
+    groups[key].push(p);});
+  order.sort();
+  var h='<div class=ml-hdr style="background:#1A3A6B">■ '+title+' ('+rows.length+' total)</div>';
+  order.forEach(function(streetKey){
+    var banners=_bannersForStreetGroup(secKey,groups[streetKey]);
+    banners.forEach(function(b){
+    var sortKey=secKey+'|'+streetKey+(b.label?('|'+b.label):'');
+    var grp=_sortRows(b.rows,sortKey,secKey);
+    var first=grp[0];
+    var addrLine=(b.label||_streetOf(first.site))+(first.site_city?', '+first.site_city:'')+(first.site_state?' '+first.site_state:'')+(first.site_zip?' '+first.site_zip:'');
+    h+='<div class=ml-hdr style="background:#2E5496;font-size:13px;">'+addrLine+'</div>';
+    var btype=first.btype||'';
+    h+='<div class=ml-hdr style="background:#1B5E20;font-size:11px;font-weight:normal;">'+grp.length+' address(es) on file'+(btype?' &nbsp;|&nbsp; Type: '+btype:'')+'</div>';
+    h+=_colHdr(sortKey,secKey);
+    grp.forEach(function(p,i){
+      var cls=colorByConfidence?_confidenceClass(p):(i%2===0?'ml-even-g':'ml-odd');
+      h+=_row(p,cls,secKey);});});});
+  return h;}
+
+function renderTable(rows){
+  var res=[],mo=[],inst=[];
+  rows.forEach(function(p){
+    if(p.sheet==='Multi_Occupant'){mo.push(p);}
+    else if(p.sheet==='Institutions'){inst.push(p);}
+    else{res.push(p);}});
+  var sections=[
+    _renderBannerSection('res','RESIDENTIAL',res,true),
+    _renderBannerSection('mo','MULTI-OCCUPANT ADDRESSES',mo,false),
+    _renderBannerSection('inst','INSTITUTIONS',inst,true)
+  ].filter(function(s){return s;});
+  var h=sections.length?sections.join('<div class=ml-gap></div>'):'<div class=ml-none>No addresses found for this territory.</div>';
+  document.getElementById('table-body').innerHTML=h;}
+
+function showTab(tab){
+  document.getElementById('map').style.display=tab==='map'?'block':'none';
+  document.getElementById('table-view').style.display=tab==='table'?'block':'none';
+  /* 2026-08-14: #btn-bar (MapID search + Fill slider) only applies to the
+     map -- hide it on the Mailing List tab instead of leaving it floating
+     over the table underneath. */
+  document.getElementById('btn-bar').style.display=tab==='map'?'flex':'none';
+  if(tab==='map'){setTimeout(function(){map.invalidateSize();},100);}
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){
+    b.classList.toggle('active',(tab==='map'&&i===0)||(tab==='table'&&i===1));});
+  if(tab==='table'&&!window._tableBuilt){buildTable();window._tableBuilt=true;}
+  /* 2026-08-14: on some phones, inserting the (much wider than the screen)
+     Multi-Occupant table into #table-view for the first time leaves the
+     container scrolled a couple hundred px to the right instead of at its
+     left edge -- MapID/Name columns and the left half of every banner get
+     scrolled out of view. Nothing in this file ever sets scrollLeft, so
+     it looks like the browser doing this on its own while laying out the
+     new wide content; forcing it back to 0 right after the table is built
+     fixes it regardless of the cause. */
+  var tv=document.getElementById('table-view');
+  if(tv)tv.scrollLeft=0;}
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('Apartment_466 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the Apartment_466 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/Apartment_466/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var target=String(val).trim().toUpperCase();if(!target)return;var found=null;parcelsData.features.forEach(function(f){if(String(f.properties.mapid).toUpperCase()===target){found=f;}});if(!found && typeof buildingsData!=='undefined' && buildingsData){buildingsData.features.forEach(function(f){var subid=f.properties.subid?String(f.properties.subid).toUpperCase():'';var mapid=(f.properties.mapid!==undefined&&f.properties.mapid!=='')?String(f.properties.mapid).toUpperCase():'';if(subid===target || (!subid && mapid===target)){found=f;}});}if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function _fixLayout(){var tb=document.getElementById('tab-bar');if(!tb)return;var offset=Math.round(tb.getBoundingClientRect().bottom);var mapEl=document.getElementById('map');if(mapEl)mapEl.style.height='calc(100vh - '+offset+'px)';var tv=document.getElementById('table-view');if(tv)tv.style.height='calc(100vh - '+offset+'px)';var bb=document.getElementById('btn-bar');if(bb)bb.style.top=offset+'px';}window.addEventListener('load',_fixLayout);window.addEventListener('resize',_fixLayout);_fixLayout();</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script></body>
+</html>
