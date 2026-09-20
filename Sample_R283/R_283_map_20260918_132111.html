@@ -293,6 +293,48 @@ body { font-family: Arial, sans-serif; background: #f0f0f0; }
   box-shadow: 0 2px 10px rgba(0,0,0,0.25);
 }
 #header #howto-btn:hover { background: #FFF3E8; }
+#howto-panel {
+  position: fixed; z-index: 5000;
+  background: white; border-radius: 10px;
+  box-shadow: 0 6px 32px rgba(0,0,0,0.35);
+  display: none; flex-direction: column;
+  min-width: 280px; min-height: 200px;
+  overflow: hidden;
+}
+#howto-panel.open { display: flex; }
+#howto-panel.minimized { height: auto !important; }
+#howto-panel.minimized .howto-panel-body,
+#howto-panel.minimized .howto-resize-handle { display: none; }
+#howto-panel-titlebar {
+  background: #E65100; color: white; padding: 9px 10px 9px 14px;
+  font-size: 14px; font-weight: bold;
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: move; user-select: none; flex-shrink: 0;
+  touch-action: none;
+}
+#howto-panel-titlebar .howto-title-text {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.howto-panel-btns { display: flex; gap: 6px; flex-shrink: 0; margin-left: 8px; }
+.howto-panel-btn {
+  cursor: pointer; width: 24px; height: 24px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: bold; line-height: 1;
+  background: rgba(255,255,255,0.18);
+}
+.howto-panel-btn:hover { background: rgba(255,255,255,0.35); }
+.howto-panel-body {
+  flex: 1; overflow: auto; -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+.howto-panel-body iframe { width: 100%; height: 100%; border: none; display: block; }
+.howto-resize-handle {
+  position: absolute; right: 0; bottom: 0; width: 22px; height: 22px;
+  cursor: nwse-resize; touch-action: none;
+  background: linear-gradient(135deg, transparent 55%, #bbb 55%, #bbb 62%,
+    transparent 62%, transparent 72%, #bbb 72%, #bbb 79%,
+    transparent 79%, transparent 89%, #bbb 89%, #bbb 96%, transparent 96%);
+}
 </style>
 </head>
 <body>
@@ -325,7 +367,7 @@ body { font-family: Arial, sans-serif; background: #f0f0f0; }
     <h1>R_283 Territory</h1>
     <div class="subtitle">R_283_20260918_1321.xlsx</div>
   </div>
-  <a id="howto-btn" href="https://spleaders.github.io/Territory-Maps-and-MailLists/how-to-use.html" target="_blank" rel="noopener">&#x2753; How to Use This</a>
+  <a id="howto-btn" href="javascript:void(0)" onclick="openHowToPanel();return false;">&#x2753; How to Use This</a>
   <div class="stats">
     232 parcels &nbsp;&nbsp;
     63 owner occupied &nbsp;&nbsp;
@@ -334,6 +376,19 @@ body { font-family: Arial, sans-serif; background: #f0f0f0; }
     
   </div>
   <button id="share-btn" onclick="shareTerritory()">&#x2709; Share Territory</button>
+</div>
+<div id="howto-panel">
+  <div id="howto-panel-titlebar">
+    <span class="howto-title-text">&#x2753; How to Use This</span>
+    <div class="howto-panel-btns">
+      <div class="howto-panel-btn" id="howto-minimize-btn" title="Minimize">&#x2212;</div>
+      <div class="howto-panel-btn" id="howto-close-btn" title="Close">&#x2715;</div>
+    </div>
+  </div>
+  <div class="howto-panel-body">
+    <iframe id="howto-iframe" title="How to Use This guide"></iframe>
+  </div>
+  <div class="howto-resize-handle" id="howto-resize-handle"></div>
 </div>
 
 <div id="tab-bar">
@@ -1413,5 +1468,5 @@ function showTab(tab){
      fixes it regardless of the cause. */
   var tv=document.getElementById('table-view');
   if(tv)tv.scrollLeft=0;}
-var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('R_283 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the R_283 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/R_283/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var target=String(val).trim().toUpperCase();if(!target)return;var found=null;parcelsData.features.forEach(function(f){if(String(f.properties.mapid).toUpperCase()===target){found=f;}});if(!found && typeof buildingsData!=='undefined' && buildingsData){buildingsData.features.forEach(function(f){var subid=f.properties.subid?String(f.properties.subid).toUpperCase():'';var mapid=(f.properties.mapid!==undefined&&f.properties.mapid!=='')?String(f.properties.mapid).toUpperCase():'';if(subid===target || (!subid && mapid===target)){found=f;}});}if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function _fixLayout(){var tb=document.getElementById('tab-bar');if(!tb)return;var offset=Math.round(tb.getBoundingClientRect().bottom);var mapEl=document.getElementById('map');if(mapEl)mapEl.style.height='calc(100vh - '+offset+'px)';var tv=document.getElementById('table-view');if(tv)tv.style.height='calc(100vh - '+offset+'px)';var bb=document.getElementById('btn-bar');if(bb)bb.style.top=offset+'px';}window.addEventListener('load',_fixLayout);window.addEventListener('resize',_fixLayout);_fixLayout();function _swapToBackupBasemap(){if(_swappedToBackup||!_backupLayer)return;_swappedToBackup=true;map.removeLayer(_primaryLayer);_backupLayer.addTo(map);var existing=document.getElementById('_backupNote');if(existing)existing.remove();var note=document.createElement('div');note.id='_backupNote';note.textContent='Using backup map service';note.style.cssText='position:absolute;bottom:6px;left:6px;background:rgba(255,255,255,0.85);padding:2px 7px;font-size:11px;color:#555;border-radius:3px;z-index:1000;pointer-events:none;';document.getElementById('map').appendChild(note);var btn=document.getElementById('basemap-toggle-btn');if(btn)btn.innerHTML='&#x1F5FA; Use Carto';}function _swapToPrimaryBasemap(){if(!_swappedToBackup)return;_swappedToBackup=false;_primaryFailCount=0;map.removeLayer(_backupLayer);_primaryLayer.addTo(map);var note=document.getElementById('_backupNote');if(note)note.remove();var btn=document.getElementById('basemap-toggle-btn');if(btn)btn.innerHTML='&#x1F5FA; Backup Map';}function toggleBasemap(){if(_swappedToBackup){_swapToPrimaryBasemap();}else{_swapToBackupBasemap();}}</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script></body>
+var legend=document.getElementById('legend');var dragging=false,ox=0,oy=0;legend.addEventListener('mousedown',function(e){if(e.target!==legend&&!e.target.closest('h4'))return;dragging=true;ox=e.clientX-legend.getBoundingClientRect().left;oy=e.clientY-legend.getBoundingClientRect().top;legend.style.right='auto';legend.style.bottom='auto';e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;legend.style.left=(e.clientX-ox)+'px';legend.style.top=(e.clientY-oy)+'px';});document.addEventListener('mouseup',function(){dragging=false;});function shareTerritory(){var s=encodeURIComponent('R_283 Territory Map');var b=encodeURIComponent('Hello,\n\nHere is the link for the R_283 territory:\n\nhttps://spleaders.github.io/Territory-Maps-and-MailLists/R_283/\n\nThis link opens a page with two buttons:\n- Open Interactive Map\n- Open Mailing List\n\nWorks on any device or browser - no software needed.\n\nThank you!');window.location.href='mailto:?subject='+s+'&body='+b;}function searchMapID(val){var clearBtn=document.getElementById('mapid-search-clear');if(!val){clearBtn.style.display='none';return;}clearBtn.style.display='inline';var target=String(val).trim().toUpperCase();if(!target)return;var found=null;parcelsData.features.forEach(function(f){if(String(f.properties.mapid).toUpperCase()===target){found=f;}});if(!found && typeof buildingsData!=='undefined' && buildingsData){buildingsData.features.forEach(function(f){var subid=f.properties.subid?String(f.properties.subid).toUpperCase():'';var mapid=(f.properties.mapid!==undefined&&f.properties.mapid!=='')?String(f.properties.mapid).toUpperCase():'';if(subid===target || (!subid && mapid===target)){found=f;}});}if(!found)return;var coords=found.geometry.coordinates;function getCenter(c){var pts=[];function collect(x){if(typeof x[0]==='number')pts.push(x);else x.forEach(collect);}collect(c);var lat=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;var lng=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;return [lat,lng];}var center=getCenter(coords);map.setView(center,17);if(window._mapidHighlight){window._mapidHighlight.remove();}window._mapidHighlight=L.circleMarker(center,{radius:33,color:'#FFD700',weight:4,fill:false,opacity:1}).addTo(map);setTimeout(function(){if(window._mapidHighlight){window._mapidHighlight.remove();window._mapidHighlight=null;}},10000);}function clearMapID(){document.getElementById('mapid-input').value='';document.getElementById('mapid-search-clear').style.display='none';}function _fixLayout(){var tb=document.getElementById('tab-bar');if(!tb)return;var offset=Math.round(tb.getBoundingClientRect().bottom);var mapEl=document.getElementById('map');if(mapEl)mapEl.style.height='calc(100vh - '+offset+'px)';var tv=document.getElementById('table-view');if(tv)tv.style.height='calc(100vh - '+offset+'px)';var bb=document.getElementById('btn-bar');if(bb)bb.style.top=offset+'px';}window.addEventListener('load',_fixLayout);window.addEventListener('resize',_fixLayout);_fixLayout();function _swapToBackupBasemap(){if(_swappedToBackup||!_backupLayer)return;_swappedToBackup=true;map.removeLayer(_primaryLayer);_backupLayer.addTo(map);var existing=document.getElementById('_backupNote');if(existing)existing.remove();var note=document.createElement('div');note.id='_backupNote';note.textContent='Using backup map service';note.style.cssText='position:absolute;bottom:6px;left:6px;background:rgba(255,255,255,0.85);padding:2px 7px;font-size:11px;color:#555;border-radius:3px;z-index:1000;pointer-events:none;';document.getElementById('map').appendChild(note);var btn=document.getElementById('basemap-toggle-btn');if(btn)btn.innerHTML='&#x1F5FA; Use Carto';}function _swapToPrimaryBasemap(){if(!_swappedToBackup)return;_swappedToBackup=false;_primaryFailCount=0;map.removeLayer(_backupLayer);_primaryLayer.addTo(map);var note=document.getElementById('_backupNote');if(note)note.remove();var btn=document.getElementById('basemap-toggle-btn');if(btn)btn.innerHTML='&#x1F5FA; Backup Map';}function toggleBasemap(){if(_swappedToBackup){_swapToPrimaryBasemap();}else{_swapToBackupBasemap();}}</script><script>function _legendResizeSetup(lid,gid){var el=document.getElementById(lid),grip=document.getElementById(gid);if(!el||!grip)return;var sx,sy,sfs,_on=false;grip.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();_on=true;sx=e.clientX;sy=e.clientY;sfs=parseFloat(window.getComputedStyle(el).fontSize)||17;document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});function mv(e){if(!_on)return;var d=Math.max(e.clientX-sx,e.clientY-sy);el.style.fontSize=Math.max(10,Math.min(30,sfs+d*0.05))+'px';}function up(){_on=false;document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}}_legendResizeSetup('legend','legend-resizer');_legendResizeSetup('research-legend','research-legend-resizer');</script><script>(function(){var GUIDE_URL='https://spleaders.github.io/Territory-Maps-and-MailLists/how-to-use.html';var panel=document.getElementById('howto-panel');if(!panel)return;var titlebar=document.getElementById('howto-panel-titlebar');var iframe=document.getElementById('howto-iframe');var minBtn=document.getElementById('howto-minimize-btn');var closeBtn=document.getElementById('howto-close-btn');var handle=document.getElementById('howto-resize-handle');var loaded=false, minimized=false, lastHeight=null;function clampPosition(){var rect=panel.getBoundingClientRect();var left=parseFloat(panel.style.left);var top=parseFloat(panel.style.top);if(isNaN(left))left=rect.left;if(isNaN(top))top=rect.top;var maxLeft=window.innerWidth-60;var maxTop=window.innerHeight-40;if(left>maxLeft)left=maxLeft;if(left<-(rect.width-60))left=-(rect.width-60);if(top>maxTop)top=maxTop;if(top<0)top=0;panel.style.left=left+'px';panel.style.top=top+'px';}function defaultRect(){var tb=document.getElementById('tab-bar');var topOffset=(tb?Math.round(tb.getBoundingClientRect().bottom):96)+8;var w=Math.min(420, window.innerWidth-32);var h=Math.min(520, window.innerHeight-topOffset-16);panel.style.width=w+'px';panel.style.height=h+'px';panel.style.left='16px';panel.style.top=topOffset+'px';}window.openHowToPanel=function(){if(!loaded){iframe.src=GUIDE_URL;loaded=true;}if(!panel.classList.contains('open')){defaultRect();}panel.classList.remove('minimized');panel.classList.add('open');minimized=false;minBtn.innerHTML='&#x2212;';minBtn.title='Minimize';clampPosition();};closeBtn.addEventListener('click',function(){panel.classList.remove('open');});minBtn.addEventListener('click',function(){minimized=!minimized;if(minimized){lastHeight=panel.style.height;panel.classList.add('minimized');minBtn.innerHTML='&#x2795;';minBtn.title='Restore';}else{panel.classList.remove('minimized');if(lastHeight)panel.style.height=lastHeight;minBtn.innerHTML='&#x2212;';minBtn.title='Minimize';}});var dragging=false,dx=0,dy=0;titlebar.addEventListener('pointerdown',function(e){if(e.target.closest('.howto-panel-btn'))return;dragging=true;var rect=panel.getBoundingClientRect();dx=e.clientX-rect.left;dy=e.clientY-rect.top;panel.style.right='auto';panel.style.bottom='auto';titlebar.setPointerCapture(e.pointerId);e.preventDefault();});titlebar.addEventListener('pointermove',function(e){if(!dragging)return;panel.style.left=(e.clientX-dx)+'px';panel.style.top=(e.clientY-dy)+'px';});function endDrag(){dragging=false;}titlebar.addEventListener('pointerup',endDrag);titlebar.addEventListener('pointercancel',endDrag);var resizing=false,rsx=0,rsy=0,rsw=0,rsh=0;handle.addEventListener('pointerdown',function(e){resizing=true;rsx=e.clientX;rsy=e.clientY;var rect=panel.getBoundingClientRect();rsw=rect.width;rsh=rect.height;handle.setPointerCapture(e.pointerId);e.preventDefault();e.stopPropagation();});handle.addEventListener('pointermove',function(e){if(!resizing)return;var newW=Math.max(280, rsw+(e.clientX-rsx));var newH=Math.max(200, rsh+(e.clientY-rsy));newW=Math.min(newW, window.innerWidth-16);newH=Math.min(newH, window.innerHeight-16);panel.style.width=newW+'px';panel.style.height=newH+'px';});function endResize(){resizing=false;}handle.addEventListener('pointerup',endResize);handle.addEventListener('pointercancel',endResize);window.addEventListener('resize',function(){if(panel.classList.contains('open'))clampPosition();});})();</script></body>
 </html>
