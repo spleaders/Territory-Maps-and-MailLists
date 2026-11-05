@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Name and Address Finder</title>
+<!--
+  Script Identity
+  Name:    name_finder.html
+  Version: v1.0
+  Date:    2026-11-05
+  Change:  First version. Looks up owner name + mailing address from the
+           Fond du Lac and Dodge County parcel records and decides
+           "owner name" vs "Current Resident".
+  Data:    Fond du Lac County GIS (gisweb.fdlco.wi.gov)
+           Dodge County Open Data (services5.arcgis.com, Dodge_Open_Data)
+           State of Wisconsin parcel layer (dnrmaps.wi.gov) - house ZIP for Fond du Lac only
+-->
+<style>
+:root{
+  --bg:#f7f6f2; --card:#ffffff; --ink:#1d2430; --muted:#5b6472; --line:#d9d6cc;
+  --accent:#1f5f8b; --accent-ink:#ffffff;
+  --ok:#1f7a3d; --ok-bg:#e6f4ea; --cr:#1f5f8b; --cr-bg:#e5eef6;
+  --warn:#8a5a00; --warn-bg:#fdf1d8; --bad:#a32020; --bad-bg:#fbe5e5;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15181d; --card:#1e232a; --ink:#e9edf2; --muted:#a7b0bc; --line:#343b45;
+    --accent:#5aa3d6; --accent-ink:#0d1117;
+    --ok:#7fd49a; --ok-bg:#1c3326; --cr:#8cc4ea; --cr-bg:#1b2b3a;
+    --warn:#f0c46a; --warn-bg:#3a2e14; --bad:#f29b9b; --bad-bg:#3d1d1d;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.6rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 18px}
+label{display:block;font-weight:700;margin-bottom:6px}
+textarea{width:100%;min-height:130px;font:inherit;padding:12px;border:2px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+textarea:focus{outline:none;border-color:var(--accent)}
+.hint{color:var(--muted);font-size:.9rem;margin:6px 0 14px}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;cursor:pointer}
+.big{width:100%;padding:16px;font-size:1.25rem;background:var(--accent);color:var(--accent-ink)}
+.big:disabled{opacity:.6;cursor:wait}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 8px}
+.row button{flex:1 1 200px;padding:12px;background:var(--card);color:var(--ink);border:2px solid var(--line)}
+#status{margin:14px 0;color:var(--muted);min-height:1.5em}
+.card{background:var(--card);border:1px solid var(--line);border-left:8px solid var(--line);border-radius:10px;padding:14px 16px;margin:12px 0}
+.card.ok{border-left-color:var(--ok)} .card.cr{border-left-color:var(--cr)}
+.card.warn{border-left-color:var(--warn)} .card.bad{border-left-color:var(--bad)}
+.typed{color:var(--muted);font-size:.85rem}
+.name{font-size:1.25rem;font-weight:700;margin:4px 0 2px}
+.addr{white-space:pre-line}
+.tag{display:inline-block;font-size:.9rem;font-weight:700;padding:3px 10px;border-radius:99px;margin-top:8px}
+.ok .tag{background:var(--ok-bg);color:var(--ok)} .cr .tag{background:var(--cr-bg);color:var(--cr)}
+.warn .tag{background:var(--warn-bg);color:var(--warn)} .bad .tag{background:var(--bad-bg);color:var(--bad)}
+.why{font-size:.95rem;color:var(--muted);margin-top:6px}
+.check{display:inline-block;margin-top:8px;font-size:.95rem;color:var(--accent)}
+.key{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-size:.95rem;margin-top:26px}
+.key p{margin:4px 0}
+.dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+footer{color:var(--muted);font-size:.8rem;margin-top:20px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Name and Address Finder</h1>
+  <p class="sub">For Fond du Lac and Dodge County addresses.</p>
+
+  <label for="input">1. Type or paste addresses, one per line</label>
+  <textarea id="input" placeholder="160 S Macy St&#10;127 E Oak St, Juneau"></textarea>
+  <p class="hint">House number and street is enough. Adding the town helps if a street name is used in more than one town.</p>
+
+  <button id="go" class="big">2. Find names</button>
+
+  <div id="status" aria-live="polite"></div>
+  <div id="results"></div>
+
+  <div class="row" id="actions" hidden>
+    <button id="copy">Copy list</button>
+    <button id="download">Download spreadsheet</button>
+  </div>
+
+  <div class="key">
+    <p><span class="dot" style="background:var(--ok)"></span><b>Green</b> - the owner lives there. Use the name shown.</p>
+    <p><span class="dot" style="background:var(--cr)"></span><b>Blue</b> - someone else owns it, so write "Current Resident".</p>
+    <p><span class="dot" style="background:var(--warn)"></span><b>Yellow</b> - read the note before using it.</p>
+    <p><span class="dot" style="background:var(--bad)"></span><b>Red</b> - not found. Check the spelling and try again.</p>
+  </div>
+
+  <footer>
+    Names come from county tax records, which show who owns a property. Sources: Fond du Lac County GIS,
+    Dodge County Open Data, and the State of Wisconsin parcel map (house ZIP codes in Fond du Lac County).
+    Version 1.0, Nov 2026.
+  </footer>
+</main>
+
+<script>
+"use strict";
+/* ---------- Data sources (change here if a county moves its service) ---------- */
+const SOURCES = {
+  fdl:   "https://gisweb.fdlco.wi.gov/server/rest/services/VectorMapLayers_HTML5_New/FeatureServer/93",
+  dodge: "https://services5.arcgis.com/WoH0haFujOX8jVNs/arcgis/rest/services/Dodge_Open_Data/FeatureServer/12",
+  state: "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/EN_County_Tax_Parcels_WTM_Ext_Dynamic_L16/MapServer/0",
+  usps:  "https://tools.usps.com/zip-code-lookup.htm?byaddress"
+};
+const STATE_ABBR = "WI";
+
+/* ---------- Word lists used to read addresses and owner names ---------- */
+const DIRS = {N:"N",NORTH:"N",S:"S",SOUTH:"S",E:"E",EAST:"E",W:"W",WEST:"W"};
+const SUFFIX = {ST:"ST",STREET:"ST",AVE:"AVE",AV:"AVE",AVENUE:"AVE",RD:"RD",ROAD:"RD",DR:"DR",DRIVE:"DR",
+  LN:"LN",LANE:"LN",CT:"CT",COURT:"CT",PL:"PL",PLACE:"PL",BLVD:"BLVD",BOULEVARD:"BLVD",CIR:"CIR",CIRCLE:"CIR",
+  TER:"TER",TERRACE:"TER",PKWY:"PKWY",PARKWAY:"PKWY",TRL:"TRL",TRAIL:"TRL",WAY:"WAY",HWY:"HWY",HIGHWAY:"HWY",
+  PASS:"PASS",RUN:"RUN",XING:"XING",CROSSING:"XING",SQ:"SQ",SQUARE:"SQ",PATH:"PATH",LOOP:"LOOP",ALY:"ALY",ALLEY:"ALY"};
+const UNIT_WORDS = ["APT","APARTMENT","UNIT","STE","SUITE","LOT","#","RM","ROOM","BLDG","FL"];
+const ORG_WORDS = ["LLC","L L C","INC","CORP","CORPORATION","CO","COMPANY","LTD","LP","LLP","TRUST","TR","TRS","TRUSTEE",
+  "ESTATE","EST","CHURCH","CONGREGATION","PARISH","DIOCESE","COUNTY","CITY","VILLAGE","TOWN","STATE","SCHOOL","DISTRICT",
+  "BANK","PROPERTIES","PROPERTY","RENTALS","RENTAL","HOLDINGS","INVESTMENTS","PARTNERS","PARTNERSHIP","ASSOCIATION","ASSN",
+  "APARTMENTS","HOUSING","AUTHORITY","MANAGEMENT","ENTERPRISES","REALTY","DEVELOPMENT","FARMS","FARM","CLUB","SOCIETY",
+  "FOUNDATION","CENTER","HOSPITAL","UNIVERSITY","COLLEGE","DEPT","DEPARTMENT","UNITED","USA","WISCONSIN","WIS","LEAGUE","LODGE","POST"];
+
+/* ---------- Small helpers ---------- */
+const $ = id => document.getElementById(id);
+const up = s => String(s == null ? "" : s).toUpperCase().replace(/[.,]/g," ").replace(/\s+/g," ").trim();
+const sq = s => String(s).replace(/'/g,"''");
+const titleCase = s => String(s||"").toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase())
+  .replace(/\b(Po)\b/g,"PO").replace(/\b(Wi)\b/g,"WI").replace(/\b(N|S|E|W)\b/g, m=>m.toUpperCase())
+  .replace(/\b([nsew])(\d+)/gi,(m,a,b)=>a.toUpperCase()+b).replace(/\bMc([a-z])/g,(m,a)=>"Mc"+a.toUpperCase())
+  .replace(/\b(Ii|Iii|Iv)\b/g, m=>m.toUpperCase()).replace(/ Du (?=\w)/g, " du ");
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function countyRoad(tokens){
+  // CTY RD K, CTH K, CO RD K, COUNTY RD K, COUNTY HWY K  ->  COUNTY ROAD K
+  const t = tokens.join(" ")
+    .replace(/\b(CTY|CTH|CO|COUNTY)\s*(RD|ROAD|HWY|HIGHWAY|TRUNK)?\s+(?=[A-Z]{1,3}\b)/," COUNTY ROAD ")
+    .replace(/\s+/g," ").trim();
+  return t.split(" ");
+}
+
+/* Read "160 S Macy St Apt 2, Fond du Lac WI 54935" into parts */
+function parseAddress(line){
+  const parts = line.split(",");
+  let street = up(parts[0]);
+  const rest = up(parts.slice(1).join(" "));
+  let zip = (line.match(/\b(\d{5})(?:-\d{4})?\s*$/)||[])[1] || "";
+  let town = rest.replace(/\b\d{5}(-\d{4})?\b/,"").replace(/\b(WI|WISCONSIN)\b/,"").trim();
+
+  let unit = "";
+  const um = street.match(new RegExp("\\s(?:" + UNIT_WORDS.map(w=>w.replace("#","\\#")).join("|") + ")\\s*([A-Z0-9-]+)\\s*$"));
+  if (um){ unit = street.slice(um.index).trim(); street = street.slice(0, um.index).trim(); }
+  street = street.replace(/#/g," ").replace(/\s+/g," ").trim();
+
+  let tokens = street.split(" ");
+  const num = tokens.shift() || "";
+  const m = num.match(/^([NSEW]?)(\d+)([A-Z]?)$/);
+  if (!m) return {ok:false, line, reason:"No house number at the start"};
+  const prefix = m[1], number = m[2] + m[3];
+  tokens = countyRoad(tokens);
+  let dir = "", suffix = "", postDir = "";
+  if (tokens.length > 1 && DIRS[tokens[0]]) dir = DIRS[tokens.shift()];
+  if (tokens.length > 1 && DIRS[tokens[tokens.length-1]]) postDir = DIRS[tokens.pop()];
+  if (tokens.length > 1 && SUFFIX[tokens[tokens.length-1]] && tokens[tokens.length-2] !== "ROAD") suffix = SUFFIX[tokens.pop()];
+  const core = tokens.join(" ");
+  if (!core) return {ok:false, line, reason:"No street name found"};
+  return {ok:true, line, prefix, number, houseNo: prefix + number, dir: dir || postDir, suffix, core, unit, town, zip};
+}
+
+/* Normalize any address line so two ways of writing it can be compared */
+function sameStreet(a, b){
+  const pa = parseAddress(a), pb = parseAddress(b);
+  if (!pa.ok || !pb.ok) return false;
+  return pa.houseNo === pb.houseNo && pa.core === pb.core && (!pa.dir || !pb.dir || pa.dir === pb.dir);
+}
+const isPOBox = s => /^\s*(P\s*O\s*BOX|POST OFFICE BOX|BOX)\b/i.test(String(s||""));
+function isOrg(name){
+  const n = " " + up(name).replace(/&/g," ") + " ";
+  return ORG_WORDS.some(w => n.includes(" " + w + " "));
+}
+
+/* ---------- Talking to the map services ---------- */
+async function query(url, params){
+  const p = new URLSearchParams(Object.assign({f:"json", returnGeometry:"false"}, params));
+  const r = await fetch(url + "/query?" + p.toString());
+  if (!r.ok) throw new Error("Service answered " + r.status);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message || "Service error");
+  return (j.features || []).map(f => f.attributes);
+}
+
+function score(cand, a){
+  // cand: {houseNo, dir, suffix, core, town, zip}
+  let s = 0;
+  if (cand.core === a.core) s += 4;
+  if (a.dir) s += (cand.dir === a.dir ? 2 : -3);
+  if (a.suffix && cand.suffix) s += (cand.suffix === a.suffix ? 1 : -1);
+  if (a.zip && cand.zip) s += (String(cand.zip) === a.zip ? 3 : -5);
+  if (a.town && cand.town) s += (up(cand.town).includes(a.town) || a.town.includes(up(cand.town)) ? 2 : -2);
+  return s;
+}
+
+async function findFDL(a){
+  const where = `Street_address LIKE '${sq(a.houseNo)} %' AND Street_address LIKE '%${sq(a.core)}%'`;
+  const rows = await query(SOURCES.fdl, {where, outFields:"PIN,OwnerNames,MailingAddress1,MailingAddress2,MailingCity,MailingState,MailingZip,Street_address,Municipality,PRIV_IND"});
+  return rows.map(r => {
+    const p = parseAddress(r.Street_address || "");
+    return {county:"Fond du Lac", raw:r, site:r.Street_address, houseNo:p.houseNo, dir:p.dir, suffix:p.suffix, core:p.core,
+      town:(r.Municipality||"").replace(/^(CITY|VILLAGE|TOWN) OF /,""), zip:"",
+      owner:r.OwnerNames, priv: Number(r.PRIV_IND)===1,
+      mail:[r.MailingAddress1, r.MailingAddress2].filter(Boolean), mailCity:r.MailingCity, mailState:r.MailingState, mailZip:String(r.MailingZip||"").slice(0,5)};
+  });
+}
+
+async function findDodge(a){
+  const numPart = a.prefix ? `HSEPRE_1='${a.prefix}' AND HSENO_1=${parseInt(a.number,10)}` : `HSENO_1=${parseInt(a.number,10)}`;
+  const where = `${numPart} AND ADCOMP_1 LIKE '%${sq(a.core)}%'`;
+  const rows = await query(SOURCES.dodge, {where, outFields:"MAILING_NAME1,MAILING_NAME2,NMTYP_1,NMTYP_2,OLSTNM_1,OFSTNM_1,OLSTNM_2,OFSTNM_2,ADDRESS_2,MAILING_ADDRESS_2,CITY,STATE,ZIP5,HSEPRE_1,HSENO_1,STRDIR_1,STREET_1,ADCOMP_1,CITY_1,ZIP5_1"});
+  return rows.map(r => {
+    const p = parseAddress(r.ADCOMP_1 || "");
+    let owner = r.MAILING_NAME1 || "";
+    let personName = "";
+    if (r.NMTYP_1 === "P" && r.OFSTNM_1){
+      if (r.NMTYP_2 === "P" && r.OFSTNM_2 && r.OLSTNM_2 === r.OLSTNM_1) personName = `${r.OFSTNM_1} & ${r.OFSTNM_2} ${r.OLSTNM_1}`;
+      else if (r.NMTYP_2 === "P" && r.OFSTNM_2) personName = `${r.OFSTNM_1} ${r.OLSTNM_1} & ${r.OFSTNM_2} ${r.OLSTNM_2}`;
+      else personName = `${r.OFSTNM_1} ${r.OLSTNM_1}`;
+    }
+    return {county:"Dodge", raw:r, site:r.ADCOMP_1, houseNo:p.houseNo || ((r.HSEPRE_1||"")+r.HSENO_1), dir:r.STRDIR_1||p.dir, suffix:p.suffix, core:p.core,
+      town:r.CITY_1||"", zip:r.ZIP5_1 ? String(r.ZIP5_1) : "",
+      owner, personName, ownerIsOrg: r.NMTYP_1 && r.NMTYP_1 !== "P", priv:false,
+      mail:[r.ADDRESS_2, r.MAILING_ADDRESS_2].filter(Boolean), mailCity:r.CITY, mailState:r.STATE, mailZip:r.ZIP5 ? String(r.ZIP5) : ""};
+  });
+}
+
+/* House ZIP for Fond du Lac County, from the State parcel layer */
+async function fdlHouseZip(c){
+  const where = `CONAME='FOND DU LAC' AND SITEADRESS LIKE '${sq(c.houseNo)} %' AND SITEADRESS LIKE '%${sq(c.core)}%'`;
+  const rows = await query(SOURCES.state, {where, outFields:"SITEADRESS,ZIPCODE"});
+  const zips = [...new Set(rows.filter(r => r.ZIPCODE).filter(r => {
+    const p = parseAddress(r.SITEADRESS); return !c.dir || !p.dir || p.dir === c.dir;
+  }).map(r => String(r.ZIPCODE).slice(0,5)))];
+  return zips.length === 1 ? zips[0] : "";
+}
+
+/* Post office city for a ZIP: the city most owners in that ZIP get their mail in */
+const zipCityCache = {};
+async function cityForZip(zip){
+  if (!zip) return "";
+  if (zipCityCache[zip] !== undefined) return zipCityCache[zip];
+  const stats = JSON.stringify([{statisticType:"count", onStatisticField:"OBJECTID", outStatisticFieldName:"n"}]);
+  let city = "";
+  try{
+    const rows = await query(SOURCES.dodge, {where:`ZIP5=${parseInt(zip,10)}`, groupByFieldsForStatistics:"CITY", outStatistics:stats, orderByFields:"n DESC"});
+    if (rows.length) city = rows[0].CITY || "";
+  }catch(e){}
+  if (!city){
+    try{
+      const rows = await query(SOURCES.fdl, {where:`MailingZip LIKE '${zip}%'`, groupByFieldsForStatistics:"MailingCity", outStatistics:stats, orderByFields:"n DESC"});
+      if (rows.length) city = rows[0].MailingCity || "";
+    }catch(e){}
+  }
+  zipCityCache[zip] = city;
+  return city;
+}
+
+/* FDL owner "SMITH, JOHN A & MARY K"  ->  "John & Mary Smith" */
+function fdlPersonName(owner){
+  const o = up(owner);
+  if (!o.includes(" ") && !o.includes(",")) return "";
+  const raw = String(owner||"").toUpperCase().trim();
+  const ci = raw.indexOf(",");
+  if (ci < 0) return "";
+  const last = raw.slice(0, ci).trim();
+  const firsts = raw.slice(ci+1).split("&").map(s => s.trim().split(/\s+/)[0]).filter(Boolean);
+  if (!firsts.length) return "";
+  return firsts.join(" & ") + " " + last;
+}
+
+/* ---------- Decide what to write ---------- */
+async function lookUp(line){
+  const a = parseAddress(line);
+  if (!a.ok) return {line, kind:"bad", tag:"Could not read", why:a.reason + ". Example: 160 S Macy St"};
+
+  const [f, d] = await Promise.allSettled([findFDL(a), findDodge(a)]);
+  let cands = [];
+  if (f.status === "fulfilled") cands = cands.concat(f.value);
+  if (d.status === "fulfilled") cands = cands.concat(d.value);
+  const failed = [f, d].filter(x => x.status === "rejected").length;
+
+  if (!cands.length){
+    return {line, kind:"bad", tag:"Not found",
+      why: failed ? "A county website did not answer. Wait a minute and try again." : "No property with this address in Fond du Lac or Dodge County. Check the spelling."};
+  }
+
+  cands.forEach(c => c.score = score(c, a));
+  cands.sort((x, y) => y.score - x.score);
+  const best = cands[0];
+  const ties = cands.filter(c => c.score === best.score && up(c.site) !== up(best.site));
+  if (ties.length){
+    const list = [best].concat(ties).slice(0,4).map(c => `${titleCase(c.site)} (${titleCase(c.town)})`).join("; ");
+    return {line, kind:"warn", tag:"More than one match", why:"Add the town to the address. Matches: " + list};
+  }
+
+  const c = best;
+  if (c.county === "Fond du Lac"){
+    try{ c.zip = await fdlHouseZip(c); }catch(e){ c.zip = ""; }
+  }
+
+  const siteLine = titleCase(c.site) + (a.unit ? " " + titleCase(a.unit) : "");
+  const residentAddress = async (whyText, kind="cr", tag="Current Resident") => {
+    const city = c.zip ? await cityForZip(c.zip) : "";
+    if (!c.zip || !city){
+      return {line, kind:"warn", tag:"ZIP needed", name:"Current Resident",
+        street:siteLine, city:"", zip:"", county:c.county,
+        why: whyText + " The house ZIP code was not found. Use the Post Office link to get it.", check:true};
+    }
+    return {line, kind, tag, name:"Current Resident", street:siteLine, city:titleCase(city), zip:c.zip, county:c.county, why:whyText, check:true};
+  };
+
+  // Private owner or no owner name
+  if (c.priv || !String(c.owner||"").trim()) return residentAddress("The owner's name is kept private by the county.");
+  // Apartment or unit typed in
+  if (a.unit) return residentAddress("Apartment or unit - the county record covers the whole building.");
+
+  const mailMatches = c.mail.some(m => sameStreet(m, c.site)) && (!c.zip || !c.mailZip || c.zip === c.mailZip);
+  const org = c.county === "Dodge" ? (c.ownerIsOrg || isOrg(c.owner)) : isOrg(c.owner);
+
+  if (/\bESTATE\b|\bEST OF\b/.test(up(c.owner))) return residentAddress("Owner is listed as an estate.");
+  if (org) return residentAddress(mailMatches ? "Owner is a company, trust or group, not a person." : "Owner is a company, trust or group (likely a rental).");
+
+  const person = titleCase(c.county === "Dodge" ? (c.personName || c.owner) : (fdlPersonName(c.owner) || c.owner));
+
+  if (mailMatches){
+    return {line, kind:"ok", tag:"Owner lives here", name:person, street:titleCase(c.mail.join("\n")),
+      city:titleCase(c.mailCity), zip:c.mailZip, county:c.county, why:"Owner's mailing address is this house.", check:false};
+  }
+  const sameTownBox = c.mail.some(isPOBox) && c.zip && c.mailZip && c.zip === c.mailZip;
+  if (sameTownBox){
+    return {line, kind:"warn", tag:"PO Box - same town", name:person, street:titleCase(c.mail.join("\n")),
+      city:titleCase(c.mailCity), zip:c.mailZip, county:c.county,
+      why:"Owner gets mail at a PO Box in the same town, so probably lives here. Letter goes to the PO Box.", check:false};
+  }
+  return residentAddress("Owner gets mail somewhere else, so someone else may live here.");
+}
+
+/* ---------- Page wiring ---------- */
+let results = [];
+
+function render(){
+  $("results").innerHTML = results.map((r, i) => {
+    const addr = r.street ? `${esc(r.street)}\n${esc(r.city)}${r.city ? ", " : ""}${STATE_ABBR} ${esc(r.zip)}` : "";
+    return `<div class="card ${r.kind}">
+      <div class="typed">${i+1}. You typed: ${esc(r.line)}</div>
+      ${r.name ? `<div class="name">${esc(r.name)}</div>` : ""}
+      ${addr ? `<div class="addr">${addr}</div>` : ""}
+      <span class="tag">${esc(r.tag)}</span>
+      <div class="why">${esc(r.why)}</div>
+      ${r.check ? `<a class="check" href="${SOURCES.usps}" target="_blank" rel="noopener">Check this ZIP with the Post Office</a>` : ""}
+    </div>`;
+  }).join("");
+  $("actions").hidden = !results.some(r => r.name);
+}
+
+async function run(){
+  const lines = $("input").value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  if (!lines.length){ $("status").textContent = "Type at least one address first."; return; }
+  $("go").disabled = true;
+  results = lines.map(line => ({line, kind:"", tag:"Looking up...", why:""}));
+  render();
+  let done = 0;
+  const queue = lines.map((line, i) => ({line, i}));
+  const worker = async () => {
+    while (queue.length){
+      const job = queue.shift();
+      try{ results[job.i] = await lookUp(job.line); }
+      catch(e){ results[job.i] = {line:job.line, kind:"bad", tag:"Problem", why:"Something went wrong: " + e.message}; }
+      done++;
+      $("status").textContent = `Checked ${done} of ${lines.length}...`;
+      render();
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  const n = k => results.filter(r => r.kind === k).length;
+  $("status").textContent = `Done. ${n("ok")} owner names, ${n("cr")} Current Resident, ${n("warn")} to read, ${n("bad")} not found.`;
+  $("go").disabled = false;
+}
+
+function copyList(){
+  const text = results.filter(r => r.name).map(r =>
+    `${r.name}\n${r.street}\n${r.city}${r.city ? ", " : ""}${STATE_ABBR} ${r.zip}`.trim()).join("\n\n");
+  const done = () => { $("status").textContent = "List copied. Paste it wherever you need it."; };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+  else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done){
+  const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t);
+  t.select(); try{ document.execCommand("copy"); done(); }catch(e){ $("status").textContent = "Copy did not work on this device. Use Download instead."; }
+  t.remove();
+}
+function downloadCsv(){
+  const head = ["You typed","Name","Street","City","State","ZIP","Result","Note","County"];
+  const cell = v => `"${String(v==null?"":v).replace(/"/g,'""').replace(/\n/g," ")}"`;
+  const rows = results.map(r => [r.line, r.name||"", r.street||"", r.city||"", r.name ? STATE_ABBR : "", r.zip||"", r.tag, r.why, r.county||""]);
+  const csv = [head].concat(rows).map(row => row.map(cell).join(",")).join("\r\n");
+  const blob = new Blob(["﻿" + csv], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  const d = new Date();
+  a.href = URL.createObjectURL(blob);
+  a.download = `Names_and_Addresses_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+$("go").addEventListener("click", run);
+$("copy").addEventListener("click", copyList);
+$("download").addEventListener("click", downloadCsv);
+</script>
+</body>
+</html>
