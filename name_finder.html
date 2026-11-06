@@ -7,8 +7,11 @@
 <!--
   Script Identity
   Name:    name_finder.html
-  Version: v1.4
+  Version: v1.5
   Date:    2026-11-05
+  v1.5:    Shows which territory (or territories) each address is in, using the
+           outlines Territory Master publishes; added to the unit-list email and
+           the spreadsheet. Specialty territories listed first.
   v1.4:    Apt box replaced by a "multi-unit building" checkbox: those buildings
            (and pasted lines with Apt/Unit/#/Lot) get a "contact Steve for a unit
            list" card with a pre-filled email. True yellow color; "more than one
@@ -79,6 +82,7 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
 .fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 .f-street{grid-column:span 2}
 .f-town{grid-column:span 2}
+.terr{font-size:.95rem;font-weight:700;margin-top:6px}
 .multi{display:flex;align-items:center;gap:10px;font-weight:700;margin:14px 0 4px;cursor:pointer}
 .multi input{width:24px;height:24px;accent-color:var(--accent)}
 .contactbtn{display:inline-block;margin:10px 10px 0 0;padding:10px 16px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-weight:700;text-decoration:none}
@@ -169,7 +173,7 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
   <footer>
     Names come from county tax records, which show who owns a property. Sources: Fond du Lac County GIS,
     Dodge County Open Data, and the State of Wisconsin parcel map (house ZIP codes in Fond du Lac County).
-    Version 1.4, Nov 2026.
+    Version 1.5, Nov 2026.
   </footer>
 </main>
 
@@ -180,9 +184,15 @@ const SOURCES = {
   fdl:   "https://gisweb.fdlco.wi.gov/server/rest/services/VectorMapLayers_HTML5_New/FeatureServer/93",
   dodge: "https://services5.arcgis.com/WoH0haFujOX8jVNs/arcgis/rest/services/Dodge_Open_Data/FeatureServer/12",
   state: "https://dnrmaps.wi.gov/arcgis/rest/services/DW_Map_Dynamic/EN_County_Tax_Parcels_WTM_Ext_Dynamic_L16/MapServer/0",
-  usps:  "https://tools.usps.com/zip-code-lookup.htm?byaddress"
+  usps:  "https://tools.usps.com/zip-code-lookup.htm?byaddress",
+  // Territory outlines published by Territory Master (publish_boundaries.py).
+  // First try the copy next to this page, then the raw GitHub copy (for testing from a saved file).
+  territories: ["territory_lookup_ONLY.geojson",
+    "https://raw.githubusercontent.com/spleaders/Territory-Maps-and-MailLists/main/territory_lookup_ONLY.geojson"]
 };
 const STATE_ABBR = "WI";
+/* Order territories are listed in: specialty types first */
+const TYPE_ORDER = ["Apartment","Business","Letter","Taycheedah Prison","R","Town","Unassigned"];
 /* Who users contact for unit lists and problems - change here only */
 const CONTACT = { name: "Steve Leaders", email: "spleaders@gmail.com", phone: "414-403-7754" };
 
@@ -283,7 +293,7 @@ async function query(url, params){
   if (!r.ok) throw new Error("Service answered " + r.status);
   const j = await r.json();
   if (j.error) throw new Error(j.error.message || "Service error");
-  return (j.features || []).map(f => f.attributes);
+  return (j.features || []).map(f => f.geometry ? Object.assign({__geom:f.geometry}, f.attributes) : f.attributes);
 }
 
 function score(cand, a){
@@ -299,10 +309,10 @@ function score(cand, a){
 
 async function findFDL(a){
   const where = `Street_address LIKE '${sq(a.houseNo)} %' AND Street_address LIKE '%${sq(a.core)}%'`;
-  const rows = await query(SOURCES.fdl, {where, outFields:"PIN,OwnerNames,MailingAddress1,MailingAddress2,MailingCity,MailingState,MailingZip,Street_address,Municipality,PRIV_IND"});
+  const rows = await query(SOURCES.fdl, {where, outFields:"PIN,OwnerNames,MailingAddress1,MailingAddress2,MailingCity,MailingState,MailingZip,Street_address,Municipality,PRIV_IND", returnGeometry:"true", outSR:"4326"});
   return rows.map(r => {
     const p = parseAddress(r.Street_address || "");
-    return {county:"Fond du Lac", raw:r, site:r.Street_address, houseNo:p.houseNo, dir:p.dir, suffix:p.suffix, core:p.core,
+    return {county:"Fond du Lac", raw:r, geom:r.__geom, site:r.Street_address, houseNo:p.houseNo, dir:p.dir, suffix:p.suffix, core:p.core,
       town:(r.Municipality||"").replace(/^(CITY|VILLAGE|TOWN) OF /,""), zip:"",
       owner:r.OwnerNames, priv: Number(r.PRIV_IND)===1,
       mail:[r.MailingAddress1, r.MailingAddress2].filter(Boolean), mailCity:r.MailingCity, mailState:r.MailingState, mailZip:String(r.MailingZip||"").slice(0,5)};
@@ -312,7 +322,7 @@ async function findFDL(a){
 async function findDodge(a){
   const numPart = a.prefix ? `HSEPRE_1='${a.prefix}' AND HSENO_1=${parseInt(a.number,10)}` : `HSENO_1=${parseInt(a.number,10)}`;
   const where = `${numPart} AND ADCOMP_1 LIKE '%${sq(a.core)}%'`;
-  const rows = await query(SOURCES.dodge, {where, outFields:"MAILING_NAME1,MAILING_NAME2,NMTYP_1,NMTYP_2,OLSTNM_1,OFSTNM_1,OLSTNM_2,OFSTNM_2,ADDRESS_2,MAILING_ADDRESS_2,CITY,STATE,ZIP5,HSEPRE_1,HSENO_1,STRDIR_1,STREET_1,ADCOMP_1,CITY_1,ZIP5_1"});
+  const rows = await query(SOURCES.dodge, {where, outFields:"MAILING_NAME1,MAILING_NAME2,NMTYP_1,NMTYP_2,OLSTNM_1,OFSTNM_1,OLSTNM_2,OFSTNM_2,ADDRESS_2,MAILING_ADDRESS_2,CITY,STATE,ZIP5,HSEPRE_1,HSENO_1,STRDIR_1,STREET_1,ADCOMP_1,CITY_1,ZIP5_1", returnGeometry:"true", outSR:"4326"});
   return rows.map(r => {
     const p = parseAddress(r.ADCOMP_1 || "");
     let owner = r.MAILING_NAME1 || "";
@@ -322,7 +332,7 @@ async function findDodge(a){
       else if (r.NMTYP_2 === "P" && r.OFSTNM_2) personName = `${r.OFSTNM_1} ${r.OLSTNM_1} & ${r.OFSTNM_2} ${r.OLSTNM_2}`;
       else personName = `${r.OFSTNM_1} ${r.OLSTNM_1}`;
     }
-    return {county:"Dodge", raw:r, site:r.ADCOMP_1, houseNo:p.houseNo || ((r.HSEPRE_1||"")+r.HSENO_1), dir:r.STRDIR_1||p.dir, suffix:p.suffix, core:p.core,
+    return {county:"Dodge", raw:r, geom:r.__geom, site:r.ADCOMP_1, houseNo:p.houseNo || ((r.HSEPRE_1||"")+r.HSENO_1), dir:r.STRDIR_1||p.dir, suffix:p.suffix, core:p.core,
       town:r.CITY_1||"", zip:r.ZIP5_1 ? String(r.ZIP5_1) : "",
       owner, personName, ownerIsOrg: r.NMTYP_1 && r.NMTYP_1 !== "P", priv:false,
       mail:[r.ADDRESS_2, r.MAILING_ADDRESS_2].filter(Boolean), mailCity:r.CITY, mailState:r.STATE, mailZip:r.ZIP5 ? String(r.ZIP5) : ""};
@@ -374,7 +384,86 @@ function fdlPersonName(owner){
 }
 
 /* ---------- Decide what to write ---------- */
+/* ---------- Which territory is a building in ---------- */
+let territoryData = null;   // loaded once per visit, only when first needed
+function loadTerritories(){
+  if (!territoryData){
+    territoryData = (async () => {
+      for (const url of SOURCES.territories){
+        try{
+          const r = await fetch(url, {cache:"no-cache"});
+          if (!r.ok) continue;
+          const j = await r.json();
+          return (j.features || []).map(f => {
+            const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+            let x0 = 180, y0 = 90, x1 = -180, y1 = -90;
+            polys.forEach(p => p[0].forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }));
+            return {name: f.properties.name, type: f.properties.type, polys, box: [x0, y0, x1, y1]};
+          });
+        }catch(e){}
+      }
+      territoryData = null;            // let a later lookup try again
+      throw new Error("Territory outlines not available");
+    })();
+  }
+  return territoryData;
+}
+function inRing(x, y, ring){
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++){
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+const inPolygon = (x, y, rings) => inRing(x, y, rings[0]) && !rings.slice(1).some(h => inRing(x, y, h));
+/* A point that is surely inside the parcel (its center, or a safe spot if the parcel is oddly shaped) */
+function pointInParcel(geom){
+  const rings = geom && geom.rings;
+  if (!rings || !rings.length || Math.abs(rings[0][0][0]) > 180) return null;
+  let A = 0, cx = 0, cy = 0;
+  const outer = rings[0];
+  for (let i = 0, j = outer.length - 1; i < outer.length; j = i++){
+    const f = outer[j][0] * outer[i][1] - outer[i][0] * outer[j][1];
+    A += f; cx += (outer[j][0] + outer[i][0]) * f; cy += (outer[j][1] + outer[i][1]) * f;
+  }
+  if (A){ cx /= 3 * A; cy /= 3 * A; } else { [cx, cy] = outer[0]; }
+  if (inPolygon(cx, cy, rings)) return [cx, cy];
+  const xs = [];
+  rings.forEach(r => { for (let i = 0, j = r.length - 1; i < r.length; j = i++){
+    const [xi, yi] = r[i], [xj, yj] = r[j];
+    if ((yi > cy) !== (yj > cy)) xs.push((xj - xi) * (cy - yi) / (yj - yi) + xi);
+  }});
+  xs.sort((a, b) => a - b);
+  let best = null, w = -1;
+  for (let i = 0; i + 1 < xs.length; i += 2) if (xs[i+1] - xs[i] > w){ w = xs[i+1] - xs[i]; best = [(xs[i] + xs[i+1]) / 2, cy]; }
+  return best;
+}
+/* Returns a sorted list of territory names, [] if none, or null if it could not check */
+async function territoriesFor(geom){
+  const pt = pointInParcel(geom);
+  if (!pt) return null;
+  const list = await loadTerritories();
+  const [x, y] = pt;
+  const hits = list.filter(t => x >= t.box[0] && x <= t.box[2] && y >= t.box[1] && y <= t.box[3]
+                              && t.polys.some(p => inPolygon(x, y, p)));
+  const rank = t => { const i = TYPE_ORDER.indexOf(t.type); return i < 0 ? TYPE_ORDER.length : i; };
+  hits.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, undefined, {numeric:true}));
+  return [...new Set(hits.map(t => t.name))];
+}
+const territoryText = t => t === undefined ? "" : t === null ? "Territory: could not check"
+  : !t.length ? "Not in any territory" : (t.length === 1 ? "Territory: " : "Territories: ") + t.join(", ");
+
 async function lookUp(line, multi){
+  const ctx = {};
+  const r = await lookUpCore(line, multi, ctx);
+  if (ctx.c){
+    try{ r.territories = await territoriesFor(ctx.c.geom); }catch(e){ r.territories = null; }
+  }
+  return r;
+}
+
+async function lookUpCore(line, multi, ctx){
   const a = parseAddress(line);
   multi = multi || !!a.unit;
   if (!a.ok) return {line, kind:"bad", tag:"Could not read", why:a.reason + ". Example: 160 S Macy St"};
@@ -407,6 +496,7 @@ async function lookUp(line, multi){
   }
 
   const c = best;
+  ctx.c = c;
   if (c.county === "Fond du Lac"){
     try{ c.zip = await fdlHouseZip(c); }catch(e){ c.zip = ""; }
   }
@@ -462,7 +552,7 @@ const inOrder = () => results.slice().sort((a, b) => a.n - b.n);   // oldest fir
 function unitRequestHtml(r){
   const addr = `${r.bStreet}\n${r.bCity}${r.bCity ? ", " : ""}${STATE_ABBR} ${r.bZip || ""}`.trim();
   const subject = `Unit list request: ${r.bStreet}${r.bCity ? ", " + r.bCity : ""}`;
-  const body = `Please send me a unit list for this building:\n\n${addr}\n(${r.county} County)\n\nMy name:\nMy phone:\n\nSent from the Name and Address Finder.`;
+  const body = `Please send me a unit list for this building:\n\n${addr}\n(${r.county} County)\n${territoryText(r.territories)}\n\nMy name:\nMy phone:\n\nSent from the Name and Address Finder.`;
   const mail = `mailto:${CONTACT.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   return `<div class="addr">${esc(addr)}</div>
     <a class="contactbtn" href="${mail}">Email ${esc(CONTACT.name.split(" ")[0])}</a>
@@ -478,6 +568,7 @@ function render(){
       ${addr ? `<div class="addr">${addr}</div>` : ""}
       <span class="tag">${esc(r.tag)}</span>
       <div class="why">${esc(r.why)}</div>
+      ${r.territories !== undefined ? `<div class="terr">${esc(territoryText(r.territories))}</div>` : ""}
       ${r.unitRequest ? unitRequestHtml(r) : ""}
       ${r.check ? `<a class="check" href="${SOURCES.usps}" target="_blank" rel="noopener">Check this ZIP with the Post Office</a>` : ""}
     </div>`;
@@ -561,9 +652,9 @@ function fallbackCopy(text, done){
   t.remove();
 }
 function downloadCsv(){
-  const head = ["You typed","Name","Street","City","State","ZIP","Result","Note","County"];
+  const head = ["You typed","Name","Street","City","State","ZIP","Result","Note","County","Territory"];
   const cell = v => `"${String(v==null?"":v).replace(/"/g,'""').replace(/\n/g," ")}"`;
-  const rows = inOrder().map(r => [r.line, r.name||"", r.street||r.bStreet||"", r.city||r.bCity||"", (r.name||r.bStreet) ? STATE_ABBR : "", r.zip||r.bZip||"", r.tag, r.why, r.county||""]);
+  const rows = inOrder().map(r => [r.line, r.name||"", r.street||r.bStreet||"", r.city||r.bCity||"", (r.name||r.bStreet) ? STATE_ABBR : "", r.zip||r.bZip||"", r.tag, r.why, r.county||"", r.territories ? r.territories.join(", ") : territoryText(r.territories)]);
   const csv = [head].concat(rows).map(row => row.map(cell).join(",")).join("\r\n");
   const blob = new Blob(["﻿" + csv], {type:"text/csv;charset=utf-8"});
   const a = document.createElement("a");
