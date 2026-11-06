@@ -7,9 +7,15 @@
 <!--
   Script Identity
   Name:    name_finder.html
-  Version: v1.1
+  Version: v1.4
   Date:    2026-11-05
-  Change:  Separate boxes for House number*, Street*, Town, ZIP; results
+  v1.4:    Apt box replaced by a "multi-unit building" checkbox: those buildings
+           (and pasted lines with Apt/Unit/#/Lot) get a "contact Steve for a unit
+           list" card with a pre-filled email. True yellow color; "more than one
+           match" says what to add. Contact details kept in one place (CONTACT).
+  v1.3:    "How to use" panel under the title: steps, rules of use, contact.
+  v1.2:    Optional Apt / Unit box (always gives Current Resident at that unit).
+  v1.1:    Separate boxes for House number*, Street*, Town, ZIP; results
            build up in a list (newest on top); paste-a-list moved under a
            fold; town typed without a comma is now read correctly.
   v1.0:    First version. Owner name + mailing address from the Fond du Lac
@@ -23,14 +29,14 @@
   --bg:#f7f6f2; --card:#ffffff; --ink:#1d2430; --muted:#5b6472; --line:#d9d6cc;
   --accent:#1f5f8b; --accent-ink:#ffffff;
   --ok:#1f7a3d; --ok-bg:#e6f4ea; --cr:#1f5f8b; --cr-bg:#e5eef6;
-  --warn:#8a5a00; --warn-bg:#fdf1d8; --bad:#a32020; --bad-bg:#fbe5e5;
+  --warn:#7a5800; --warn-bg:#fff3c4; --warn-mark:#e8b400; --bad:#a32020; --bad-bg:#fbe5e5;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#15181d; --card:#1e232a; --ink:#e9edf2; --muted:#a7b0bc; --line:#343b45;
     --accent:#5aa3d6; --accent-ink:#0d1117;
     --ok:#7fd49a; --ok-bg:#1c3326; --cr:#8cc4ea; --cr-bg:#1b2b3a;
-    --warn:#f0c46a; --warn-bg:#3a2e14; --bad:#f29b9b; --bad-bg:#3d1d1d;
+    --warn:#f5d06a; --warn-bg:#3a3214; --warn-mark:#f0c42a; --bad:#f29b9b; --bad-bg:#3d1d1d;
   }
 }
 *{box-sizing:border-box}
@@ -50,7 +56,7 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;cursor:pointer}
 #status{margin:14px 0;color:var(--muted);min-height:1.5em}
 .card{background:var(--card);border:1px solid var(--line);border-left:8px solid var(--line);border-radius:10px;padding:14px 16px;margin:12px 0}
 .card.ok{border-left-color:var(--ok)} .card.cr{border-left-color:var(--cr)}
-.card.warn{border-left-color:var(--warn)} .card.bad{border-left-color:var(--bad)}
+.card.warn{border-left-color:var(--warn-mark)} .card.bad{border-left-color:var(--bad)}
 .typed{color:var(--muted);font-size:.85rem}
 .name{font-size:1.25rem;font-weight:700;margin:4px 0 2px}
 .addr{white-space:pre-line}
@@ -63,7 +69,20 @@ button{font:inherit;font-weight:700;border:0;border-radius:10px;cursor:pointer}
 .key p{margin:4px 0}
 .dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 footer{color:var(--muted);font-size:.8rem;margin-top:20px}
-.fields{display:grid;grid-template-columns:1fr 2fr;gap:12px}
+.help{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 16px;margin:0 0 18px}
+.help summary{cursor:pointer;color:var(--accent);font-weight:700;padding:6px 0}
+.help ol,.help ul{margin:6px 0 10px;padding-left:22px}
+.help li{margin:4px 0}
+.help-h{font-weight:700;margin:10px 0 2px}
+.help a{color:var(--accent)}
+.help-tip{color:var(--muted);font-size:.9rem}
+.fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.f-street{grid-column:span 2}
+.f-town{grid-column:span 2}
+.multi{display:flex;align-items:center;gap:10px;font-weight:700;margin:14px 0 4px;cursor:pointer}
+.multi input{width:24px;height:24px;accent-color:var(--accent)}
+.contactbtn{display:inline-block;margin:10px 10px 0 0;padding:10px 16px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-weight:700;text-decoration:none}
+.contactph{display:inline-block;margin-top:10px;color:var(--accent);font-weight:700}
 .fields input{width:100%;font:inherit;padding:12px;border:2px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
 .fields input:focus{outline:none;border-color:var(--accent)}
 .fields input.missing{border-color:var(--bad)}
@@ -72,13 +91,32 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
 .paste{margin-top:16px}
 .paste summary{cursor:pointer;color:var(--accent);font-weight:700;padding:6px 0}
 .paste textarea{margin-bottom:10px}
-@media (max-width:480px){.fields{grid-template-columns:1fr}}
+@media (max-width:480px){.fields{grid-template-columns:1fr}.f-street,.f-town{grid-column:auto}}
 </style>
 </head>
 <body>
 <main>
   <h1>Name and Address Finder</h1>
   <p class="sub">For Fond du Lac and Dodge County addresses.</p>
+
+  <details class="help">
+    <summary>How to use</summary>
+    <ol>
+      <li>Type the <b>House number</b> and <b>Street</b>. Add the <b>Apt</b>, <b>Town</b> or <b>ZIP</b> if you have them.</li>
+      <li>Tap <b>Find</b>. The answer appears below, and the boxes clear for the next address.</li>
+      <li>Read the color: <b>green</b> = use the name shown, <b>blue</b> = write "Current Resident", <b>yellow</b> = read the note first, <b>red</b> = not found, check the spelling.</li>
+      <li>When your list is done, tap <b>Copy list</b> or <b>Download spreadsheet</b>.</li>
+    </ol>
+    <p class="help-h">Rules of use</p>
+    <ul>
+      <li>Names come from public county tax records. They show who <b>owns</b> a property, which is not always who lives there.</li>
+      <li>Use the names and addresses only for letter writing. Don't post or share the lists.</li>
+      <li>When in doubt, write <b>Current Resident</b>.</li>
+    </ul>
+    <p class="help-h">Questions or problems</p>
+    <p id="contactLine"></p>
+    <p class="help-tip">Tip: on a phone, tap Share, then "Add to Home Screen" so this opens like an app.</p>
+  </details>
 
   <form id="form" autocomplete="off" novalidate>
     <div class="fields">
@@ -99,7 +137,8 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
         <input id="fZip" type="text" inputmode="numeric" maxlength="5" placeholder="e.g. 54935">
       </div>
     </div>
-    <p class="hint"><span class="req">*</span> needed. Town and ZIP are optional, but help when a street name is used in more than one town.</p>
+    <label class="multi"><input id="fMulti" type="checkbox"> Apartment or other multi-unit building</label>
+    <p class="hint"><span class="req">*</span> needed. The other boxes are optional. Town and ZIP help when a street name is used in more than one town.</p>
     <div id="formMsg" class="formmsg" aria-live="polite"></div>
     <button id="go" type="submit" class="big">Find</button>
   </form>
@@ -123,14 +162,14 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
   <div class="key">
     <p><span class="dot" style="background:var(--ok)"></span><b>Green</b> - the owner lives there. Use the name shown.</p>
     <p><span class="dot" style="background:var(--cr)"></span><b>Blue</b> - someone else owns it, so write "Current Resident".</p>
-    <p><span class="dot" style="background:var(--warn)"></span><b>Yellow</b> - read the note before using it.</p>
+    <p><span class="dot" style="background:var(--warn-mark)"></span><b>Yellow</b> - read the note before using it (multi-unit buildings show who to contact).</p>
     <p><span class="dot" style="background:var(--bad)"></span><b>Red</b> - not found. Check the spelling and try again.</p>
   </div>
 
   <footer>
     Names come from county tax records, which show who owns a property. Sources: Fond du Lac County GIS,
     Dodge County Open Data, and the State of Wisconsin parcel map (house ZIP codes in Fond du Lac County).
-    Version 1.1, Nov 2026.
+    Version 1.4, Nov 2026.
   </footer>
 </main>
 
@@ -144,6 +183,8 @@ const SOURCES = {
   usps:  "https://tools.usps.com/zip-code-lookup.htm?byaddress"
 };
 const STATE_ABBR = "WI";
+/* Who users contact for unit lists and problems - change here only */
+const CONTACT = { name: "Steve Leaders", email: "spleaders@gmail.com", phone: "414-403-7754" };
 
 /* ---------- Word lists used to read addresses and owner names ---------- */
 const DIRS = {N:"N",NORTH:"N",S:"S",SOUTH:"S",E:"E",EAST:"E",W:"W",WEST:"W"};
@@ -333,8 +374,9 @@ function fdlPersonName(owner){
 }
 
 /* ---------- Decide what to write ---------- */
-async function lookUp(line){
+async function lookUp(line, multi){
   const a = parseAddress(line);
+  multi = multi || !!a.unit;
   if (!a.ok) return {line, kind:"bad", tag:"Could not read", why:a.reason + ". Example: 160 S Macy St"};
 
   const [f, d] = await Promise.allSettled([findFDL(a), findDodge(a)]);
@@ -354,7 +396,14 @@ async function lookUp(line){
   const ties = cands.filter(c => c.score === best.score && up(c.site) !== up(best.site));
   if (ties.length){
     const list = [best].concat(ties).slice(0,4).map(c => `${titleCase(c.site)} (${titleCase(c.town)})`).join("; ");
-    return {line, kind:"warn", tag:"More than one match", why:"Add the town to the address. Matches: " + list};
+    // Say what tells the matches apart: street type, direction, or town
+    const all = [best].concat(ties);
+    const differs = f => new Set(all.map(c => up(c[f] || ""))).size > 1;
+    const add = [];
+    if (differs("suffix")) add.push("the street type (St, Dr, Ave...)");
+    if (differs("dir")) add.push("the direction (N, S, E, W)");
+    if (differs("town") || !add.length) add.push("the town");
+    return {line, kind:"warn", tag:"More than one match", why:"Add " + add.join(" or ") + ". Matches: " + list};
   }
 
   const c = best;
@@ -374,9 +423,14 @@ async function lookUp(line){
   };
 
   // Private owner or no owner name
+  if (multi){
+    const city = c.zip ? await cityForZip(c.zip) : "";
+    return {line, kind:"warn", tag:"Multi-unit building", name:"", unitRequest:true,
+      bStreet:titleCase(c.site), bCity:city ? titleCase(city) : titleCase(c.town), bZip:c.zip, county:c.county,
+      why:`The county records cover the whole building, not each unit. Contact ${CONTACT.name} for a unit list.`};
+  }
   if (c.priv || !String(c.owner||"").trim()) return residentAddress("The owner's name is kept private by the county.");
   // Apartment or unit typed in
-  if (a.unit) return residentAddress("Apartment or unit - the county record covers the whole building.");
 
   const mailMatches = c.mail.some(m => sameStreet(m, c.site)) && (!c.zip || !c.mailZip || c.zip === c.mailZip);
   const org = c.county === "Dodge" ? (c.ownerIsOrg || isOrg(c.owner)) : isOrg(c.owner);
@@ -405,6 +459,16 @@ let results = [];
 let counter = 0;
 const inOrder = () => results.slice().sort((a, b) => a.n - b.n);   // oldest first, for copy/download
 
+function unitRequestHtml(r){
+  const addr = `${r.bStreet}\n${r.bCity}${r.bCity ? ", " : ""}${STATE_ABBR} ${r.bZip || ""}`.trim();
+  const subject = `Unit list request: ${r.bStreet}${r.bCity ? ", " + r.bCity : ""}`;
+  const body = `Please send me a unit list for this building:\n\n${addr}\n(${r.county} County)\n\nMy name:\nMy phone:\n\nSent from the Name and Address Finder.`;
+  const mail = `mailto:${CONTACT.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return `<div class="addr">${esc(addr)}</div>
+    <a class="contactbtn" href="${mail}">Email ${esc(CONTACT.name.split(" ")[0])}</a>
+    <a class="contactph" href="tel:${CONTACT.phone.replace(/\D/g,"")}">or call ${esc(CONTACT.phone)}</a>`;
+}
+
 function render(){
   $("results").innerHTML = results.map(r => {
     const addr = r.street ? `${esc(r.street)}\n${esc(r.city)}${r.city ? ", " : ""}${STATE_ABBR} ${esc(r.zip)}` : "";
@@ -414,6 +478,7 @@ function render(){
       ${addr ? `<div class="addr">${addr}</div>` : ""}
       <span class="tag">${esc(r.tag)}</span>
       <div class="why">${esc(r.why)}</div>
+      ${r.unitRequest ? unitRequestHtml(r) : ""}
       ${r.check ? `<a class="check" href="${SOURCES.usps}" target="_blank" rel="noopener">Check this ZIP with the Post Office</a>` : ""}
     </div>`;
   }).join("");
@@ -421,7 +486,7 @@ function render(){
 }
 
 /* Look up a batch of typed lines; new results go on top of the list */
-async function runLines(lines){
+async function runLines(lines, multi){
   const jobs = lines.map(line => ({n: ++counter, line, kind:"", tag:"Looking up...", why:""}));
   results = jobs.slice().reverse().concat(results);
   render();
@@ -432,7 +497,7 @@ async function runLines(lines){
     while (queue.length){
       const job = queue.shift();
       let r;
-      try{ r = await lookUp(job.line); }
+      try{ r = await lookUp(job.line, multi); }
       catch(e){ r = {line:job.line, kind:"bad", tag:"Problem", why:"Something went wrong: " + e.message}; }
       r.n = job.n;
       results[results.findIndex(x => x.n === job.n)] = r;
@@ -462,9 +527,11 @@ async function runForm(ev){
   }
   if (zip && !/^\d{5}$/.test(zip)){ $("formMsg").textContent = "ZIP should be 5 numbers, or leave it blank."; $("fZip").focus(); return; }
   $("formMsg").textContent = "";
+  const multi = $("fMulti").checked;
   const line = `${num} ${street}` + (town || zip ? `, ${town} ${zip}`.replace(/\s+$/,"") : "");
-  await runLines([line]);
+  await runLines([line], multi);
   ["fNum","fStreet","fTown","fZip"].forEach(id => $(id).value = "");
+  $("fMulti").checked = false;
   $("fNum").focus();
 }
 
@@ -496,7 +563,7 @@ function fallbackCopy(text, done){
 function downloadCsv(){
   const head = ["You typed","Name","Street","City","State","ZIP","Result","Note","County"];
   const cell = v => `"${String(v==null?"":v).replace(/"/g,'""').replace(/\n/g," ")}"`;
-  const rows = inOrder().map(r => [r.line, r.name||"", r.street||"", r.city||"", r.name ? STATE_ABBR : "", r.zip||"", r.tag, r.why, r.county||""]);
+  const rows = inOrder().map(r => [r.line, r.name||"", r.street||r.bStreet||"", r.city||r.bCity||"", (r.name||r.bStreet) ? STATE_ABBR : "", r.zip||r.bZip||"", r.tag, r.why, r.county||""]);
   const csv = [head].concat(rows).map(row => row.map(cell).join(",")).join("\r\n");
   const blob = new Blob(["﻿" + csv], {type:"text/csv;charset=utf-8"});
   const a = document.createElement("a");
@@ -506,6 +573,7 @@ function downloadCsv(){
   document.body.appendChild(a); a.click(); a.remove();
 }
 
+$("contactLine").innerHTML = `Contact ${esc(CONTACT.name)}: <a href="mailto:${CONTACT.email}">${esc(CONTACT.email)}</a> or <a href="tel:${CONTACT.phone.replace(/\D/g,"")}">${esc(CONTACT.phone)}</a>`;
 $("form").addEventListener("submit", runForm);
 $("goList").addEventListener("click", runList);
 $("copy").addEventListener("click", copyList);
