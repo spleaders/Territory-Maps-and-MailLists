@@ -7,8 +7,12 @@
 <!--
   Script Identity
   Name:    name_finder.html
-  Version: v1.9
+  Version: v2.0
   Date:    2026-11-05
+  v2.0:    How to use rebuilt in plain words for all ages and devices: Basics /
+           Advanced buttons; opens on Basics the first visit only; copy-and-paste
+           steps for the viewer's own device (iPhone, Android, Mac, Windows) first.
+           No Windows-only wording left on cards.
   v1.9:    Multi-unit card adds do-it-yourself: Look up residents buttons plus
            Unit / Name boxes; each Add puts that unit on the list (unconfirmed);
            added units can be removed. Email Steve stays for full lists.
@@ -95,6 +99,14 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
 .f-street{grid-column:span 2}
 .f-town{grid-column:span 2}
 .terr{font-size:.95rem;font-weight:700;margin-top:6px}
+.modes{display:flex;gap:8px;margin:8px 0 12px}
+.mode{flex:1;padding:12px;font-size:1.05rem;background:var(--card);color:var(--ink);border:2px solid var(--line)}
+.mode.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.steps>li{margin:8px 0}
+.colors{list-style:none;padding-left:0;margin:6px 0}
+.colors li{margin:4px 0}
+.cp li{margin:6px 0}
+.other summary{cursor:pointer;color:var(--accent);font-weight:700;padding:4px 0}
 .unitrow{display:flex;gap:8px;margin-top:10px}
 .unitrow input{min-width:0;font:inherit;padding:8px 10px;border:2px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
 .unitrow .unitbox{flex:0 0 32%}
@@ -132,37 +144,82 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
   <h1>Name and Address Finder</h1>
   <p class="sub">For Fond du Lac and Dodge County addresses.</p>
 
-  <details class="help">
+  <details class="help" id="help">
     <summary>How to use</summary>
-    <ol>
-      <li>Type the <b>House number</b> and <b>Street</b>. Add the <b>Apt</b>, <b>Town</b> or <b>ZIP</b> if you have them.</li>
-      <li>Tap <b>Find</b>. The answer appears below, and the boxes clear for the next address.</li>
-      <li>Read the color: <b>green</b> = use the name shown, <b>blue</b> = write "Current Resident", <b>yellow</b> = read the note first, <b>red</b> = not found, check the spelling.</li>
-      <li>When your list is done, tap <b>Copy list</b> or <b>Download spreadsheet</b>.</li>
-    </ol>
-    <p class="help-h">Finding a name for a "Current Resident" address</p>
-    <ul>
-      <li>Tap one of the <b>Look up residents</b> buttons. The site opens with the address filled in.</li>
-      <li>These sites mix in old and unrelated names. Only use a name listed as living there <b>now</b>.</li>
-      <li>To bring a name over: drag across it to select it, press <b>Ctrl + C</b>, come back here, click <b>Name found</b>, press <b>Ctrl + V</b>, then tap <b>Use</b>. (On a phone: press and hold the name, tap Copy, then press and hold the box and tap Paste.)</li>
-      <li>The letter will then say "<i>Name</i> or Current Resident". If unsure, leave it as Current Resident.</li>
-      <li>If the site shows <b>#</b>, <b>Apt</b> or <b>Unit</b> after the address, it's a <b>multi-unit building</b>. Look it up again with the <b>Apartment or other multi-unit building</b> box checked.</li>
-    </ul>
-    <p class="help-h">Multi-unit buildings</p>
-    <ul>
-      <li>Tap <b>Email Steve</b> for a complete unit list, <b>or</b> do it yourself:</li>
-      <li>Use the <b>Look up residents</b> buttons on the yellow card. For each unit the site shows, type the unit number (and the name, if listed as living there now) and tap <b>Add</b>. Each unit becomes its own line on your list.</li>
-      <li>People-search sites may miss some units. Email Steve when you need every unit.</li>
-    </ul>
-    <p class="help-h">Rules of use</p>
-    <ul>
-      <li>Names come from public county tax records. They show who <b>owns</b> a property, which is not always who lives there.</li>
-      <li>Use the names and addresses only for letter writing. Don't post or share the lists.</li>
-      <li>When in doubt, write <b>Current Resident</b>.</li>
-    </ul>
-    <p class="help-h">Questions or problems</p>
-    <p id="contactLine"></p>
-    <p class="help-tip">Tip: on a phone, tap Share, then "Add to Home Screen" so this opens like an app.</p>
+    <div class="modes" role="tablist">
+      <button type="button" class="mode on" data-mode="basics" role="tab" aria-selected="true">Basics</button>
+      <button type="button" class="mode" data-mode="advanced" role="tab" aria-selected="false">Advanced</button>
+    </div>
+
+    <div class="helpsec" id="help-basics">
+      <ol class="steps">
+        <li>Type the <b>house number</b>. Example: <i>160</i></li>
+        <li>Type the <b>street</b>. Example: <i>S Macy St</i><br><span class="hint">Town and ZIP are extra. Fill them in if you know them.</span></li>
+        <li>Tap <b>Find</b>.</li>
+        <li>Look at the color on the left of the answer:
+          <ul class="colors">
+            <li><span class="dot" style="background:var(--ok)"></span><b>Green</b>: write the name shown.</li>
+            <li><span class="dot" style="background:var(--cr)"></span><b>Blue</b>: write <b>Current Resident</b>.</li>
+            <li><span class="dot" style="background:var(--warn-mark)"></span><b>Yellow</b>: read the note on the card first.</li>
+            <li><span class="dot" style="background:var(--bad)"></span><b>Red</b>: not found. Check the spelling.</li>
+          </ul></li>
+        <li>Next house on the same street? Just type the new number and tap <b>Find</b> again.</li>
+        <li>All done? Tap <b>Copy list</b> or <b>Download spreadsheet</b>.</li>
+      </ol>
+      <p class="help-h">Please remember</p>
+      <ul>
+        <li>Use these names only for letter writing. Don't share the list.</li>
+        <li>Not sure about a name? Write <b>Current Resident</b>.</li>
+      </ul>
+      <p class="help-h">Need help?</p>
+      <p class="contactLine"></p>
+      <p class="hint">Want to find names for "Current Resident" houses, or apartments? Tap <b>Advanced</b> above.</p>
+    </div>
+
+    <div class="helpsec" id="help-advanced" hidden>
+      <p class="help-h">How to copy and paste</p>
+      <p class="hint" id="deviceNote"></p>
+      <ul class="cp" id="cpMine"></ul>
+      <details class="other"><summary>Other devices</summary><ul class="cp" id="cpOther"></ul></details>
+
+      <p class="help-h">Find a name for a "Current Resident" house</p>
+      <ol>
+        <li>On the blue card, tap one of the <b>Look up residents</b> buttons. A website opens with the address already filled in.</li>
+        <li>These sites mix in old and wrong names. Only use a person listed as living there <b>now</b>.</li>
+        <li>Copy the name, come back here, paste it in <b>Name found</b>, and tap <b>Use</b>.</li>
+        <li>The letter will say "<i>Name</i> or Current Resident". Changed your mind? Tap <b>Undo</b>.</li>
+      </ol>
+
+      <p class="help-h">Apartments and other buildings with many homes</p>
+      <ol>
+        <li>Check the box <b>Apartment or other multi-unit building</b>, then tap <b>Find</b>.</li>
+        <li>For a full list of units, tap <b>Email Steve</b>.</li>
+        <li>Or do it yourself: tap a <b>Look up residents</b> button. For each unit the site shows, type the unit number (and the name, if listed as living there now) and tap <b>Add</b>.</li>
+        <li>If a website shows <b>#</b>, <b>Apt</b> or <b>Unit</b> after an address you looked up the normal way, it's a building with many homes. Look it up again with the box checked.</li>
+      </ol>
+
+      <p class="help-h">Check a ZIP code</p>
+      <p>On a blue card, tap <b>Check this ZIP with the Post Office</b>. The street is copied for you. On the Post Office page, paste it in <b>Street Address</b>, type the town, pick <b>WI</b>, and tap <b>Find</b>.</p>
+
+      <p class="help-h">Look up many addresses at once</p>
+      <p>Tap <b>Paste a whole list instead</b>, paste your addresses (one per line), and tap <b>Find all</b>.</p>
+
+      <p class="help-h">Put this tool on your home screen</p>
+      <ul>
+        <li><b>iPhone / iPad:</b> tap the Share button (a square with an arrow), then <b>Add to Home Screen</b>.</li>
+        <li><b>Android:</b> tap the <b>&#8942;</b> menu (three dots), then <b>Add to Home screen</b>.</li>
+        <li><b>Computer:</b> click the <b>&#9734;</b> star at the end of the web address to bookmark it.</li>
+      </ul>
+
+      <p class="help-h">About the names</p>
+      <ul>
+        <li>Names come from public county tax records. They show who <b>owns</b> a house, which is not always who lives there.</li>
+        <li>Names from people-search websites can be years old. They are marked "unconfirmed".</li>
+        <li>Use names and addresses only for letter writing. Don't post or share the lists.</li>
+      </ul>
+      <p class="help-h">Need help?</p>
+      <p class="contactLine"></p>
+    </div>
   </details>
 
   <form id="form" autocomplete="off" novalidate>
@@ -219,7 +276,7 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
   <footer>
     Names come from county tax records, which show who owns a property. Sources: Fond du Lac County GIS,
     Dodge County Open Data, and the State of Wisconsin parcel map (house ZIP codes in Fond du Lac County).
-    Version 1.9, Nov 2026.
+    Version 2.0, Nov 2026.
   </footer>
 </main>
 
@@ -680,7 +737,7 @@ function render(){
       ${r.territories !== undefined ? `<div class="terr">${esc(territoryText(r.territories))}</div>` : ""}
       ${r.unitRequest ? unitRequestHtml(r) : ""}
       ${r.check ? `<a class="check" href="${SOURCES.usps}" target="_blank" rel="noopener" data-street="${esc(r.street)}" data-n="${r.n}">Check this ZIP with the Post Office</a>
-        <div class="copied" id="cp${r.n}" hidden>Street copied. On the Post Office page, click <b>Street Address</b>, press <b>Ctrl + V</b>, then type the town and pick <b>WI</b>.</div>` : ""}
+        <div class="copied" id="cp${r.n}" hidden>Street copied. On the Post Office page, paste it in <b>Street Address</b>, type the town and pick <b>WI</b>. <button type="button" class="linkbtn" data-howpaste="1">How do I paste?</button></div>` : ""}
       ${r.fromUnit ? `<div class="people"><button type="button" class="linkbtn" data-remove="${r.n}">Remove this unit</button></div>`
         : (r.name === "Current Resident" || r.peopleName) ? peopleHtml(r) : ""}
     </div>`;
@@ -784,7 +841,40 @@ function downloadCsv(){
   document.body.appendChild(a); a.click(); a.remove();
 }
 
-$("contactLine").innerHTML = `Contact ${esc(CONTACT.name)}: <a href="mailto:${CONTACT.email}">${esc(CONTACT.email)}</a> or <a href="tel:${CONTACT.phone.replace(/\D/g,"")}">${esc(CONTACT.phone)}</a>`;
+document.querySelectorAll(".contactLine").forEach(el => el.innerHTML =
+  `Contact ${esc(CONTACT.name)}: <a href="mailto:${CONTACT.email}">${esc(CONTACT.email)}</a> or <a href="tel:${CONTACT.phone.replace(/\D/g,"")}">${esc(CONTACT.phone)}</a>`);
+
+/* ---------- How to use: Basics / Advanced, device-aware copy & paste ---------- */
+const COPY_PASTE = {
+  iphone:  ["iPhone / iPad", "Press and hold the words until they turn blue, then tap <b>Copy</b>. Press and hold the box here, then tap <b>Paste</b>."],
+  android: ["Android", "Press and hold the words, drag the handles to cover them, then tap <b>Copy</b>. Press and hold the box here, then tap <b>Paste</b>."],
+  mac:     ["Mac", "Drag across the words to select them and press <b>&#8984; Command + C</b>. Click the box here and press <b>&#8984; Command + V</b>."],
+  windows: ["Windows", "Drag across the words to select them and press <b>Ctrl + C</b>. Click the box here and press <b>Ctrl + V</b>."]
+};
+function myDevice(){
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "iphone";
+  if (/Android/.test(ua)) return "android";
+  if (/Macintosh|Mac OS/.test(ua)) return "mac";
+  return "windows";
+}
+(function setupHelp(){
+  const mine = myDevice();
+  const li = k => `<li><b>${COPY_PASTE[k][0]}:</b> ${COPY_PASTE[k][1]}</li>`;
+  $("deviceNote").textContent = `Looks like you're using ${COPY_PASTE[mine][0]}:`;
+  $("cpMine").innerHTML = li(mine);
+  $("cpOther").innerHTML = Object.keys(COPY_PASTE).filter(k => k !== mine).map(li).join("");
+  const showMode = m => {
+    document.querySelectorAll(".mode").forEach(b => { const on = b.dataset.mode === m; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+    $("help-basics").hidden = m !== "basics"; $("help-advanced").hidden = m !== "advanced";
+  };
+  document.querySelectorAll(".mode").forEach(b => b.addEventListener("click", () => showMode(b.dataset.mode)));
+  window.openHowToPaste = () => { $("help").open = true; showMode("advanced"); $("help").scrollIntoView({behavior:"smooth"}); };
+  // First visit: open How to use on Basics. After that it stays closed (remembered on this device only).
+  try{
+    if (!localStorage.getItem("nf_seen_help")){ $("help").open = true; localStorage.setItem("nf_seen_help", "1"); }
+  }catch(e){}
+})();
 $("form").addEventListener("submit", runForm);
 $("goList").addEventListener("click", runList);
 $("copy").addEventListener("click", copyList);
@@ -795,6 +885,7 @@ $("clearBoxes").addEventListener("click", () => {
   $("fMulti").checked = false; $("formMsg").textContent = ""; $("fNum").focus();
 });
 $("results").addEventListener("click", ev => {
+  if (ev.target.closest("[data-howpaste]")){ window.openHowToPaste(); return; }
   const zipLink = ev.target.closest("a.check[data-street]");
   if (zipLink){
     const note = $("cp" + zipLink.dataset.n);
