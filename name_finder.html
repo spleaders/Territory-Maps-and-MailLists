@@ -7,8 +7,15 @@
 <!--
   Script Identity
   Name:    name_finder.html
-  Version: v1.5
+  Version: v1.7
   Date:    2026-11-05
+  v1.7:    "Check this ZIP" also copies the street address (the Post Office page
+           can't be pre-filled); How to use explains copy/paste of names and
+           that #/Apt/Unit on a people-search site means a multi-unit building.
+  v1.6:    "Look up residents" buttons on Current Resident cards (FastPeopleSearch,
+           TruePeopleSearch, USPhoneBook - opened by the person, never read
+           automatically) and a "Name found" box giving "Name or Current Resident";
+           spreadsheet gets a Name source column. Sites listed in PEOPLE_SITES.
   v1.5:    Shows which territory (or territories) each address is in, using the
            outlines Territory Master publishes; added to the unit-list email and
            the spreadsheet. Specialty territories listed first.
@@ -83,6 +90,15 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
 .f-street{grid-column:span 2}
 .f-town{grid-column:span 2}
 .terr{font-size:.95rem;font-weight:700;margin-top:6px}
+.copied{margin-top:6px;padding:8px 10px;border-radius:8px;background:var(--cr-bg);color:var(--ink);font-size:.9rem}
+.people{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:.95rem}
+.people-h{font-weight:700;margin-bottom:6px}
+.pslinks{display:flex;flex-wrap:wrap;gap:8px}
+.psbtn{padding:8px 12px;border:2px solid var(--accent);border-radius:8px;color:var(--accent);font-weight:700;text-decoration:none;font-size:.9rem}
+.usename{display:flex;gap:8px;margin-top:10px}
+.usename input{flex:1;min-width:0;font:inherit;padding:8px 10px;border:2px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.usebtn{padding:8px 16px;background:var(--accent);color:var(--accent-ink)}
+.linkbtn{background:none;color:var(--accent);text-decoration:underline;padding:0 0 0 6px;font-weight:700}
 .multi{display:flex;align-items:center;gap:10px;font-weight:700;margin:14px 0 4px;cursor:pointer}
 .multi input{width:24px;height:24px;accent-color:var(--accent)}
 .contactbtn{display:inline-block;margin:10px 10px 0 0;padding:10px 16px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-weight:700;text-decoration:none}
@@ -111,6 +127,14 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
       <li>Read the color: <b>green</b> = use the name shown, <b>blue</b> = write "Current Resident", <b>yellow</b> = read the note first, <b>red</b> = not found, check the spelling.</li>
       <li>When your list is done, tap <b>Copy list</b> or <b>Download spreadsheet</b>.</li>
     </ol>
+    <p class="help-h">Finding a name for a "Current Resident" address</p>
+    <ul>
+      <li>Tap one of the <b>Look up residents</b> buttons. The site opens with the address filled in.</li>
+      <li>These sites mix in old and unrelated names. Only use a name listed as living there <b>now</b>.</li>
+      <li>To bring a name over: drag across it to select it, press <b>Ctrl + C</b>, come back here, click <b>Name found</b>, press <b>Ctrl + V</b>, then tap <b>Use</b>. (On a phone: press and hold the name, tap Copy, then press and hold the box and tap Paste.)</li>
+      <li>The letter will then say "<i>Name</i> or Current Resident". If unsure, leave it as Current Resident.</li>
+      <li>If the site shows <b>#</b>, <b>Apt</b> or <b>Unit</b> after the address, it's a <b>multi-unit building</b>. Look it up again with the <b>Apartment or other multi-unit building</b> box checked instead.</li>
+    </ul>
     <p class="help-h">Rules of use</p>
     <ul>
       <li>Names come from public county tax records. They show who <b>owns</b> a property, which is not always who lives there.</li>
@@ -173,7 +197,7 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
   <footer>
     Names come from county tax records, which show who owns a property. Sources: Fond du Lac County GIS,
     Dodge County Open Data, and the State of Wisconsin parcel map (house ZIP codes in Fond du Lac County).
-    Version 1.5, Nov 2026.
+    Version 1.7, Nov 2026.
   </footer>
 </main>
 
@@ -192,6 +216,14 @@ const SOURCES = {
 };
 const STATE_ABBR = "WI";
 /* Order territories are listed in: specialty types first */
+/* People-search sites offered on "Current Resident" cards. Each opens in a new tab with the
+   address filled in; nothing is read automatically. Add, remove or fix a site here only. */
+const slug = s => String(s||"").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const PEOPLE_SITES = [
+  {name:"FastPeopleSearch", url:(st, city, zip) => `https://www.fastpeoplesearch.com/address/${slug(st)}_${slug(city)}-${STATE_ABBR.toLowerCase()}${zip ? "-" + zip : ""}`},
+  {name:"TruePeopleSearch", url:(st, city, zip) => `https://www.truepeoplesearch.com/resultaddress?streetaddress=${encodeURIComponent(st)}&citystatezip=${encodeURIComponent(`${city}, ${STATE_ABBR} ${zip||""}`.trim())}`},
+  {name:"USPhoneBook",      url:(st, city, zip) => `https://www.usphonebook.com/address/${slug(st)}/${slug(city)}-${STATE_ABBR.toLowerCase()}`}
+];
 const TYPE_ORDER = ["Apartment","Business","Letter","Taycheedah Prison","R","Town","Unassigned"];
 /* Who users contact for unit lists and problems - change here only */
 const CONTACT = { name: "Steve Leaders", email: "spleaders@gmail.com", phone: "414-403-7754" };
@@ -505,11 +537,11 @@ async function lookUpCore(line, multi, ctx){
   const residentAddress = async (whyText, kind="cr", tag="Current Resident") => {
     const city = c.zip ? await cityForZip(c.zip) : "";
     if (!c.zip || !city){
-      return {line, kind:"warn", tag:"ZIP needed", name:"Current Resident",
+      return {line, kind:"warn", tag:"ZIP needed", name:"Current Resident", town:titleCase(c.town),
         street:siteLine, city:"", zip:"", county:c.county,
         why: whyText + " The house ZIP code was not found. Use the Post Office link to get it.", check:true};
     }
-    return {line, kind, tag, name:"Current Resident", street:siteLine, city:titleCase(city), zip:c.zip, county:c.county, why:whyText, check:true};
+    return {line, kind, tag, name:"Current Resident", town:titleCase(c.town), street:siteLine, city:titleCase(city), zip:c.zip, county:c.county, why:whyText, check:true};
   };
 
   // Private owner or no owner name
@@ -559,6 +591,24 @@ function unitRequestHtml(r){
     <a class="contactph" href="tel:${CONTACT.phone.replace(/\D/g,"")}">or call ${esc(CONTACT.phone)}</a>`;
 }
 
+function peopleHtml(r){
+  if (r.peopleName){
+    return `<div class="people">Name from a people-search site (unconfirmed).
+      <button type="button" class="linkbtn" data-undo="${r.n}">Undo</button></div>`;
+  }
+  const city = r.city || r.town || "";
+  const links = PEOPLE_SITES.map(site =>
+    `<a class="psbtn" href="${esc(site.url(r.street, city, r.zip))}" target="_blank" rel="noopener">${esc(site.name)}</a>`).join("");
+  return `<div class="people">
+    <div class="people-h">Look up residents:</div>
+    <div class="pslinks">${links}</div>
+    <div class="usename">
+      <input type="text" id="pn${r.n}" placeholder="Name found (optional)" aria-label="Name found">
+      <button type="button" class="usebtn" data-use="${r.n}">Use</button>
+    </div>
+  </div>`;
+}
+
 function render(){
   $("results").innerHTML = results.map(r => {
     const addr = r.street ? `${esc(r.street)}\n${esc(r.city)}${r.city ? ", " : ""}${STATE_ABBR} ${esc(r.zip)}` : "";
@@ -570,7 +620,9 @@ function render(){
       <div class="why">${esc(r.why)}</div>
       ${r.territories !== undefined ? `<div class="terr">${esc(territoryText(r.territories))}</div>` : ""}
       ${r.unitRequest ? unitRequestHtml(r) : ""}
-      ${r.check ? `<a class="check" href="${SOURCES.usps}" target="_blank" rel="noopener">Check this ZIP with the Post Office</a>` : ""}
+      ${r.check ? `<a class="check" href="${SOURCES.usps}" target="_blank" rel="noopener" data-street="${esc(r.street)}" data-n="${r.n}">Check this ZIP with the Post Office</a>
+        <div class="copied" id="cp${r.n}" hidden>Street copied. On the Post Office page, click <b>Street Address</b>, press <b>Ctrl + V</b>, then type the town and pick <b>WI</b>.</div>` : ""}
+      ${(r.name === "Current Resident" || r.peopleName) ? peopleHtml(r) : ""}
     </div>`;
   }).join("");
   $("actions").hidden = !results.length;
@@ -651,10 +703,13 @@ function fallbackCopy(text, done){
   t.select(); try{ document.execCommand("copy"); done(); }catch(e){ $("status").textContent = "Copy did not work on this device. Use Download instead."; }
   t.remove();
 }
+const nameSource = r => r.peopleName ? "People-search site (unconfirmed)"
+  : (r.kind === "ok" || r.tag === "PO Box - same town") ? "County tax record"
+  : r.name ? "None - Current Resident" : "";
 function downloadCsv(){
-  const head = ["You typed","Name","Street","City","State","ZIP","Result","Note","County","Territory"];
+  const head = ["You typed","Name","Street","City","State","ZIP","Result","Note","County","Territory","Name source"];
   const cell = v => `"${String(v==null?"":v).replace(/"/g,'""').replace(/\n/g," ")}"`;
-  const rows = inOrder().map(r => [r.line, r.name||"", r.street||r.bStreet||"", r.city||r.bCity||"", (r.name||r.bStreet) ? STATE_ABBR : "", r.zip||r.bZip||"", r.tag, r.why, r.county||"", r.territories ? r.territories.join(", ") : territoryText(r.territories)]);
+  const rows = inOrder().map(r => [r.line, r.name||"", r.street||r.bStreet||"", r.city||r.bCity||"", (r.name||r.bStreet) ? STATE_ABBR : "", r.zip||r.bZip||"", r.tag, r.why, r.county||"", r.territories ? r.territories.join(", ") : territoryText(r.territories), nameSource(r)]);
   const csv = [head].concat(rows).map(row => row.map(cell).join(",")).join("\r\n");
   const blob = new Blob(["﻿" + csv], {type:"text/csv;charset=utf-8"});
   const a = document.createElement("a");
@@ -670,6 +725,34 @@ $("goList").addEventListener("click", runList);
 $("copy").addEventListener("click", copyList);
 $("download").addEventListener("click", downloadCsv);
 $("clear").addEventListener("click", clearList);
+$("results").addEventListener("click", ev => {
+  const zipLink = ev.target.closest("a.check[data-street]");
+  if (zipLink){
+    const note = $("cp" + zipLink.dataset.n);
+    const show = () => { if (note) note.hidden = false; };
+    const text = zipLink.dataset.street;
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(show, () => fallbackCopy(text, show));
+    else fallbackCopy(text, show);
+    return;   // the link itself opens the Post Office page as usual
+  }
+  const use = ev.target.closest("[data-use]"), undo = ev.target.closest("[data-undo]");
+  if (use){
+    const n = Number(use.dataset.use), r = results.find(x => x.n === n);
+    const name = ($("pn" + n).value || "").trim().replace(/\s+/g, " ");
+    if (!r || !name) { if ($("pn" + n)) $("pn" + n).focus(); return; }
+    r.peopleName = name; r.name = `${name} or Current Resident`;
+    render();
+  } else if (undo){
+    const r = results.find(x => x.n === Number(undo.dataset.undo));
+    if (r){ delete r.peopleName; r.name = "Current Resident"; render(); }
+  }
+});
+$("results").addEventListener("keydown", ev => {
+  if (ev.key === "Enter" && ev.target.id && ev.target.id.startsWith("pn")){
+    ev.preventDefault();
+    const btn = document.querySelector(`[data-use="${ev.target.id.slice(2)}"]`); if (btn) btn.click();
+  }
+});
 ["fNum","fStreet"].forEach(id => $(id).addEventListener("input", () => { $(id).classList.remove("missing"); $("formMsg").textContent = ""; }));
 </script>
 </body>
