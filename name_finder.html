@@ -7,8 +7,9 @@
 <!--
   Script Identity
   Name:    name_finder.html
-  Version: v2.1
+  Version: v2.2
   Date:    2026-11-05
+  v2.2:    Basics / Advanced buttons always visible; tap again or "Hide help" to close.
   v2.1:    Advanced > About the names explains that green is a strong clue, not a
            guarantee (no public owner-occupied flag exists for either county).
   v2.0:    How to use rebuilt in plain words for all ages and devices: Basics /
@@ -101,7 +102,9 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
 .f-street{grid-column:span 2}
 .f-town{grid-column:span 2}
 .terr{font-size:.95rem;font-weight:700;margin-top:6px}
-.modes{display:flex;gap:8px;margin:8px 0 12px}
+.help-title{color:var(--accent);font-weight:700;padding:6px 0 0}
+.modes{display:flex;gap:8px;margin:8px 0 8px}
+.hidehelp{display:block;margin:14px 0 6px;padding:0}
 .mode{flex:1;padding:12px;font-size:1.05rem;background:var(--card);color:var(--ink);border:2px solid var(--line)}
 .mode.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .steps>li{margin:8px 0}
@@ -146,14 +149,14 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
   <h1>Name and Address Finder</h1>
   <p class="sub">For Fond du Lac and Dodge County addresses.</p>
 
-  <details class="help" id="help">
-    <summary>How to use</summary>
+  <div class="help" id="help">
+    <div class="help-title">How to use</div>
     <div class="modes" role="tablist">
-      <button type="button" class="mode on" data-mode="basics" role="tab" aria-selected="true">Basics</button>
-      <button type="button" class="mode" data-mode="advanced" role="tab" aria-selected="false">Advanced</button>
+      <button type="button" class="mode" data-mode="basics" role="tab" aria-selected="false" aria-expanded="false">Basics</button>
+      <button type="button" class="mode" data-mode="advanced" role="tab" aria-selected="false" aria-expanded="false">Advanced</button>
     </div>
 
-    <div class="helpsec" id="help-basics">
+    <div class="helpsec" id="help-basics" hidden>
       <ol class="steps">
         <li>Type the <b>house number</b>. Example: <i>160</i></li>
         <li>Type the <b>street</b>. Example: <i>S Macy St</i><br><span class="hint">Town and ZIP are extra. Fill them in if you know them.</span></li>
@@ -176,6 +179,7 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
       <p class="help-h">Need help?</p>
       <p class="contactLine"></p>
       <p class="hint">Want to find names for "Current Resident" houses, or apartments? Tap <b>Advanced</b> above.</p>
+      <button type="button" class="linkbtn hidehelp">Hide help</button>
     </div>
 
     <div class="helpsec" id="help-advanced" hidden>
@@ -222,8 +226,9 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
       </ul>
       <p class="help-h">Need help?</p>
       <p class="contactLine"></p>
+      <button type="button" class="linkbtn hidehelp">Hide help</button>
     </div>
-  </details>
+  </div>
 
   <form id="form" autocomplete="off" novalidate>
     <div class="fields">
@@ -279,7 +284,7 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
   <footer>
     Names come from county tax records, which show who owns a property. Sources: Fond du Lac County GIS,
     Dodge County Open Data, and the State of Wisconsin parcel map (house ZIP codes in Fond du Lac County).
-    Version 2.1, Nov 2026.
+    Version 2.2, Nov 2026.
   </footer>
 </main>
 
@@ -867,15 +872,23 @@ function myDevice(){
   $("deviceNote").textContent = `Looks like you're using ${COPY_PASTE[mine][0]}:`;
   $("cpMine").innerHTML = li(mine);
   $("cpOther").innerHTML = Object.keys(COPY_PASTE).filter(k => k !== mine).map(li).join("");
+  // The Basics / Advanced buttons are always visible. Tapping one opens that help;
+  // tapping the lit one again (or "Hide help") closes it.
+  let current = "";
   const showMode = m => {
-    document.querySelectorAll(".mode").forEach(b => { const on = b.dataset.mode === m; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+    current = m;
+    document.querySelectorAll(".mode").forEach(b => {
+      const on = b.dataset.mode === m;
+      b.classList.toggle("on", on); b.setAttribute("aria-selected", on); b.setAttribute("aria-expanded", on);
+    });
     $("help-basics").hidden = m !== "basics"; $("help-advanced").hidden = m !== "advanced";
   };
-  document.querySelectorAll(".mode").forEach(b => b.addEventListener("click", () => showMode(b.dataset.mode)));
-  window.openHowToPaste = () => { $("help").open = true; showMode("advanced"); $("help").scrollIntoView({behavior:"smooth"}); };
-  // First visit: open How to use on Basics. After that it stays closed (remembered on this device only).
+  document.querySelectorAll(".mode").forEach(b => b.addEventListener("click", () => showMode(current === b.dataset.mode ? "" : b.dataset.mode)));
+  document.querySelectorAll(".hidehelp").forEach(b => b.addEventListener("click", () => { showMode(""); $("help").scrollIntoView({behavior:"smooth"}); }));
+  window.openHowToPaste = () => { showMode("advanced"); $("help").scrollIntoView({behavior:"smooth"}); };
+  // First visit: open on Basics. After that help starts closed (remembered on this device only).
   try{
-    if (!localStorage.getItem("nf_seen_help")){ $("help").open = true; localStorage.setItem("nf_seen_help", "1"); }
+    if (!localStorage.getItem("nf_seen_help")){ showMode("basics"); localStorage.setItem("nf_seen_help", "1"); }
   }catch(e){}
 })();
 $("form").addEventListener("submit", runForm);
