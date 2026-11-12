@@ -7,8 +7,11 @@
 <!--
   Script Identity
   Name:    name_finder.html
-  Version: v2.2
+  Version: v2.3
   Date:    2026-11-05
+  v2.3:    USPhoneBook listed first; cards show a "Lives at ..." Find-on-page phrase
+           with Copy, which lights up only current residents; Advanced explains
+           Find on page for each device and how to spot current residents.
   v2.2:    Basics / Advanced buttons always visible; tap again or "Hide help" to close.
   v2.1:    Advanced > About the names explains that green is a strong clue, not a
            guarantee (no public owner-occupied flag exists for either county).
@@ -102,6 +105,9 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
 .f-street{grid-column:span 2}
 .f-town{grid-column:span 2}
 .terr{font-size:.95rem;font-weight:700;margin-top:6px}
+.findphrase{margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--bg);font-size:.92rem}
+.phrase{display:inline-block;font-weight:700;padding:2px 8px;margin:4px 4px 4px 0;border:1px dashed var(--line);border-radius:6px;background:var(--card)}
+.copyph{padding:4px 12px;font-size:.9rem;background:var(--accent);color:var(--accent-ink)}
 .help-title{color:var(--accent);font-weight:700;padding:6px 0 0}
 .modes{display:flex;gap:8px;margin:8px 0 8px}
 .hidehelp{display:block;margin:14px 0 6px;padding:0}
@@ -187,6 +193,20 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
       <p class="hint" id="deviceNote"></p>
       <ul class="cp" id="cpMine"></ul>
       <details class="other"><summary>Other devices</summary><ul class="cp" id="cpOther"></ul></details>
+
+      <p class="help-h" id="findsec">Show only people living there now</p>
+      <p>On <b>USPhoneBook</b>, use <b>Find on page</b> and search for the phrase shown on the card (like <i>Lives at 160 S Macy</i>). Only current residents light up. Use the up and down arrows to jump between them.</p>
+      <ul>
+        <li><b>Windows:</b> press <b>Ctrl + F</b>, then paste or type the phrase.</li>
+        <li><b>Mac:</b> press <b>&#8984; Command + F</b>.</li>
+        <li><b>iPhone / iPad (Safari):</b> tap the Share button (square with an arrow), then <b>Find on Page</b>.</li>
+        <li><b>Android (Chrome):</b> tap <b>&#8942;</b> (three dots), then <b>Find in page</b>.</li>
+      </ul>
+      <p>On the other sites:</p>
+      <ul>
+        <li><b>TruePeopleSearch:</b> open the person. Under <b>Current Address</b> it must be your address, with dates up to now.</li>
+        <li><b>FastPeopleSearch:</b> tap <b>View Free Details</b>. The current address at the top must be your address.</li>
+      </ul>
 
       <p class="help-h">Find a name for a "Current Resident" house</p>
       <ol>
@@ -284,7 +304,7 @@ footer{color:var(--muted);font-size:.8rem;margin-top:20px}
   <footer>
     Names come from county tax records, which show who owns a property. Sources: Fond du Lac County GIS,
     Dodge County Open Data, and the State of Wisconsin parcel map (house ZIP codes in Fond du Lac County).
-    Version 2.2, Nov 2026.
+    Version 2.3, Nov 2026.
   </footer>
 </main>
 
@@ -307,10 +327,25 @@ const STATE_ABBR = "WI";
    address filled in; nothing is read automatically. Add, remove or fix a site here only. */
 const slug = s => String(s||"").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const PEOPLE_SITES = [
+  {name:"USPhoneBook",      url:(st, city, zip) => `https://www.usphonebook.com/address/${slug(st)}/${slug(city)}-${STATE_ABBR.toLowerCase()}`},
   {name:"FastPeopleSearch", url:(st, city, zip) => `https://www.fastpeoplesearch.com/address/${slug(st)}_${slug(city)}-${STATE_ABBR.toLowerCase()}${zip ? "-" + zip : ""}`},
-  {name:"TruePeopleSearch", url:(st, city, zip) => `https://www.truepeoplesearch.com/resultaddress?streetaddress=${encodeURIComponent(st)}&citystatezip=${encodeURIComponent(`${city}, ${STATE_ABBR} ${zip||""}`.trim())}`},
-  {name:"USPhoneBook",      url:(st, city, zip) => `https://www.usphonebook.com/address/${slug(st)}/${slug(city)}-${STATE_ABBR.toLowerCase()}`}
+  {name:"TruePeopleSearch", url:(st, city, zip) => `https://www.truepeoplesearch.com/resultaddress?streetaddress=${encodeURIComponent(st)}&citystatezip=${encodeURIComponent(`${city}, ${STATE_ABBR} ${zip||""}`.trim())}`}
 ];
+/* "Lives at 160 S Macy" - the phrase that picks out current residents on USPhoneBook with Find on page.
+   Street type (St, Ave...) and any unit are left off so "ST" vs "Street" and Apt numbers still match. */
+function findPhrase(street){
+  const t = String(street || "").replace(new RegExp("\\s(" + UNIT_WORDS.filter(w => w !== "#").join("|") + ")\\b.*$", "i"), "").trim().split(/\s+/);
+  if (t.length > 2 && SUFFIX[t[t.length - 1].toUpperCase()]) t.pop();
+  return "Lives at " + t.join(" ");
+}
+function phraseHtml(street){
+  const ph = findPhrase(street);
+  return `<div class="findphrase">On <b>USPhoneBook</b>, use <b>Find on page</b> and search for:
+    <span class="phrase">${esc(ph)}</span>
+    <button type="button" class="copyph" data-phrase="${esc(ph)}">Copy</button>
+    <button type="button" class="linkbtn" data-howfind="1">How?</button>
+    <div class="hint">Only people living there now will light up.</div></div>`;
+}
 const TYPE_ORDER = ["Apartment","Business","Letter","Taycheedah Prison","R","Town","Unassigned"];
 /* Who users contact for unit lists and problems - change here only */
 const CONTACT = { name: "Steve Leaders", email: "spleaders@gmail.com", phone: "414-403-7754" };
@@ -680,6 +715,7 @@ function unitRequestHtml(r){
       <div class="people-h">Or do it yourself: look up residents, then add each unit</div>
       <div class="pslinks">${PEOPLE_SITES.map(site =>
         `<a class="psbtn" href="${esc(site.url(r.bStreet, r.bCity, r.bZip))}" target="_blank" rel="noopener">${esc(site.name)}</a>`).join("")}</div>
+      ${phraseHtml(r.bStreet)}
       <div class="unitrow">
         <input type="text" id="un${r.n}" class="unitbox" placeholder="Unit, e.g. 113" aria-label="Unit">
         <input type="text" id="unm${r.n}" placeholder="Name (optional)" aria-label="Name for this unit">
@@ -726,6 +762,7 @@ function peopleHtml(r){
   return `<div class="people">
     <div class="people-h">Look up residents:</div>
     <div class="pslinks">${links}</div>
+    ${phraseHtml(r.street)}
     <div class="usename">
       <input type="text" id="pn${r.n}" placeholder="Name found (optional)" aria-label="Name found">
       <button type="button" class="usebtn" data-use="${r.n}">Use</button>
@@ -885,7 +922,7 @@ function myDevice(){
   };
   document.querySelectorAll(".mode").forEach(b => b.addEventListener("click", () => showMode(current === b.dataset.mode ? "" : b.dataset.mode)));
   document.querySelectorAll(".hidehelp").forEach(b => b.addEventListener("click", () => { showMode(""); $("help").scrollIntoView({behavior:"smooth"}); }));
-  window.openHowToPaste = () => { showMode("advanced"); $("help").scrollIntoView({behavior:"smooth"}); };
+  window.openHowToPaste = (id) => { showMode("advanced"); (id && $(id) ? $(id) : $("help")).scrollIntoView({behavior:"smooth"}); };
   // First visit: open on Basics. After that help starts closed (remembered on this device only).
   try{
     if (!localStorage.getItem("nf_seen_help")){ showMode("basics"); localStorage.setItem("nf_seen_help", "1"); }
@@ -902,6 +939,14 @@ $("clearBoxes").addEventListener("click", () => {
 });
 $("results").addEventListener("click", ev => {
   if (ev.target.closest("[data-howpaste]")){ window.openHowToPaste(); return; }
+  if (ev.target.closest("[data-howfind]")){ window.openHowToPaste("findsec"); return; }
+  const cph = ev.target.closest("[data-phrase]");
+  if (cph){
+    const done = () => { cph.textContent = "Copied"; setTimeout(() => cph.textContent = "Copy", 2000); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(cph.dataset.phrase).then(done, () => fallbackCopy(cph.dataset.phrase, done));
+    else fallbackCopy(cph.dataset.phrase, done);
+    return;
+  }
   const zipLink = ev.target.closest("a.check[data-street]");
   if (zipLink){
     const note = $("cp" + zipLink.dataset.n);
